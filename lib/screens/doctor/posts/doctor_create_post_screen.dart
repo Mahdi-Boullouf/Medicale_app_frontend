@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart'; // image_picker প্যাকেজটি pubspec.yaml এ যোগ করে নিবেন
 
 class DoctorCreatePostScreen extends StatefulWidget {
   const DoctorCreatePostScreen({super.key});
@@ -9,7 +10,49 @@ class DoctorCreatePostScreen extends StatefulWidget {
 
 class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
   final TextEditingController _postController = TextEditingController();
-  bool _showDoctorInfo = true;
+  final ImagePicker _picker = ImagePicker();
+  XFile? _selectedMedia; // সিলেক্ট করা ফাইল রাখার জন্য
+
+  // মিডিয়া পিক করার ফাংশন
+  Future<void> _pickMedia(String type) async {
+    XFile? media;
+    if (type == 'Photo') {
+      media = await _picker.pickImage(source: ImageSource.gallery);
+    } else {
+      media = await _picker.pickVideo(source: ImageSource.gallery);
+    }
+
+    if (media != null) {
+      setState(() {
+        _selectedMedia = media;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$type selected: ${media.name}')),
+      );
+    }
+  }
+
+  // পোস্ট করার ফাংশন
+  void _handlePost() {
+    String text = _postController.text.trim();
+    
+    if (text.isEmpty && _selectedMedia == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add some text or media to post')),
+      );
+      return;
+    }
+
+    // এখানে আপনার API Call বা Firebase লজিক বসবে
+    print("Posting text: $text");
+    if (_selectedMedia != null) print("With media: ${_selectedMedia!.path}");
+
+    // সফলভাবে পোস্ট হলে আগের স্ক্রিনে ফিরে যাওয়া
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Post shared successfully!'), backgroundColor: Colors.green),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,234 +62,157 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF0B3267)),
+          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 28),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Create Post',
-          style: TextStyle(
-            color: Color(0xFF1A1A1A),
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 24),
         ),
-        centerTitle: false,
         actions: [
-          TextButton(
-            onPressed: () {
-              if (_postController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please write something to post'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Post created successfully'),
-                  backgroundColor: Color(0xFF27AE60),
-                ),
-              );
-              _postController.clear();
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Share',
-              style: TextStyle(
-                color: Color(0xFF1664CD),
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+          Padding(
+            padding: const EdgeInsets.only(right: 15, top: 10, bottom: 10),
+            child: ElevatedButton(
+              onPressed: _handlePost, // Post function call
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D53C1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                padding: const EdgeInsets.symmetric(horizontal: 25),
               ),
+              child: const Text('Post', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Doctor Info Card
-            if (_showDoctorInfo)
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE5EEFF),
-                  borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 20),
+            // User Info
+            Row(
+              children: [
+                const CircleAvatar(
+                  radius: 28,
+                  backgroundImage: AssetImage('assets/images/doctor_booking.png'),
                 ),
-                child: Row(
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const CircleAvatar(
-                      radius: 25,
-                      backgroundImage: AssetImage('assets/images/doctor_booking.png'),
+                    const Text('Dr. Joynal Abedin', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        _buildSmallDropdown(Icons.public, 'Public'),
+                        const SizedBox(width: 8),
+                        _buildSmallDropdown(Icons.add, 'Album'),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Dr. Jaynor Abedin',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0B3267),
-                            ),
-                          ),
-                          Text(
-                            'Pediatric Surgery',
-                            style: TextStyle(fontSize: 13, color: Colors.grey),
-                          ),
-                        ],
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 30),
+            
+            // Text Input
+            TextField(
+              controller: _postController,
+              maxLines: null,
+              decoration: const InputDecoration(
+                hintText: "What's on your mind?.......",
+                hintStyle: TextStyle(fontSize: 20, color: Colors.black54),
+                border: InputBorder.none,
+              ),
+              style: const TextStyle(fontSize: 20),
+            ),
+            
+            // সিলেক্ট করা মিডিয়া থাকলে তা এখানে প্রিভিউ দেখাবে
+            if (_selectedMedia != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Stack(
+                  children: [
+                    Container(
+                      height: 200,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(15),
+                        color: Colors.grey[200],
                       ),
+                      child: const Center(child: Icon(Icons.file_present, size: 50)),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 20),
-                      onPressed: () {
-                        setState(() {
-                          _showDoctorInfo = false;
-                        });
-                      },
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: IconButton(
+                        icon: const Icon(Icons.cancel, color: Colors.red),
+                        onPressed: () => setState(() => _selectedMedia = null),
+                      ),
                     ),
                   ],
                 ),
               ),
-            const SizedBox(height: 20),
-            // Post Input
-            const Text(
-              'What\'s on your mind?......',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF0B3267),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _postController,
-              maxLines: 8,
-              decoration: InputDecoration(
-                hintText: 'Share health tips, medical advice, or updates...',
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF1664CD)),
-                ),
-                contentPadding: const EdgeInsets.all(15),
-              ),
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 20),
-            // Media Options
+
+            const SizedBox(height: 100), 
+
+            // Media Selection Grid
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildMediaOption(Icons.photo_library, 'Photo', Colors.green),
-                _buildMediaOption(Icons.videocam, 'Video', Colors.red),
-                _buildMediaOption(Icons.attach_file, 'File', Colors.blue),
+                Expanded(child: InkWell(onTap: () => _pickMedia('Photo'), child: _buildMediaCard(Icons.image_outlined, 'Photo'))),
+                const SizedBox(width: 15),
+                Expanded(child: InkWell(onTap: () => _pickMedia('Video'), child: _buildMediaCard(Icons.videocam_outlined, 'Video'))),
               ],
             ),
-            const SizedBox(height: 30),
-            // Tips Section
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: const Color(0xFF4A90E2).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF4A90E2).withOpacity(0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.lightbulb_outline, color: const Color(0xFF4A90E2)),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Tips for Creating Engaging Posts',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0B3267),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  _buildTip('Share health tips and medical advice'),
-                  _buildTip('Post educational content about your specialty'),
-                  _buildTip('Share success stories (with patient consent)'),
-                  _buildTip('Answer common health questions'),
-                ],
-              ),
+            const SizedBox(height: 15),
+            Row(
+              children: [
+                Expanded(child: InkWell(onTap: () => _pickMedia('Video'), child: _buildMediaCard(Icons.play_circle_outline, 'Reels'))),
+                const Expanded(child: SizedBox()),
+              ],
             ),
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMediaOption(IconData icon, String label, Color color) {
-    return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$label picker coming soon'),
-          ),
-        );
-      },
-      child: Column(
+  // ড্রপডাউন এবং মিডিয়া কার্ডের ডিজাইন আপনার আগের কোড অনুযায়ীই থাকবে...
+  Widget _buildSmallDropdown(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: const Color(0xFFE8EEF9), borderRadius: BorderRadius.circular(8)),
+      child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-              border: Border.all(color: color.withOpacity(0.3)),
-            ),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
+          Icon(icon, size: 14, color: Colors.black87),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          const Icon(Icons.keyboard_arrow_down, size: 16),
         ],
       ),
     );
   }
 
-  Widget _buildTip(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 5),
-      child: Row(
+  Widget _buildMediaCard(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(color: const Color(0xFFF2F4F7), borderRadius: BorderRadius.circular(12)),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('• ', style: TextStyle(fontSize: 14, color: Colors.grey)),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 13, color: Colors.grey),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, size: 30, color: Colors.black87),
+              const Icon(Icons.add, size: 20, color: Colors.black54),
+            ],
           ),
+          const SizedBox(height: 10),
+          Text(label, style: const TextStyle(fontSize: 14, color: Colors.black54, fontWeight: FontWeight.w500)),
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _postController.dispose();
-    super.dispose();
   }
 }

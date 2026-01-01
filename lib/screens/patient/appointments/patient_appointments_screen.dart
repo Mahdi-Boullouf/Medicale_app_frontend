@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:docmobi/models/appointment_model.dart';
 import 'package:docmobi/screens/patient/appointments/appointment_detail_screen.dart';
+import 'package:docmobi/screens/patient/doctor/book_appointment_screen.dart'; 
+import 'package:docmobi/models/doctor_model.dart'; // Doctor মডেল ইমপোর্ট করুন
 
 class PatientAppointmentsScreen extends StatefulWidget {
   const PatientAppointmentsScreen({super.key});
@@ -12,76 +14,89 @@ class PatientAppointmentsScreen extends StatefulWidget {
 class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
   bool isUpcoming = true;
 
+  // Upcoming Data
   final List<Appointment> upcomingAppointments = [
     Appointment(
       id: '1',
-      doctorName: 'Dr. Jaynor Abedin',
+      doctorName: 'Dr. Joynal Abedin',
       doctorImage: 'assets/images/doctor_booking.png',
-      specialty: 'Pediatric Surgery',
-      date: 'Nov.03,2025',
+      specialty: 'Podiatric Surgery',
+      date: 'Nov 25, 2025',
       time: '10:30 am',
-      status: 'upcoming',
+      status: 'confirmed',
       appointmentType: 'Physical',
     ),
-    Appointment(
-      id: '2',
-      doctorName: 'Dr. Jaynor Abedin',
+     Appointment(
+      id: '11',
+      doctorName: 'Dr. Joynal Abedin',
       doctorImage: 'assets/images/doctor_booking.png',
-      specialty: 'Pediatric Surgery',
-      date: 'Nov.03,2025',
+      specialty: 'Podiatric Surgery',
+      date: 'Nov 25, 2025',
       time: '10:30 am',
-      status: 'upcoming',
-      appointmentType: 'Video',
+      status: 'confirmed',
+      appointmentType: 'Physical',
     ),
-    Appointment(
-      id: '3',
-      doctorName: 'Dr. Jaynor Abedin',
+     Appointment(
+      id: '111',
+      doctorName: 'Dr. Joynal Abedin',
       doctorImage: 'assets/images/doctor_booking.png',
-      specialty: 'Pediatric Surgery',
-      date: 'Nov.03,2025',
+      specialty: 'Podiatric Surgery',
+      date: 'Nov 25, 2025',
       time: '10:30 am',
-      status: 'upcoming',
-      appointmentType: 'Video',
+      status: 'confirmed',
+      appointmentType: 'Physical',
+    ),
+     Appointment(
+      id: '1111',
+      doctorName: 'Dr. Joynal Abedin',
+      doctorImage: 'assets/images/doctor_booking.png',
+      specialty: 'Podiatric Surgery',
+      date: 'Nov 25, 2025',
+      time: '10:30 am',
+      status: 'confirmed',
+      appointmentType: 'Physical',
     ),
   ];
+  
 
+  // Completed Data (বাটন থাকবে না)
   final List<Appointment> completedAppointments = [
     Appointment(
-      id: '4',
-      doctorName: 'Dr. Jaynor Abedin',
+      id: '2',
+      doctorName: 'Dr. Joynal Abedin',
       doctorImage: 'assets/images/doctor_booking.png',
-      specialty: 'Pediatric Surgery',
-      date: 'Nov.03,2025',
+      specialty: 'Podiatric Surgery',
+      date: 'Nov 25, 2025',
       time: '10:30 am',
       status: 'completed',
       appointmentType: 'Physical',
     ),
     Appointment(
-      id: '5',
-      doctorName: 'Dr. Jaynor Abedin',
+      id: '22',
+      doctorName: 'Dr. Joynal Abedin',
       doctorImage: 'assets/images/doctor_booking.png',
-      specialty: 'Pediatric Surgery',
-      date: 'Nov.03,2025',
+      specialty: 'Podiatric Surgery',
+      date: 'Nov 25, 2025',
       time: '10:30 am',
       status: 'completed',
       appointmentType: 'Physical',
     ),
     Appointment(
-      id: '6',
-      doctorName: 'Dr. Jaynor Abedin',
+      id: '222',
+      doctorName: 'Dr. Joynal Abedin',
       doctorImage: 'assets/images/doctor_booking.png',
-      specialty: 'Pediatric Surgery',
-      date: 'Nov.03,2025',
+      specialty: 'Podiatric Surgery',
+      date: 'Nov 25, 2025',
       time: '10:30 am',
       status: 'completed',
       appointmentType: 'Physical',
     ),
     Appointment(
-      id: '7',
-      doctorName: 'Dr. Jaynor Abedin',
+      id: '2222',
+      doctorName: 'Dr. Joynal Abedin',
       doctorImage: 'assets/images/doctor_booking.png',
-      specialty: 'Pediatric Surgery',
-      date: 'Nov.03,2025',
+      specialty: 'Podiatric Surgery',
+      date: 'Nov 25, 2025',
       time: '10:30 am',
       status: 'completed',
       appointmentType: 'Physical',
@@ -91,93 +106,47 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'My Appointment',
-          style: TextStyle(
-            color: Color(0xFF1A1A1A),
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: false,
-      ),
+      backgroundColor: const Color(0xFFF5F8FF), 
       body: Column(
         children: [
-          // Tab Buttons
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          const SizedBox(height: 60),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'My Appointment',
+                style: TextStyle(
+                  color: Color(0xFF1A1A1A),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 22,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 25),
+          
+          // ট্যাব সুইচ ডিজাইন
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        isUpcoming = true;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isUpcoming ? const Color(0xFF4A7BF7) : Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isUpcoming ? const Color(0xFF4A7BF7) : const Color(0xFFE0E0E0),
-                        ),
-                      ),
-                      child: Text(
-                        'Up Coming(02)',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isUpcoming ? Colors.white : const Color(0xFF666666),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        isUpcoming = false;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: !isUpcoming ? const Color(0xFF4A7BF7) : Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: !isUpcoming ? const Color(0xFF4A7BF7) : const Color(0xFFE0E0E0),
-                        ),
-                      ),
-                      child: Text(
-                        'Completed',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: !isUpcoming ? Colors.white : const Color(0xFF666666),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                _buildTab(title: "Up Coming(02)", active: isUpcoming, onTap: () => setState(() => isUpcoming = true)),
+                const SizedBox(width: 15),
+                _buildTab(title: "Completed", active: !isUpcoming, onTap: () => setState(() => isUpcoming = false)),
               ],
             ),
           ),
-          // Appointments List
+          const SizedBox(height: 10),
+
           Expanded(
-            child: _buildAppointmentsList(
-              isUpcoming ? upcomingAppointments : completedAppointments,
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: isUpcoming ? upcomingAppointments.length : completedAppointments.length,
+              itemBuilder: (context, index) {
+                final appointment = isUpcoming ? upcomingAppointments[index] : completedAppointments[index];
+                return _buildAppointmentCard(appointment);
+              },
             ),
           ),
         ],
@@ -185,202 +154,138 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
     );
   }
 
-  Widget _buildAppointmentsList(List<Appointment> appointments) {
-    if (appointments.isEmpty) {
-      return const Center(
-        child: Text(
-          'No appointments found',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+  Widget _buildTab({required String title, required bool active, required VoidCallback onTap}) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: active ? const Color(0xFF0D53C1) : const Color(0xFFE8EEF9),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: active ? Colors.white : Colors.black54,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: appointments.length,
-      itemBuilder: (context, index) {
-        return _buildAppointmentCard(appointments[index]);
-      },
+      ),
     );
   }
 
   Widget _buildAppointmentCard(Appointment appointment) {
+    bool isCompleted = appointment.status == 'completed';
+    
+    // স্ট্যাটাস কালার লজিক
+    Color statusBg = isCompleted ? const Color(0xFFD4F4DD) : (appointment.status == 'confirmed' ? const Color(0xFFD4F4DD) : const Color(0xFFFFF4E5));
+    Color statusText = isCompleted ? const Color(0xFF27AE60) : (appointment.status == 'confirmed' ? const Color(0xFF27AE60) : const Color(0xFFFFA726));
+    String statusLabel = isCompleted ? 'Completed' : (appointment.status == 'confirmed' ? 'Confirmed' : 'Pending');
+
     return GestureDetector(
       onTap: () {
+        // পুরো কার্ডে ক্লিক করলে ডিটেইলস স্ক্রিন
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => AppointmentDetailScreen(appointment: appointment),
-          ),
+          MaterialPageRoute(builder: (context) => AppointmentDetailScreen(appointment: appointment)),
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
+            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8)),
           ],
         ),
         child: Column(
           children: [
             Row(
               children: [
-                // Doctor Image
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    image: const DecorationImage(
-                      image: AssetImage('assets/images/doctor_booking.png'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset('assets/images/doctor_booking.png', width: 60, height: 60, fit: BoxFit.cover),
                 ),
-                const SizedBox(width: 12),
-                // Doctor Info
+                const SizedBox(width: 15),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        appointment.doctorName,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A1A),
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(appointment.doctorName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(8)),
+                            child: Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusText)),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        appointment.specialty,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF666666),
-                        ),
-                      ),
+                      Text(appointment.specialty, style: const TextStyle(fontSize: 14, color: Colors.grey)),
                     ],
                   ),
                 ),
-                // Status Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: appointment.status == 'completed'
-                        ? const Color(0xFFD4F4DD)
-                        : const Color(0xFFFFF4E5),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    appointment.status == 'completed' ? 'Completed' : 'Pending',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: appointment.status == 'completed'
-                          ? const Color(0xFF27AE60)
-                          : const Color(0xFFFFA726),
-                    ),
-                  ),
-                ),
               ],
             ),
-            const SizedBox(height: 12),
-            // Info Row
-            Row(
-              children: [
-                Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  appointment.date,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[700],
+            const SizedBox(height: 15),
+            
+            // ইনফো স্ট্রিপ ডিজাইন
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8EEF9),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _infoRow(Icons.calendar_month_outlined, appointment.date),
+                  _infoRow(Icons.access_time, appointment.time),
+                  _infoRow(
+                    appointment.appointmentType == 'Video' ? Icons.videocam_outlined : Icons.apartment,
+                    appointment.appointmentType,
                   ),
-                ),
-                const SizedBox(width: 16),
-                Icon(Icons.access_time_outlined, size: 14, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  appointment.time,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[700],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Icon(
-                  appointment.appointmentType == 'Video'
-                      ? Icons.videocam_outlined
-                      : Icons.location_on_outlined,
-                  size: 14,
-                  color: Colors.grey[600],
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  appointment.appointmentType,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-            if (appointment.status == 'upcoming') ...[
-              const SizedBox(height: 12),
+            
+            // শুধু Upcoming এ বাটন দেখাবে, Completed এ বাটন উধাও থাকবে
+            if (!isCompleted) ...[
+              const SizedBox(height: 15),
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        // Reschedule
+                    child: InkWell(
+                      onTap: () {
+                        // এরর ফিক্স: এখানে ডক্টর ডাটা সরাসরি তৈরি করে পাঠানো হয়েছে
+                        // Navigator.push(
+                        //   context,
+                        //   MaterialPageRoute(
+                        //     builder: (context) => BookAppointmentScreen(
+                        //       doctor: Doctor(
+                        //         name: appointment.doctorName,
+                        //         specialty: appointment.specialty,
+                        //         image: appointment.doctorImage,
+                        //       ),
+                        //     ),
+                        //   ),
+                        // );
                       },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF4A7BF7), width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                      child: const Text(
-                        'Reschedule',
-                        style: TextStyle(
-                          color: Color(0xFF4A7BF7),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: _buttonDesign('Reschedule', const Color(0xFFF2F4F7), Colors.black),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _showCancelDialog(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFCC304C),
-
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
+                    child: InkWell(
+                      onTap: () => _showCancelDialog(context),
+                      child: _buttonDesign('Cancel', const Color(0xFFD93B41), Colors.white),
                     ),
                   ),
                 ],
@@ -392,52 +297,40 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
     );
   }
 
+  Widget _infoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.black87),
+        const SizedBox(width: 5),
+        Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+      ],
+    );
+  }
+
+  Widget _buttonDesign(String title, Color bg, Color text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+      alignment: Alignment.center,
+      child: Text(title, style: TextStyle(color: text, fontWeight: FontWeight.bold, fontSize: 14)),
+    );
+  }
+
+  // ক্যানসেল কনফার্মেশন পপআপ
   void _showCancelDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        title: const Text(
-          'Cancel Appointment',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
-        ),
-        content: const Text(
-          'Are you sure you want to cancel this appointment?',
-          style: TextStyle(fontSize: 14),
-        ),
+        title: const Text("Cancel Appointment"),
+        content: const Text("Are you sure you want to cancel this appointment?"),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'No',
-              style: TextStyle(
-                color: Color(0xFF666666),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("No")),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Appointment cancelled successfully'),
-                  backgroundColor: Color(0xFFE74C3C),
-                ),
-              );
-            },
-            child: const Text(
-              'Yes',
-              style: TextStyle(
-                color: Color(0xFFE74C3C),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+              // ক্যানসেল লজিক এখানে হবে
+            }, 
+            child: const Text("Yes, Cancel", style: TextStyle(color: Colors.red))
           ),
         ],
       ),

@@ -1,3 +1,4 @@
+import 'package:docmobi/screens/doctor/posts/doctor_create_post_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/screens/patient/notification/notification_screen.dart';
 
@@ -9,47 +10,105 @@ class DoctorHomeScreen extends StatefulWidget {
 }
 
 class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
+  // সার্চ স্টেট এবং কন্ট্রোলার
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+
+  // নেভিগেশন ফাংশন (Create Post Page)
+  void _navigateToCreatePost() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const DoctorCreatePostScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFF), // হালকা ব্যাকগ্রাউন্ড
+      backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
         child: Column(
           children: [
-            // --- Header (Same as Screenshot) ---
+            // --- Dynamic Header (Profile or Search Bar) ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
-                  const CircleAvatar(
-                    radius: 25,
-                    backgroundImage: AssetImage('assets/images/doctor_booking.png'),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Dr.The king',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1B2C49),
+                  if (!_isSearching) ...[
+                    // প্রোফাইল সেকশন (যখন সার্চ হচ্ছে না)
+                    const CircleAvatar(
+                      radius: 25,
+                      backgroundImage: AssetImage('assets/images/doctor_booking.png'),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Dr.The king',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1B2C49),
+                            ),
+                          ),
+                          Text(
+                            'Podiatric Surgery',
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    // সার্চ বার সেকশন (যখন সার্চ আইকনে ক্লিক করা হয়)
+                    Expanded(
+                      child: Container(
+                        height: 45,
+                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE9F1FF),
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          autofocus: true,
+                          decoration: const InputDecoration(
+                            hintText: 'Search posts...',
+                            border: InputBorder.none,
+                            icon: Icon(Icons.search, size: 20, color: Color(0xFF1B2C49)),
                           ),
                         ),
-                        Text(
-                          'Podiatric Surgery',
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
-                        ),
-                      ],
+                      ),
                     ),
+                    const SizedBox(width: 10),
+                  ],
+
+                  // সার্চ আইকন (Toggle Button)
+                  _buildHeaderIcon(
+                    _isSearching ? Icons.close : Icons.search,
+                    onTap: () {
+                      setState(() {
+                        _isSearching = !_isSearching;
+                        if (!_isSearching) _searchController.clear();
+                      });
+                    },
                   ),
-                  _buildHeaderIcon(Icons.search),
-                  const SizedBox(width: 10),
-                  _buildHeaderIcon(Icons.notifications_outlined, onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationScreen()));
-                  }),
+                  
+                  if (!_isSearching) ...[
+                    const SizedBox(width: 10),
+                    _buildHeaderIcon(
+                      Icons.notifications_outlined,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NotificationScreen()),
+                        );
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -66,7 +125,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                       'Dr. Joynal Abedin',
                       '16h ago',
                       'A core principle of patient centered and compassionate care',
-                      'assets/images/news.png', // আপনার ইমেজ পাথ
+                      'assets/images/news.png',
                       '792', '792', '12',
                     ),
                     _buildSocialPost(
@@ -91,8 +150,8 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFE9F1FF),
+        decoration: const BoxDecoration(
+          color: Color(0xFFE9F1FF),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: const Color(0xFF1B2C49), size: 24),
@@ -108,6 +167,13 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.blue.withOpacity(0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Column(
         children: [
@@ -119,36 +185,50 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F8FF),
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: const Text(
-                    'Share your insights with follow doctors...',
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                child: GestureDetector(
+                  onTap: _navigateToCreatePost,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F8FF),
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: const Text(
+                      'Share your insights with follow doctors...',
+                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                    ),
                   ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 15),
+          const Divider(height: 1, color: Color(0xFFF0F0F0)),
+          const SizedBox(height: 12),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildPostAction(Icons.image_outlined, 'Photo', Colors.brown),
-              _buildPostAction(Icons.videocam_outlined, 'Video', Colors.black87),
-              _buildPostAction(Icons.play_circle_outline, 'Reels', Colors.black87),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFF1664CD)),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              _buildPostAction(Icons.image_outlined, 'Photo', Colors.brown, _navigateToCreatePost),
+              _buildPostAction(Icons.videocam_outlined, 'Video', Colors.redAccent, _navigateToCreatePost),
+              _buildPostAction(Icons.play_circle_outline, 'Reels', Colors.blueAccent, _navigateToCreatePost),
+              
+              InkWell(
+                onTap: _navigateToCreatePost,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF1664CD)),
+                  ),
+                  child: const Text(
+                    'Create a Post',
+                    style: TextStyle(
+                      color: Color(0xFF1664CD),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-                child: const Text('Creat a Post', style: TextStyle(color: Color(0xFF1664CD), fontSize: 12)),
               ),
             ],
           ),
@@ -157,13 +237,16 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     );
   }
 
-  Widget _buildPostAction(IconData icon, String label, Color color) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-      ],
+  Widget _buildPostAction(IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+        ],
+      ),
     );
   }
 
@@ -208,7 +291,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
               const SizedBox(width: 10),
               _buildStatChip(Icons.chat_bubble_outline, comments),
               const Spacer(),
-              _buildStatChip(Icons.share_outlined, shares, isShare: true),
+              _buildStatChip(Icons.share_outlined, shares),
             ],
           ),
         ],
@@ -216,7 +299,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     );
   }
 
-  Widget _buildStatChip(IconData icon, String count, {bool isShare = false}) {
+  Widget _buildStatChip(IconData icon, String count) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(

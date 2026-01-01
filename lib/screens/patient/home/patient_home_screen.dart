@@ -204,7 +204,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                 ),
               ],
             ),
-            // ডায়ালগ কন্ডিশনাল রেন্ডারিং
+       
             if (_showLocationDialog) _buildLocationDialog(),
           ],
         ),

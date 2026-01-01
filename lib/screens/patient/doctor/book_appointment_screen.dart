@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:docmobi/models/doctor_model.dart'; // মডেল ইম্পোর্ট নিশ্চিত করুন
 
 class BookAppointmentScreen extends StatefulWidget {
-  // ১. ডক্টর ডাটা রিসিভ করার জন্য ভেরিয়েবল
-  final Doctor doctor;
+  // ✅ dynamic type যা Map এবং Doctor model উভয়ই support করবে
+  final dynamic doctor;
 
-  // ২. কনস্ট্রাক্টর আপডেট (required parameter সহ)
   const BookAppointmentScreen({super.key, required this.doctor});
 
   @override
@@ -15,6 +13,19 @@ class BookAppointmentScreen extends StatefulWidget {
 class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   String selectedType = "Physical Visit";
   String selectedTime = "11:01 Am To 11:30 Am";
+
+  // ✅ Helper method - safely extract doctor data
+  String _getDoctorField(String key, {String defaultValue = "Unknown"}) {
+    if (widget.doctor is Map) {
+      return widget.doctor[key]?.toString() ?? defaultValue;
+    }
+    // যদি Doctor model হয়, তাহলে reflection বা getter দিয়ে access করুন
+    try {
+      return widget.doctor.toJson()[key]?.toString() ?? defaultValue;
+    } catch (e) {
+      return defaultValue;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,48 +51,46 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Column(
           children: [
-          
-         if (selectedType == "Video Call")
-  Padding(
-    padding: const EdgeInsets.only(bottom: 15),
-    child: Center( 
-      child: Text.rich(
-        TextSpan(
-          children: [
-           
-            const TextSpan(
-              text: '*',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
+            // Video Call Warning
+            if (selectedType == "Video Call")
+              Padding(
+                padding: const EdgeInsets.only(bottom: 15),
+                child: Center(
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        const TextSpan(
+                          text: '*',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const TextSpan(
+                          text: " Video appointments- patient must\nupload BaridiMob payment screenshot ",
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const TextSpan(
+                          text: '*',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ),
-            ),
-           
-            const TextSpan(
-              text: " Video appointments- patient must\nupload BaridiMob payment screenshot ",
-              style: TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-              ),
-            ),
-           
-            const TextSpan(
-              text: '*',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-              ),
-            ),
-          ],
-        ),
-        textAlign: TextAlign.center,
-      ),
-    ),
-  ),
-            // --- Appointment Type Section ---
+
+            // Appointment Type Section
             _buildWhiteCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,7 +120,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             ),
             const SizedBox(height: 16),
 
-            // --- Select Date Section ---
+            // Select Date Section
             _buildWhiteCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,7 +158,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             ),
             const SizedBox(height: 16),
 
-            // --- Available Time Section ---
+            // Available Time Section
             _buildWhiteCard(
               child: Column(
                 children: [
@@ -164,7 +173,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             ),
             const SizedBox(height: 16),
 
-            // --- Symptoms Section ---
+            // Symptoms Section
             _buildWhiteCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,7 +191,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             ),
             const SizedBox(height: 16),
 
-            // --- Medical Documents Section ---
+            // Medical Documents Section
             _buildWhiteCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,6 +210,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             ),
             const SizedBox(height: 16),
 
+            // Payment Screenshot Upload (Video Call only)
             if (selectedType == "Video Call")
               _buildWhiteCard(
                 child: Column(
@@ -224,12 +234,25 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
             const SizedBox(height: 20),
 
+            // Submit Button
             SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
                 onPressed: () {
-                  // আপনি এখানে widget.doctor ব্যবহার করে ডাটা এক্সেস করতে পারবেন
+                  // ✅ Doctor data safely access করুন
+                  final doctorName = _getDoctorField("fullName", defaultValue: "Doctor");
+                  final specialty = _getDoctorField("specialty", defaultValue: "General");
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Appointment requested with $doctorName ($specialty)"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  
+                  // TODO: Backend API call করুন
+                  Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0D53C1),
@@ -253,8 +276,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       ),
     );
   }
-
-
 
   Widget _buildWhiteCard({required Widget child}) {
     return Container(
