@@ -80,10 +80,10 @@ class DoctorCard extends StatelessWidget {
                     children: [
                       const Icon(Icons.location_on, size: 14, color: Colors.grey),
                       const SizedBox(width: 4),
-                      Text(
-                        doctor.distance,
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
+                     const Text(
+  'Nearby',
+  style: TextStyle(fontSize: 12, color: Colors.grey),
+),
                     ],
                   ),
                 ],

@@ -1,26 +1,25 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'api_service.dart'; // Import koro
 
 class AuthService {
-  // Simulator এর জন্য localhost এবং Emulator এর জন্য 10.0.2.2 ব্যবহার করুন
   static const String baseUrl = 'http://localhost:5000'; 
   
-  /// Register করার function ফিক্স করা হয়েছে
+  /// Register function
   Future<Map<String, dynamic>> register({
     required String name,
     required String email,
     required String password,
-    required String confirmPassword, // এটি নতুন যোগ করা হয়েছে
+    required String confirmPassword,
     required String userType,
-    String? medicalLicenseNumber,    // ব্যাকএন্ডের সাথে মিলিয়ে নাম পরিবর্তন
+    String? medicalLicenseNumber,
     String? specialty,
-    String? experienceYears,         // ব্যাকএন্ডের সাথে মিলিয়ে নাম পরিবর্তন
+    String? experienceYears,
   }) async {
     try {
       print('🔄 Registering user: $email as $userType');
       
-      // বডি ডাটা ম্যাপ - ব্যাকএন্ড কন্ট্রোলার অনুযায়ী কি (Key) সেট করা হয়েছে
       final Map<String, dynamic> requestBody = {
         'fullName': name,
         'email': email,
@@ -29,7 +28,6 @@ class AuthService {
         'role': userType.toLowerCase().trim(), 
       };
 
-      // যদি ইউজার টাইপ Doctor হয়, তবেই এই ফিল্ডগুলো ম্যাপে যোগ হবে
       if (userType.toLowerCase() == 'doctor') {
         requestBody['medicalLicenseNumber'] = medicalLicenseNumber;
         requestBody['specialty'] = specialty;
@@ -43,9 +41,7 @@ class AuthService {
           'Accept': 'application/json',
         },
         body: jsonEncode(requestBody),
-      ).timeout(
-        const Duration(seconds: 10),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       print('📥 Response Status: ${response.statusCode}');
       print('📥 Response Body: ${response.body}');
@@ -53,6 +49,12 @@ class AuthService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        // Token save koro (if provided after registration)
+        if (data['data'] != null && data['data']['accessToken'] != null) {
+          await ApiService.saveToken(data['data']['accessToken']);
+          await _saveUserInfo(data['data']['user']);
+        }
+        
         return {
           'success': true,
           'message': data['message'] ?? 'Registration successful',
@@ -73,7 +75,7 @@ class AuthService {
     }
   }
 
-  /// Login করার function
+  /// Login function
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
@@ -91,17 +93,16 @@ class AuthService {
           'email': email,
           'password': password,
         }),
-      ).timeout(
-        const Duration(seconds: 10),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       print('📥 Response Status: ${response.statusCode}');
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+        // Save token using ApiService
         if (data['data'] != null) {
           if (data['data']['accessToken'] != null) {
-            await _saveToken(data['data']['accessToken']);
+            await ApiService.saveToken(data['data']['accessToken']);
           }
           if (data['data']['user'] != null) {
             await _saveUserInfo(data['data']['user']);
@@ -128,13 +129,15 @@ class AuthService {
     }
   }
 
-  // --- বাকী Helper Function গুলো আগের মতোই থাকবে ---
-
-  Future<void> _saveToken(String token) async {
+  /// Logout function
+  Future<void> logout() async {
+    await ApiService.clearToken();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', token);
+    await prefs.clear();
+    print('✅ Logged out successfully');
   }
 
+  // Helper functions
   Future<void> _saveUserInfo(Map<String, dynamic> user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_id', user['_id'] ?? '');
@@ -144,14 +147,7 @@ class AuthService {
   }
 
   Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
-  }
-
-  Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    print('✅ Logged out successfully');
+    return ApiService.token;
   }
 
   String _getErrorMessage(dynamic error) {

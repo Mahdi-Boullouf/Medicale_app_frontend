@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:docmobi/models/doctor_model.dart';
+import 'package:docmobi/screens/patient/doctor/doctor_detail_screen.dart';
 import 'package:docmobi/widgets/doctor_card.dart';
 
 class SearchDoctorScreen extends StatefulWidget {
@@ -14,24 +15,28 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
   List<Doctor> searchResults = [];
   bool isSearching = false;
 
+  // Dummy doctors – তোমার Doctor model-এর exact fields দিয়ে
   final List<Doctor> allDoctors = List.generate(
     10,
     (index) => Doctor(
       id: '$index',
-      name: 'Dr. Jaynor Abedin',
+      name: 'Dr. Jaynor Abedin ${index + 1}',
+      fullName: 'Dr. Jaynor Abedin ${index + 1}',
       specialty: 'Pediatric Surgery',
-      hospital: 'Salemn Hospital',
       image: 'assets/images/doctor_booking.png',
       rating: 4.8,
-      distance: '${index + 2}.${index}km',
-      experience: 10,
-      degree: 'MBBS, MD',
+      reviews: 120 + index * 10,
+      experience: '${10 + index} years',
+      location: 'Salem Hospital, Dhaka',
+      distance: '${index + 2}.${index} km',
       isAvailable: index % 2 == 0,
+      fees: {'amount': 500 + index * 50, 'currency': 'BDT'},
+      weeklySchedule: [],
     ),
   );
 
   void _performSearch(String query) {
-    if (query.isEmpty) {
+    if (query.trim().isEmpty) {
       setState(() {
         searchResults = [];
         isSearching = false;
@@ -41,20 +46,26 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
 
     setState(() {
       isSearching = true;
-      searchResults = allDoctors
-          .where((doctor) =>
-              doctor.name.toLowerCase().contains(query.toLowerCase()) ||
-              doctor.specialty.toLowerCase().contains(query.toLowerCase()))
-          .toList();
+      final lowerQuery = query.toLowerCase();
+      searchResults = allDoctors.where((doctor) {
+        return doctor.name.toLowerCase().contains(lowerQuery) ||
+               doctor.fullName.toLowerCase().contains(lowerQuery) ||
+               doctor.specialty.toLowerCase().contains(lowerQuery) ||
+               doctor.location.toLowerCase().contains(lowerQuery);
+      }).toList();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFE5EEFF),
-
-
       appBar: AppBar(
         backgroundColor: const Color(0xFFE5EEFF),
         elevation: 0,
@@ -69,39 +80,40 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
           decoration: const InputDecoration(
             hintText: 'Search doctors...',
             border: InputBorder.none,
+            hintStyle: TextStyle(color: Colors.grey),
           ),
+          style: const TextStyle(color: Colors.black),
         ),
       ),
       body: isSearching
           ? searchResults.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No doctors found',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                )
+              ? const Center(child: Text('No doctors found', style: TextStyle(fontSize: 16, color: Colors.grey)))
               : ListView.builder(
                   padding: const EdgeInsets.all(20),
                   itemCount: searchResults.length,
                   itemBuilder: (context, index) {
-                    return DoctorCard(
-                      doctor: searchResults[index],
-                      onTap: () {
-                        // Navigate to doctor detail
-                      },
+                    final doctor = searchResults[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: DoctorCard(
+                        doctor: doctor,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => DoctorDetailsScreen(doctor: doctor)),
+                          );
+                        },
+                      ),
                     );
                   },
                 )
-          : Center(
+          : const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.search, size: 80, color: Colors.grey[400]),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Search for doctors',
-                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-                  ),
+                  Icon(Icons.search, size: 80, color: Colors.grey),
+                  SizedBox(height: 20),
+                  Text('Search for doctors', style: TextStyle(fontSize: 18, color: Colors.grey)),
                 ],
               ),
             ),

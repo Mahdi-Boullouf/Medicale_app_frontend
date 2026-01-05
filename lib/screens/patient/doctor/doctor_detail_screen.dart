@@ -9,6 +9,8 @@ class DoctorDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('DoctorDetailsScreen - ID: ${doctor.id} | Name: ${doctor.fullName}');
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -17,158 +19,93 @@ class DoctorDetailsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Header: Image, Info and Close Button ---
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(15),
-                    child: Image.asset(
-                      doctor.image,
-                      height: 80,
-                      width: 80,
-                      fit: BoxFit.cover,
-                    ),
+                    child: doctor.image.startsWith('http')
+                        ? Image.network(doctor.image, height: 80, width: 80, fit: BoxFit.cover)
+                        : Image.asset(doctor.image, height: 80, width: 80, fit: BoxFit.cover),
                   ),
                   const SizedBox(width: 15),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          doctor.name,
-                          style: const TextStyle(
-                            fontSize: 26, // ছবির মতো বড় ফন্ট
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        Text(
-                          doctor.specialty,
-                          style: const TextStyle(fontSize: 18, color: Colors.black),
-                        ),
+                        Text(doctor.fullName, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                        Text(doctor.specialty, style: const TextStyle(fontSize: 18)),
                         const SizedBox(height: 4),
-                        Row(
-                          children: const [
-                            Icon(Icons.videocam_outlined, size: 20, color: Colors.black),
-                            SizedBox(width: 5),
-                            Text("Video Consultation", style: TextStyle(fontSize: 16)),
-                          ],
-                        ),
+                        const Row(children: [Icon(Icons.videocam_outlined), SizedBox(width: 5), Text("Video Consultation")]),
                         const SizedBox(height: 4),
                         Row(
                           children: [
                             const Icon(Icons.star, size: 20, color: Colors.orange),
-                            Text(
-                              " ${doctor.rating}(120 reviews)",
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                            ),
+                            Text(" ${doctor.rating} (${doctor.reviews} reviews)"),
                             const SizedBox(width: 10),
-                            const Icon(Icons.location_on, size: 20, color: Colors.black),
-                            Text(" ${doctor.distance}", style: const TextStyle(fontSize: 15)),
+                            const Icon(Icons.location_on),
+                            Text(" ${doctor.distance}"),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 35, color: Colors.black),
-                    onPressed: () => Navigator.pop(context),
-                  ),
+                  IconButton(icon: const Icon(Icons.close, size: 35), onPressed: () => Navigator.pop(context)),
                 ],
               ),
 
               const SizedBox(height: 25),
-
-              // --- Bio Section ---
-              const Text(
-                "Bio",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
+              const Text("Bio", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text(
-                "${doctor.name} is a senior ${doctor.specialty} at  xyz Hospital over a years of Experiance...",
-                style: const TextStyle(fontSize: 17, color: Colors.black, height: 1.3),
-              ),
+              Text("${doctor.fullName} is a senior ${doctor.specialty} at ${doctor.location} with ${doctor.experience} of experience."),
 
               const SizedBox(height: 30),
 
-              // --- Specialty & Degree Section (এটাই মূল পরিবর্তন) ---
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween, // দুইটিকে দুই পাশে ঠেলে দেবে
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // বাম পাশে Specialty
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "Specialty",
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
+                      const Text("Specialty", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 10),
                       _buildBulletItem(doctor.specialty),
-                      _buildBulletItem("Medicine"),
+                      _buildBulletItem("General Medicine"),
                     ],
                   ),
-                  // ডান পাশে Degree
                   Column(
-                    crossAxisAlignment: CrossAxisAlignment.start, // টেক্সটগুলো ডানে শুরু হবে
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "Degree",
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
+                      const Text("Degree", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 10),
-                      // আপনার ইমেজ অনুযায়ী ডাটা এলাইনমেন্ট
-                      ...doctor.degree.split(',').map((d) => _buildBulletItem(d.trim())).toList(),
+                      // তোমার model-এ degree নেই → dummy বা skip
+                      _buildBulletItem("MBBS, FCPS"),
+                      _buildBulletItem("MD"),
                     ],
                   ),
                 ],
               ),
 
               const SizedBox(height: 35),
-
-              // --- Fees & Visiting Hours ---
-              Text(
-                "Fees: 10.50\$",
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
+              Text("Fees: ${doctor.fees?['amount'] ?? 500} ${doctor.fees?['currency'] ?? 'BDT'}", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(height: 15),
-              const Text(
-                "Visiting Hours: Sun-Thu",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
+              const Text("Visiting Hours: Sun-Thu", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
 
               const Spacer(),
 
-              // --- Book Now Button ---
               SizedBox(
                 width: double.infinity,
                 height: 65,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => BookAppointmentScreen(doctor: doctor),
-                      ),
-                    );
+                    if (doctor.id.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid Doctor')));
+                      return;
+                    }
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => BookAppointmentScreen(doctor: doctor)));
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D53C1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  child: const Text(
-                    "Book Now",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D53C1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                  child: const Text("Book Now", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
               const SizedBox(height: 10),
@@ -179,7 +116,6 @@ class DoctorDetailsScreen extends StatelessWidget {
     );
   }
 
-  // একদম আপনার ইমেজের মতো ডট সহ লিস্ট আইটেম
   Widget _buildBulletItem(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -187,10 +123,7 @@ class DoctorDetailsScreen extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text("• ", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          Text(
-            text,
-            style: const TextStyle(fontSize: 17, color: Colors.black),
-          ),
+          Text(text, style: const TextStyle(fontSize: 17)),
         ],
       ),
     );

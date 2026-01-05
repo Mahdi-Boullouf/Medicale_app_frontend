@@ -28,7 +28,6 @@ class DoctorListScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         itemCount: 6,
         itemBuilder: (context, index) {
-          // ডেটা ম্যাপ হিসেবে তৈরি করা হয়েছে
           final Map<String, dynamic> mockDoctor = {
             "fullName": index % 2 == 0 ? "Dr. Joynal Abedin" : "Dr. Jaynor Abedin",
             "specialty": "Podiatric Surgery",
@@ -44,7 +43,7 @@ class DoctorListScreen extends StatelessWidget {
 }
 
 class _DoctorCard extends StatelessWidget {
-  final dynamic doctor; // ✅ dynamic দেওয়ার ফলে যে কোনো টাইপ ডেটা গ্রহণ করবে
+  final dynamic doctor;
 
   const _DoctorCard({super.key, required this.doctor});
 
@@ -63,16 +62,10 @@ class _DoctorCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ✅ Fixed Image Loading
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Image.asset(
-                  "assets/images/doctor.png",
-                  height: 80, width: 80, fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 80, width: 80, color: Colors.grey[300],
-                    child: const Icon(Icons.person),
-                  ),
-                ),
+                child: _buildDoctorImage(),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -81,7 +74,10 @@ class _DoctorCard extends StatelessWidget {
                   children: [
                     Text(
                       doctor["fullName"] ?? "No Name",
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
                       doctor["specialty"] ?? "General",
@@ -92,11 +88,17 @@ class _DoctorCard extends StatelessWidget {
                       children: [
                         Icon(Icons.star, color: Colors.amber, size: 18),
                         SizedBox(width: 4),
-                        Text("4.9", style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text(
+                          "4.9",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         SizedBox(width: 12),
                         Icon(Icons.location_on, size: 16, color: Colors.grey),
                         SizedBox(width: 2),
-                        Text("2.5km", style: TextStyle(color: Colors.grey)),
+                        Text(
+                          "2.5km",
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ],
                     ),
                   ],
@@ -112,7 +114,9 @@ class _DoctorCard extends StatelessWidget {
                   height: 52,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    gradient: const LinearGradient(colors: [Color(0xFF0D53C1), Color(0xFF1976D2)]),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0D53C1), Color(0xFF1976D2)],
+                    ),
                   ),
                   child: ElevatedButton(
                     onPressed: () {
@@ -126,9 +130,17 @@ class _DoctorCard extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    child: const Text("Book Now", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      "Book Now",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -136,15 +148,73 @@ class _DoctorCard extends StatelessWidget {
               GestureDetector(
                 onTap: () => _showDoctorDetails(context),
                 child: Container(
-                  height: 52, width: 52,
-                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFF1F5FF)),
-                  child: const Icon(Icons.info_outline, color: Color(0xFF0D53C1)),
+                  height: 52,
+                  width: 52,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFFF1F5FF),
+                  ),
+                  child: const Icon(
+                    Icons.info_outline,
+                    color: Color(0xFF0D53C1),
+                  ),
                 ),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  // ✅ Safe Image Builder
+  Widget _buildDoctorImage() {
+    final imageUrl = doctor["image"] as String?;
+    
+    // Try to load as asset first
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      // If it's a network URL
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return Image.network(
+          imageUrl,
+          height: 80,
+          width: 80,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildPlaceholder();
+          },
+        );
+      }
+      
+      // If it's an asset path
+      return Image.asset(
+        imageUrl,
+        height: 80,
+        width: 80,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildPlaceholder();
+        },
+      );
+    }
+    
+    return _buildPlaceholder();
+  }
+
+  Widget _buildPlaceholder() {
+    return Image.asset(
+      "assets/images/doctor.png",
+      height: 80,
+      width: 80,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          height: 80,
+          width: 80,
+          color: Colors.grey[300],
+          child: const Icon(Icons.person, size: 40, color: Colors.grey),
+        );
+      },
     );
   }
 
@@ -173,22 +243,38 @@ class _DoctorCard extends StatelessWidget {
               ),
               Row(
                 children: [
+                  // ✅ Fixed Image in Modal
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.asset("assets/images/doctor.png", height: 70, width: 70, fit: BoxFit.cover),
+                    child: _buildDoctorImage(),
                   ),
                   const SizedBox(width: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(doctor["fullName"], style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                      Text(doctor["specialty"], style: const TextStyle(color: Colors.black54, fontSize: 16)),
+                      Text(
+                        doctor["fullName"],
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        doctor["specialty"],
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          fontSize: 16,
+                        ),
+                      ),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-              const Text("Bio", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                "Bio",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const Text(
                 "Senior specialist at xyz Hospital with extensive experience in modern medicine.",
                 style: TextStyle(color: Colors.grey, height: 1.5),
@@ -209,9 +295,18 @@ class _DoctorCard extends StatelessWidget {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D53C1),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text("Confirm Booking", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    "Confirm Booking",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
             ],
