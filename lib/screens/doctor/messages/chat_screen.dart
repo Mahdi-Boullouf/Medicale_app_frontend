@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:docmobi/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+import 'dart:async'; // ✅ Timer এর জন্য
 import 'package:image_picker/image_picker.dart';
 
 class DoctorChatDetailScreen extends StatefulWidget {
@@ -30,11 +32,88 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   List<File> _selectedFiles = [];
+  String? _currentUserId;
+  
+  // ✅ Auto-refresh এর জন্য Timer
+  Timer? _refreshTimer;
+  int _lastMessageCount = 0;
 
   @override
   void initState() {
     super.initState();
+    _loadCurrentUserId();
     _loadMessages();
+    _startAutoRefresh(); // ✅ Auto-refresh চালু করো
+  }
+
+  // ✅ Auto-refresh timer - প্রতি 3 সেকেন্ডে নতুন message check করবে
+  void _startAutoRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (mounted) {
+        _loadMessagesQuietly(); // ✅ Loading indicator ছাড়া refresh
+      }
+    });
+    print('✅ Auto-refresh started (every 3 seconds)');
+  }
+
+  // ✅ Quietly load messages - loading indicator ছাড়া
+  Future<void> _loadMessagesQuietly() async {
+    try {
+      final result = await ApiService.getChatMessages(
+        chatId: widget.chatId,
+        page: 1,
+        limit: 50,
+      );
+
+      if (result['success'] == true) {
+        final newMessages = result['data']?['items'] ?? [];
+        
+        // ✅ শুধুমাত্র নতুন message থাকলেই update করো
+        if (newMessages.length != _lastMessageCount) {
+          setState(() {
+            _messages = newMessages;
+            _lastMessageCount = newMessages.length;
+          });
+          
+          print('🔄 New message detected! Total: ${_messages.length}');
+          
+          // ✅ নতুন message এলে bottom এ scroll করো
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ Quiet refresh error: $e');
+    }
+  }
+
+  Future<void> _loadCurrentUserId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      
+      if (userDataString != null) {
+        // Parse the JSON string to get user data
+        final userData = userDataString;
+      }
+      
+      final profileResult = await ApiService.getUserProfile();
+      if (profileResult['success'] == true) {
+        setState(() {
+          _currentUserId = profileResult['data']['_id']?.toString();
+        });
+        print('✅ Current user ID: $_currentUserId');
+      }
+    } catch (e) {
+      print('❌ Error loading current user ID: $e');
+    }
   }
 
   Future<void> _loadMessages() async {
@@ -52,11 +131,11 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       if (result['success'] == true) {
         setState(() {
           _messages = result['data']?['items'] ?? [];
+          _lastMessageCount = _messages.length; // ✅ Count save করো
           _isLoading = false;
         });
         print('✅ Loaded ${_messages.length} messages');
         
-        // Scroll to bottom after loading
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
             _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
@@ -100,7 +179,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           _selectedFiles = [];
         });
         
-        // Reload messages
         await _loadMessages();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -172,12 +250,35 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    widget.userRole == 'doctor' ? 'Doctor' : 'Patient',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        widget.userRole == 'doctor' ? 'Doctor' : 'Patient',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                      // ✅ Live indicator - auto-refresh চলছে
+                      const SizedBox(width: 5),
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 3),
+                      const Text(
+                        'Live',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -185,16 +286,26 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           ],
         ),
         actions: [
+          // ✅ Manual refresh button
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black54, size: 22),
+            onPressed: _loadMessages,
+            tooltip: 'Refresh messages',
+          ),
           IconButton(
             icon: const Icon(Icons.phone_outlined, color: Colors.black, size: 24),
             onPressed: () {
-              // TODO: Implement voice call
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Voice call coming soon')),
+              );
             },
           ),
           IconButton(
             icon: const Icon(Icons.videocam_outlined, color: Colors.black, size: 28),
             onPressed: () {
-              // TODO: Implement video call
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Video call coming soon')),
+              );
             },
           ),
           const SizedBox(width: 10),
@@ -222,7 +333,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Start a conversation!',
+                              'Start a conversation with ${widget.userName}',
                               style: TextStyle(
                                 color: Colors.grey[500],
                                 fontSize: 14,
@@ -242,7 +353,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                       ),
           ),
 
-          // Selected files preview
           if (_selectedFiles.isNotEmpty)
             Container(
               height: 100,
@@ -290,7 +400,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
               ),
             ),
 
-          // Input box
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
             child: Container(
@@ -348,17 +457,15 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     final String content = message['content']?.toString() ?? '';
     final String senderId = message['sender']?['_id']?.toString() ?? '';
     final String senderName = message['sender']?['fullName']?.toString() ?? 'Unknown';
-    final String? senderAvatar = message['sender']?['avatar']?.toString();
+    final String? senderAvatar = message['sender']?['avatar']?['url']?.toString();
     
-    // Determine if message is from current user
-    // You should compare with actual current user ID from ApiService or state management
-    final bool isMe = false; // TODO: Replace with actual check
+    final bool isMe = _currentUserId != null && senderId == _currentUserId;
     
     final DateTime? createdAt = message['createdAt'] != null
         ? DateTime.tryParse(message['createdAt'].toString())
         : null;
 
-    final List<dynamic> attachments = message['attachments'] ?? [];
+    final List<dynamic> fileUrl = message['fileUrl'] ?? [];
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -408,10 +515,9 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Show attachments if any
-                    if (attachments.isNotEmpty)
-                      ...attachments.map((att) {
-                        final String? url = att['url']?.toString();
+                    if (fileUrl.isNotEmpty)
+                      ...fileUrl.map((file) {
+                        final String? url = file['url']?.toString();
                         if (url != null) {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
@@ -437,8 +543,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                         return const SizedBox.shrink();
                       }).toList(),
                     
-                    // Message content
-                    if (content.isNotEmpty)
+                    if (content.isNotEmpty && content.trim() != ' ')
                       Text(
                         content,
                         style: TextStyle(
@@ -493,8 +598,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
 
   @override
   void dispose() {
+    _refreshTimer?.cancel(); // ✅ Timer বন্ধ করো
     _controller.dispose();
     _scrollController.dispose();
+    print('✅ Auto-refresh stopped');
     super.dispose();
   }
 }

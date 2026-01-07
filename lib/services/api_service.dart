@@ -6,7 +6,7 @@ import '../utils/api_config.dart';
 
 class ApiService {
   static String? _token;
-  static const String _baseUrl = 'http://localhost:5000'; // Change this to your backend URL
+  static const String _baseUrl = 'http://localhost:5000';
 
   /// Initialize - Token load kora
   static Future<void> init() async {
@@ -216,99 +216,158 @@ class ApiService {
   }
 
   // ========================================
-  // 📱 CHAT & MESSAGING APIs
+  // 📱 CHAT & MESSAGING APIs - FIXED VERSION
   // ========================================
 
-  /// Get Chat Messages
+  /// ✅ Get Chat Messages - Based on your backend structure
   static Future<Map<String, dynamic>> getChatMessages({
     required String chatId,
     required int page,
     required int limit,
   }) async {
+    print('🔍 Getting messages for chatId: $chatId');
+    // Try both possible endpoints
     return await get(
-      '/messages?chatId=$chatId&page=$page&limit=$limit',
+      '/api/v1/chat/$chatId/messages?page=$page&limit=$limit',
       requiresAuth: true,
     );
   }
 
-  /// Get My Chats
+  /// ✅ Get My Chats
   static Future<Map<String, dynamic>> getMyChats() async {
+    print('🔍 Getting my chats');
     return await get(
-      '/chats',
+      '/api/v1/chat',
       requiresAuth: true,
     );
   }
 
-  /// Create or Get Chat
+  /// ✅ Create or Get Chat
   static Future<Map<String, dynamic>> createOrGetChat({
     required String userId,
   }) async {
+    print('🔍 Creating/Getting chat with userId: $userId');
     return await post(
-      '/chats',
+      '/api/v1/chat',
       {'userId': userId},
       requiresAuth: true,
     );
   }
 
-  /// Send Message
-  static Future<Map<String, dynamic>> sendMessage({
-    required String chatId,
-    String? content,
-    List<File>? files,
-    String? contentType,
-  }) async {
-    Map<String, dynamic> body = {
-      'chatId': chatId,
-    };
+  /// ✅ FIXED: Send Message - Using correct endpoint based on your backend
+/// ✅ CORRECT: Send Message - Matches your backend exactly
+static Future<Map<String, dynamic>> sendMessage({
+  required String chatId,
+  String? content,
+  List<File>? files,
+  String? contentType,
+}) async {
+  try {
+    // ✅ YOUR BACKEND ROUTE: /api/v1/chat/{chatId}/messages
+    final url = '${ApiConfig.baseUrl}/api/v1/chat/$chatId/messages';
+    print('📤 POST (Multipart): $url');
+    print('📦 Chat ID: $chatId');
+    print('📦 Content: $content');
+    print('📦 Files: ${files?.length ?? 0}');
 
+    var request = http.MultipartRequest('POST', Uri.parse(url));
+    
+    // Add auth header
+    if (_token != null && _token!.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $_token';
+    }
+
+    // ✅ IMPORTANT: Backend expects "content" field (required in Message model)
+    // If no text, send empty string or space
     if (content != null && content.isNotEmpty) {
-      body['content'] = content;
+      request.fields['content'] = content;
+    } else {
+      // Backend Message model requires content, so send placeholder if only files
+      request.fields['content'] = files != null && files.isNotEmpty ? ' ' : '';
     }
-
+    
+    // Determine content type
     if (contentType != null) {
-      body['contentType'] = contentType;
+      request.fields['contentType'] = contentType;
+    } else if (files != null && files.isNotEmpty) {
+      request.fields['contentType'] = 'file';
+    } else {
+      request.fields['contentType'] = 'text';
     }
 
-    // If files are provided, upload them first
+    // ✅ Add files with correct field name "files" (from your backend)
     if (files != null && files.isNotEmpty) {
-      // Handle file upload logic here
-      // For now, just send the message
-      body['hasFiles'] = true;
+      for (var file in files) {
+        request.files.add(
+          await http.MultipartFile.fromPath('files', file.path),
+        );
+      }
     }
 
-    return await post(
-      '/messages',
-      body,
-      requiresAuth: true,
-    );
+    print('📋 Request Fields: ${request.fields}');
+    print('📋 Request Files: ${request.files.length}');
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    return _handleResponse(response);
+  } catch (e) {
+    print('❌ Send Message Error: $e');
+    return {
+      'success': false,
+      'message': _getErrorMessage(e),
+    };
   }
+}
 
   // ========================================
   // 📝 POST APIs (for social features)
   // ========================================
 
-  /// Create Post
+  /// Create Post (with multipart/form-data for file upload)
   static Future<Map<String, dynamic>> createPost({
     required String content,
     List<File>? mediaFiles,
     String visibility = 'public',
   }) async {
-    Map<String, dynamic> body = {
-      'content': content,
-      'visibility': visibility,
-    };
+    try {
+      final url = '${ApiConfig.baseUrl}/api/v1/posts';
+      print('📤 POST (Multipart): $url');
+      print('📦 Content: $content');
+      print('📦 Visibility: $visibility');
+      print('📦 Files: ${mediaFiles?.length ?? 0}');
 
-    // If media files provided, handle upload
-    if (mediaFiles != null && mediaFiles.isNotEmpty) {
-      // Convert files to paths or base64 as needed by your API
-      body['mediaFiles'] = mediaFiles.map((file) => file.path).toList();
+      var request = http.MultipartRequest('POST', Uri.parse(url));
+      
+      // Add auth header
+      if (_token != null && _token!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $_token';
+      }
+
+      // Add text fields
+      request.fields['content'] = content;
+      request.fields['visibility'] = visibility;
+
+      // Add media files
+      if (mediaFiles != null && mediaFiles.isNotEmpty) {
+        for (var file in mediaFiles) {
+          request.files.add(
+            await http.MultipartFile.fromPath('mediaFiles', file.path),
+          );
+        }
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      return _handleResponse(response);
+    } catch (e) {
+      print('❌ Create Post Error: $e');
+      return {
+        'success': false,
+        'message': _getErrorMessage(e),
+      };
     }
-
-    return await post(
-      '/posts',
-      body,
-      requiresAuth: true,
-    );
   }
 
   /// Get All Posts
@@ -317,7 +376,7 @@ class ApiService {
     int limit = 20,
   }) async {
     return await get(
-      '/posts?page=$page&limit=$limit',
+      '/api/v1/posts?page=$page&limit=$limit',
       requiresAuth: true,
     );
   }
@@ -329,7 +388,7 @@ class ApiService {
     int limit = 20,
   }) async {
     return await get(
-      '/posts/user/$userId?page=$page&limit=$limit',
+      '/api/v1/posts/user/$userId?page=$page&limit=$limit',
       requiresAuth: true,
     );
   }
@@ -339,7 +398,7 @@ class ApiService {
     required String postId,
   }) async {
     return await post(
-      '/posts/$postId/like',
+      '/api/v1/posts/$postId/like',
       {},
       requiresAuth: true,
     );
@@ -351,7 +410,7 @@ class ApiService {
     required String comment,
   }) async {
     return await post(
-      '/posts/$postId/comment',
+      '/api/v1/posts/$postId/comment',
       {'comment': comment},
       requiresAuth: true,
     );
@@ -362,7 +421,7 @@ class ApiService {
     required String postId,
   }) async {
     return await delete(
-      '/posts/$postId',
+      '/api/v1/posts/$postId',
       requiresAuth: true,
     );
   }
@@ -375,7 +434,9 @@ class ApiService {
   static Future<Map<String, dynamic>> getUserProfile({
     String? userId,
   }) async {
-    final endpoint = userId != null ? '/users/$userId' : '/users/me';
+    final endpoint = userId != null 
+        ? '/api/v1/users/$userId' 
+        : '/api/v1/user/profile';
     return await get(endpoint, requiresAuth: true);
   }
 
@@ -384,7 +445,7 @@ class ApiService {
     required Map<String, dynamic> data,
   }) async {
     return await put(
-      '/users/me',
+      '/api/v1/user/profile',
       data,
       requiresAuth: true,
     );
@@ -397,7 +458,7 @@ class ApiService {
     int limit = 20,
   }) async {
     return await get(
-      '/users/search?q=$query&page=$page&limit=$limit',
+      '/api/v1/users/search?q=$query&page=$page&limit=$limit',
       requiresAuth: true,
     );
   }
@@ -409,7 +470,7 @@ class ApiService {
   /// Get Appointments
   static Future<Map<String, dynamic>> getAppointments() async {
     return await get(
-      '/appointments',
+      '/api/v1/appointment',
       requiresAuth: true,
     );
   }
@@ -419,7 +480,7 @@ class ApiService {
     required Map<String, dynamic> appointmentData,
   }) async {
     return await post(
-      '/appointments',
+      '/api/v1/appointment',
       appointmentData,
       requiresAuth: true,
     );
@@ -431,7 +492,7 @@ class ApiService {
     required String status,
   }) async {
     return await patch(
-      '/appointments/$appointmentId',
+      '/api/v1/appointment/$appointmentId',
       {'status': status},
       requiresAuth: true,
     );
@@ -442,7 +503,7 @@ class ApiService {
     required String appointmentId,
   }) async {
     return await patch(
-      '/appointments/$appointmentId/cancel',
+      '/api/v1/appointment/$appointmentId/cancel',
       {},
       requiresAuth: true,
     );
@@ -458,7 +519,7 @@ class ApiService {
     int limit = 20,
     String? specialty,
   }) async {
-    String endpoint = '/doctors?page=$page&limit=$limit';
+    String endpoint = '/api/v1/doctors?page=$page&limit=$limit';
     if (specialty != null && specialty.isNotEmpty) {
       endpoint += '&specialty=$specialty';
     }
@@ -470,7 +531,7 @@ class ApiService {
     required String doctorId,
   }) async {
     return await get(
-      '/doctors/$doctorId',
+      '/api/v1/doctors/$doctorId',
       requiresAuth: false,
     );
   }
@@ -482,7 +543,7 @@ class ApiService {
     int limit = 20,
   }) async {
     return await get(
-      '/doctors/search?q=$query&page=$page&limit=$limit',
+      '/api/v1/doctors/search?q=$query&page=$page&limit=$limit',
       requiresAuth: false,
     );
   }
@@ -494,7 +555,7 @@ class ApiService {
   /// Get Earnings
   static Future<Map<String, dynamic>> getEarnings() async {
     return await get(
-      '/earnings',
+      '/api/v1/earnings',
       requiresAuth: true,
     );
   }
@@ -505,38 +566,58 @@ class ApiService {
     int limit = 20,
   }) async {
     return await get(
-      '/transactions?page=$page&limit=$limit',
+      '/api/v1/transactions?page=$page&limit=$limit',
       requiresAuth: true,
     );
   }
 
   // ========================================
-  // 🎬 REELS/POSTS APIs (Social Media)
+  // 🎬 REELS APIs
   // ========================================
 
-  /// Create Reel
+  /// Create Reel (with multipart/form-data for video upload)
   static Future<Map<String, dynamic>> createReel({
     File? videoFile,
     String? caption,
     String visibility = 'public',
   }) async {
-    Map<String, dynamic> body = {
-      'visibility': visibility,
-    };
+    try {
+      final url = '${ApiConfig.baseUrl}/api/v1/reels';
+      print('📤 POST (Multipart): $url');
+      print('📦 Caption: $caption');
+      print('📦 Visibility: $visibility');
 
-    if (caption != null && caption.isNotEmpty) {
-      body['caption'] = caption;
+      var request = http.MultipartRequest('POST', Uri.parse(url));
+      
+      // Add auth header
+      if (_token != null && _token!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $_token';
+      }
+
+      // Add text fields
+      request.fields['visibility'] = visibility;
+      if (caption != null && caption.isNotEmpty) {
+        request.fields['caption'] = caption;
+      }
+
+      // Add video file
+      if (videoFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('videoFile', videoFile.path),
+        );
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      return _handleResponse(response);
+    } catch (e) {
+      print('❌ Create Reel Error: $e');
+      return {
+        'success': false,
+        'message': _getErrorMessage(e),
+      };
     }
-
-    if (videoFile != null) {
-      body['videoFile'] = videoFile.path;
-    }
-
-    return await post(
-      '/reels',
-      body,
-      requiresAuth: true,
-    );
   }
 
   /// Get All Reels
@@ -545,24 +626,7 @@ class ApiService {
     int limit = 20,
   }) async {
     return await get(
-      '/reels?page=$page&limit=$limit',
-      requiresAuth: true,
-    );
-  }
-
-  /// Upload Reel (with file upload)
-  static Future<Map<String, dynamic>> uploadReel({
-    required List<dynamic> mediaFiles,
-    required String caption,
-    String visibility = 'public',
-  }) async {
-    return await post(
-      '/reels/upload',
-      {
-        'mediaFiles': mediaFiles,
-        'caption': caption,
-        'visibility': visibility,
-      },
+      '/api/v1/reels?page=$page&limit=$limit',
       requiresAuth: true,
     );
   }
@@ -577,7 +641,7 @@ class ApiService {
     required String fieldName,
   }) async {
     try {
-      final url = '${ApiConfig.baseUrl}/upload';
+      final url = '${ApiConfig.baseUrl}/api/v1/upload';
       print('📤 Uploading file: $filePath');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
@@ -606,7 +670,7 @@ class ApiService {
     required String fieldName,
   }) async {
     try {
-      final url = '${ApiConfig.baseUrl}/upload/multiple';
+      final url = '${ApiConfig.baseUrl}/api/v1/upload/multiple';
       print('📤 Uploading ${filePaths.length} files');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
@@ -685,7 +749,7 @@ class ApiService {
           'success': false,
           'message': data['message'] ?? 'Bad request',
           'statusCode': response.statusCode,
-          'errors': data['errorSources'] ?? [],
+          'errors': data['errors'] ?? [],
         };
       }
       // Server Error (500+)
@@ -731,11 +795,5 @@ class ApiService {
     } else {
       return 'An error occurred: ${error.toString()}';
     }
-  }
-
-  /// Update base URL if needed (for different environments)
-  static void setBaseUrl(String url) {
-    // Remove this method if you're using ApiConfig
-    print('⚠️ Base URL updated to: $url');
   }
 }

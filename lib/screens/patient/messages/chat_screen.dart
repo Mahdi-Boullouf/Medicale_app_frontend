@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:docmobi/services/api_service.dart';
 import 'dart:io';
+import 'dart:async'; // ✅ Timer এর জন্য
 import 'package:image_picker/image_picker.dart';
 
 class ChatDetailScreen extends StatefulWidget {
@@ -28,12 +29,65 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   List<File> _selectedFiles = [];
-  String? _currentUserId; // To track current user
+  String? _currentUserId;
+  
+  // ✅ Auto-refresh এর জন্য Timer
+  Timer? _refreshTimer;
+  int _lastMessageCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadMessages();
+    _startAutoRefresh(); // ✅ Auto-refresh চালু করো
+  }
+
+  // ✅ Auto-refresh timer - প্রতি 3 সেকেন্ডে নতুন message check করবে
+  void _startAutoRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (mounted) {
+        _loadMessagesQuietly(); // ✅ Loading indicator ছাড়া refresh
+      }
+    });
+    print('✅ Auto-refresh started (every 3 seconds)');
+  }
+
+  // ✅ Quietly load messages - loading indicator ছাড়া
+  Future<void> _loadMessagesQuietly() async {
+    try {
+      final result = await ApiService.getChatMessages(
+        chatId: widget.chatId,
+        page: 1,
+        limit: 50,
+      );
+
+      if (result['success'] == true) {
+        final newMessages = result['data']?['items'] ?? [];
+        
+        // ✅ শুধুমাত্র নতুন message থাকলেই update করো
+        if (newMessages.length != _lastMessageCount) {
+          setState(() {
+            _messages = newMessages;
+            _lastMessageCount = newMessages.length;
+          });
+          
+          print('🔄 New message detected! Total: ${_messages.length}');
+          
+          // ✅ নতুন message এলে bottom এ scroll করো
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ Quiet refresh error: $e');
+    }
   }
 
   Future<void> _loadMessages() async {
@@ -51,18 +105,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       if (result['success'] == true) {
         setState(() {
           _messages = result['data']?['items'] ?? [];
+          _lastMessageCount = _messages.length; // ✅ Count save করো
           _isLoading = false;
         });
         
-        // Set current user ID from first message
         if (_messages.isNotEmpty && _currentUserId == null) {
-          // You can also get this from a proper user state management
           _currentUserId = _messages.first['sender']?['_id'];
         }
         
         print('✅ Loaded ${_messages.length} messages');
         
-        // Scroll to bottom
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
             _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
@@ -106,7 +158,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           _selectedFiles = [];
         });
         
-        // Reload messages
         await _loadMessages();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -144,6 +195,29 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     });
   }
 
+  Widget _getAvatarWidget(String? avatarUrl, {bool isDoctor = false}) {
+    if (avatarUrl != null && 
+        avatarUrl.isNotEmpty && 
+        avatarUrl != 'file:///' &&
+        (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'))) {
+      return CircleAvatar(
+        radius: 20,
+        backgroundImage: NetworkImage(avatarUrl),
+        onBackgroundImageError: (exception, stackTrace) {
+          print('⚠️ Failed to load avatar: $avatarUrl');
+        },
+        child: Container(),
+      );
+    }
+    
+    return CircleAvatar(
+      radius: 20,
+      backgroundImage: AssetImage(
+        isDoctor ? 'assets/images/doctor1.png' : 'assets/images/profile.png'
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -157,12 +231,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: widget.doctorAvatar != null
-                  ? NetworkImage(widget.doctorAvatar!)
-                  : const AssetImage('assets/images/doctor1.png') as ImageProvider,
-            ),
+            _getAvatarWidget(widget.doctorAvatar, isDoctor: true),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -178,12 +247,35 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const Text(
-                    'Doctor',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                    ),
+                  Row(
+                    children: [
+                      const Text(
+                        'Doctor',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                      // ✅ Live indicator
+                      const SizedBox(width: 5),
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 3),
+                      const Text(
+                        'Live',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -191,10 +283,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ],
         ),
         actions: [
+          // ✅ Manual refresh button
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black54, size: 22),
+            onPressed: _loadMessages,
+            tooltip: 'Refresh messages',
+          ),
           IconButton(
             icon: const Icon(Icons.phone_outlined, color: Colors.black, size: 24),
             onPressed: () {
-              // TODO: Implement voice call
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Voice call coming soon')),
               );
@@ -203,7 +300,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           IconButton(
             icon: const Icon(Icons.videocam_outlined, color: Colors.black, size: 28),
             onPressed: () {
-              // TODO: Implement video call
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Video call coming soon')),
               );
@@ -255,13 +351,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _messages.length,
                         itemBuilder: (context, index) {
-                          final message = _messages[index];
-                          return _buildBubble(message, index);
+                          return _buildBubble(_messages[index], index);
                         },
                       ),
           ),
 
-          // Selected files preview
           if (_selectedFiles.isNotEmpty)
             Container(
               height: 100,
@@ -309,7 +403,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               ),
             ),
 
-          // Input box
           Padding(
             padding: const EdgeInsets.all(20.0),
             child: Container(
@@ -369,13 +462,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final String text = message['content']?.toString() ?? '';
     final String senderId = message['sender']?['_id']?.toString() ?? '';
     final String senderName = message['sender']?['fullName']?.toString() ?? 'Unknown';
-    final String? senderAvatar = message['sender']?['avatar']?.toString();
+    final String? senderAvatar = message['sender']?['avatar']?['url']?.toString();
     
-    // Check if message is from current user
-    // For better implementation, use proper state management to get current user ID
-    final bool isMe = message['sender']?['role'] == 'patient'; // Simple check
+    final bool isMe = message['sender']?['role'] == 'patient';
     
-    final List<dynamic> attachments = message['attachments'] ?? [];
+    final List<dynamic> attachments = message['fileUrl'] ?? [];
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -387,12 +478,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               if (!isMe)
-                CircleAvatar(
-                  radius: 16,
-                  backgroundImage: senderAvatar != null
-                      ? NetworkImage(senderAvatar)
-                      : const AssetImage("assets/images/doctor1.png") as ImageProvider,
-                ),
+                _getAvatarWidget(senderAvatar, isDoctor: true),
               const SizedBox(width: 8),
               Container(
                 constraints: BoxConstraints(
@@ -419,11 +505,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Show attachments if any
                     if (attachments.isNotEmpty)
                       ...attachments.map((att) {
                         final String? url = att['url']?.toString();
-                        if (url != null) {
+                        if (url != null && url.isNotEmpty && url != 'file:///') {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: ClipRRect(
@@ -448,7 +533,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         return const SizedBox.shrink();
                       }).toList(),
                     
-                    // Message text
                     if (text.isNotEmpty)
                       Text(
                         text,
@@ -462,20 +546,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               ),
               const SizedBox(width: 8),
               if (isMe)
-                const CircleAvatar(
-                  radius: 16,
-                  backgroundImage: AssetImage("assets/images/profile.png"),
-                ),
+                _getAvatarWidget(null, isDoctor: false),
             ],
           ),
           
-          // Show "Typing..." for demo (only on last message from doctor)
-          if (!isMe && index == _messages.length - 1)
-            const Padding(
-              padding: EdgeInsets.only(left: 45, top: 5),
+          if (message['createdAt'] != null)
+            Padding(
+              padding: EdgeInsets.only(
+                left: isMe ? 0 : 45,
+                right: isMe ? 45 : 0,
+                top: 5,
+              ),
               child: Text(
-                "Typing...",
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+                _formatTime(message['createdAt']),
+                style: const TextStyle(color: Colors.grey, fontSize: 11),
               ),
             ),
         ],
@@ -483,10 +567,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  String _formatTime(dynamic timestamp) {
+    try {
+      final DateTime dateTime = DateTime.parse(timestamp.toString());
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+
+      if (difference.inMinutes < 1) {
+        return 'Just now';
+      } else if (difference.inHours < 1) {
+        return '${difference.inMinutes}m ago';
+      } else if (difference.inDays < 1) {
+        return '${difference.inHours}h ago';
+      } else {
+        return '${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+      }
+    } catch (e) {
+      return '';
+    }
+  }
+
   @override
   void dispose() {
+    _refreshTimer?.cancel(); // ✅ Timer বন্ধ করো
     _controller.dispose();
     _scrollController.dispose();
+    print('✅ Auto-refresh stopped');
     super.dispose();
   }
 }

@@ -1,8 +1,8 @@
 import 'package:docmobi/screens/doctor/navigation/doctor_main_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/screens/doctor/messages/chat_screen.dart';
-import 'package:docmobi/screens/doctor/home/doctor_home_screen.dart';
 import 'package:docmobi/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DoctorMessagesScreen extends StatefulWidget {
   const DoctorMessagesScreen({super.key});
@@ -15,11 +15,37 @@ class _DoctorMessagesScreenState extends State<DoctorMessagesScreen> {
   String selectedTab = "All";
   List<dynamic> _chats = [];
   bool _isLoading = true;
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
+    _loadCurrentUserId();
     _loadChats();
+  }
+
+  // ✅ Load current user ID
+  Future<void> _loadCurrentUserId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      
+      if (userDataString != null) {
+        // Try to get from stored data first
+        // You might need to parse JSON here based on how you store it
+      }
+      
+      // Get from API as backup
+      final profileResult = await ApiService.getUserProfile();
+      if (profileResult['success'] == true) {
+        setState(() {
+          _currentUserId = profileResult['data']['_id']?.toString();
+        });
+        print('✅ Current doctor ID: $_currentUserId');
+      }
+    } catch (e) {
+      print('❌ Error loading current user ID: $e');
+    }
   }
 
   Future<void> _loadChats() async {
@@ -28,29 +54,43 @@ class _DoctorMessagesScreenState extends State<DoctorMessagesScreen> {
     });
 
     try {
+      print('🔍 Loading chats...');
       final result = await ApiService.getMyChats();
       
+      print('📦 API Response: ${result.toString()}');
+      
       if (result['success'] == true) {
+        final chats = result['data'] ?? [];
         setState(() {
-          _chats = result['data'] ?? [];
+          _chats = chats is List ? chats : [];
           _isLoading = false;
         });
         print('✅ Loaded ${_chats.length} chats');
+        
+        // Debug: Print each chat
+        for (var chat in _chats) {
+          print('💬 Chat ID: ${chat['_id']}');
+          print('   Participants: ${chat['participants']}');
+        }
       } else {
         print('⚠️ Failed to load chats: ${result['message']}');
         setState(() {
+          _chats = [];
           _isLoading = false;
         });
       }
     } catch (e) {
       print('❌ Error loading chats: $e');
       setState(() {
+        _chats = [];
         _isLoading = false;
       });
     }
   }
 
   List<dynamic> get _filteredChats {
+    if (_currentUserId == null) return _chats;
+    
     if (selectedTab == "All") {
       return _chats;
     } else if (selectedTab == "Doctors") {
@@ -58,8 +98,11 @@ class _DoctorMessagesScreenState extends State<DoctorMessagesScreen> {
         final participants = chat['participants'] as List?;
         if (participants == null) return false;
         
-        // Check if there's any doctor in participants (excluding self)
-        return participants.any((p) => p['role'] == 'doctor');
+        // Check if there's any OTHER doctor in participants (not self)
+        return participants.any((p) => 
+          p['role'] == 'doctor' && 
+          p['_id']?.toString() != _currentUserId
+        );
       }).toList();
     } else {
       // Patient tab
@@ -89,7 +132,6 @@ class _DoctorMessagesScreenState extends State<DoctorMessagesScreen> {
   Widget build(BuildContext context) {
     final displayChats = _filteredChats;
 
-    // WillPopScope এর বদলে নতুন PopScope ব্যবহার করা হয়েছে (Flutter 3.12+)
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -114,6 +156,13 @@ class _DoctorMessagesScreenState extends State<DoctorMessagesScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
+          actions: [
+            // ✅ Add refresh button for debugging
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.black),
+              onPressed: _loadChats,
+            ),
+          ],
         ),
         body: Column(
           children: [
@@ -137,6 +186,22 @@ class _DoctorMessagesScreenState extends State<DoctorMessagesScreen> {
               ),
             ),
             const SizedBox(height: 20),
+            
+            // ✅ Debug info
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text('Loading chats...', style: TextStyle(color: Colors.grey)),
+              ),
+            if (!_isLoading && _chats.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  'Total chats: ${_chats.length}, Filtered: ${displayChats.length}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ),
+            
             // Chat List
             Expanded(
               child: RefreshIndicator(
@@ -153,11 +218,19 @@ class _DoctorMessagesScreenState extends State<DoctorMessagesScreen> {
                                     color: Colors.grey[400]),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'No conversations yet',
+                                  _chats.isEmpty 
+                                    ? 'No conversations yet'
+                                    : 'No ${selectedTab.toLowerCase()} conversations',
                                   style: TextStyle(
                                     color: Colors.grey[600],
                                     fontSize: 16,
                                   ),
+                                ),
+                                const SizedBox(height: 8),
+                                TextButton.icon(
+                                  onPressed: _loadChats,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Refresh'),
                                 ),
                               ],
                             ),
@@ -205,18 +278,32 @@ class _DoctorMessagesScreenState extends State<DoctorMessagesScreen> {
   Widget _buildChatItem(Map<String, dynamic> chat) {
     final participants = chat['participants'] as List? ?? [];
     
-    // Find the other user (not me)
+    print('🔍 Building chat item:');
+    print('   Chat ID: ${chat['_id']}');
+    print('   Participants count: ${participants.length}');
+    print('   Current user ID: $_currentUserId');
+    
+    // ✅ Find the OTHER user (not me)
     final otherUser = participants.firstWhere(
-      (p) => p['_id'] != null, // You should check against current user ID
-      orElse: () => {'fullName': 'Unknown', 'avatar': null, 'role': 'unknown'},
+      (p) => p['_id']?.toString() != _currentUserId,
+      orElse: () => participants.isNotEmpty ? participants[0] : null,
     );
     
+    if (otherUser == null) {
+      print('⚠️ No other user found in chat');
+      return const SizedBox.shrink();
+    }
+    
     final String name = otherUser['fullName']?.toString() ?? 'Unknown User';
-    final String? avatar = otherUser['avatar']?.toString();
+    final String? avatarUrl = otherUser['avatar']?['url']?.toString();
     final String role = otherUser['role']?.toString() ?? '';
     
+    print('   Other user: $name (role: $role)');
+    
     final lastMessage = chat['lastMessage'];
-    final String messageText = lastMessage?['content']?.toString() ?? 'No messages yet';
+    final String messageText = lastMessage != null 
+        ? (lastMessage['content']?.toString() ?? 'No messages yet')
+        : 'Start conversation';
     
     final DateTime? updatedAt = chat['updatedAt'] != null 
         ? DateTime.tryParse(chat['updatedAt'].toString())
@@ -227,17 +314,21 @@ class _DoctorMessagesScreenState extends State<DoctorMessagesScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
+          print('📱 Opening chat: ${chat['_id']}');
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => DoctorChatDetailScreen(
                 chatId: chat['_id'].toString(),
                 userName: name,
-                userAvatar: avatar,
+                userAvatar: avatarUrl,
                 userRole: role,
               ),
             ),
-          ).then((_) => _loadChats()); // Refresh when coming back
+          ).then((_) {
+            print('🔄 Returned from chat, refreshing...');
+            _loadChats();
+          });
         },
         borderRadius: BorderRadius.circular(16),
         child: Container(
@@ -257,8 +348,8 @@ class _DoctorMessagesScreenState extends State<DoctorMessagesScreen> {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundImage: avatar != null
-                    ? NetworkImage(avatar)
+                backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                    ? NetworkImage(avatarUrl)
                     : const AssetImage('assets/images/doctor.png') as ImageProvider,
                 backgroundColor: Colors.grey[200],
               ),
@@ -293,6 +384,23 @@ class _DoctorMessagesScreenState extends State<DoctorMessagesScreen> {
                               'Dr.',
                               style: TextStyle(
                                 color: Color(0xFF1E61D4),
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        if (role == 'patient')
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Patient',
+                              style: TextStyle(
+                                color: Colors.green,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
