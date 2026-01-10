@@ -1,3 +1,4 @@
+import 'package:docmobi/screens/patient/doctor/book_appointment_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:docmobi/models/appointment_model.dart';
@@ -309,7 +310,6 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
                         style: const TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                       
-                      // ✅ FIXED: Changed isDependent to type == 'dependent' and displayText to bookingLabel
                       if (appointment.bookedFor != null && appointment.bookedFor!.type == 'dependent') ...[
                         const SizedBox(height: 6),
                         Container(
@@ -363,13 +363,14 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
               ),
             ),
 
+            // ✅ NEW: Direct Cancel & Reschedule buttons
             if (!isCompleted && !isCancelled) ...[
               const SizedBox(height: 15),
               Row(
                 children: [
                   Expanded(
                     child: InkWell(
-                      onTap: () => _showRescheduleDialog(context, appointment),
+                      onTap: () => _handleReschedule(context, appointment),
                       child: _buttonDesign(
                         'Reschedule',
                         const Color(0xFFF2F4F7),
@@ -380,7 +381,7 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: InkWell(
-                      onTap: () => _showCancelDialog(context, appointment),
+                      onTap: () => _handleCancel(context, appointment, provider),
                       child: _buttonDesign(
                         'Cancel',
                         const Color(0xFFD93B41),
@@ -395,6 +396,125 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
         ),
       ),
     );
+  }
+
+  // ✅ NEW: Direct Cancel Handler
+  void _handleCancel(
+    BuildContext context,
+    AppointmentModel appointment,
+    AppointmentProvider provider,
+  ) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+    );
+
+    try {
+      // Call cancel API
+      final success = await provider.cancelAppointment(appointment.id);
+
+      // Close loading
+      if (mounted) Navigator.pop(context);
+
+      if (success) {
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Appointment cancelled successfully',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+
+          // Refresh appointments
+          provider.fetchAppointments();
+        }
+      } else {
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      provider.error ?? 'Failed to cancel appointment',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Close loading
+      if (mounted) Navigator.pop(context);
+
+      // Show error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // ✅ NEW: Reschedule Handler
+  void _handleReschedule(BuildContext context, AppointmentModel appointment) {
+    // Navigate to book appointment screen with reschedule mode
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BookAppointmentScreen(
+          doctor: {
+            '_id': appointment.doctorId,
+            'id': appointment.doctorId,
+            'fullName': appointment.doctorName,
+            'name': appointment.doctorName,
+            'specialty': appointment.specialty,
+            'avatar': appointment.doctorImage,
+          },
+          isReschedule: true,
+          existingAppointment: appointment,
+        ),
+      ),
+    ).then((_) {
+      // Refresh appointments when coming back
+      context.read<AppointmentProvider>().fetchAppointments();
+    });
   }
 
   Widget _buildDoctorImage(String? imageUrl) {
@@ -459,266 +579,6 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
       child: Text(
         title,
         style: TextStyle(color: text, fontWeight: FontWeight.bold, fontSize: 14),
-      ),
-    );
-  }
-
-  void _showRescheduleDialog(BuildContext context, AppointmentModel appointment) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.info_outline, color: Colors.blue, size: 22),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Reschedule Appointment',
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'To reschedule your appointment:',
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
-            ),
-            const SizedBox(height: 16),
-            _buildInfoStep('1', 'Contact your doctor directly'),
-            const SizedBox(height: 12),
-            _buildInfoStep('2', 'Request a new date and time'),
-            const SizedBox(height: 12),
-            _buildInfoStep('3', 'Wait for doctor confirmation'),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.person, color: Colors.blue.shade700, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          appointment.doctorName ?? 'Doctor',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Text(
-                          appointment.specialty ?? 'Specialist',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Please contact clinic to reschedule'),
-                  backgroundColor: Colors.blue,
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-            icon: const Icon(Icons.phone, size: 18),
-            label: const Text('Contact'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0D53C1),
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoStep(String number, String text) {
-    return Row(
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D53C1),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Center(
-            child: Text(
-              number,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 14),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showCancelDialog(BuildContext context, AppointmentModel appointment) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.cancel_outlined, color: Colors.red, size: 22),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Cancel Appointment',
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'To cancel this appointment:',
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.shade200),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Only doctors can cancel appointments directly',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Please contact your doctor to request cancellation.',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.person, color: Colors.red.shade700, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          appointment.doctorName ?? 'Doctor',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Text(
-                          appointment.specialty ?? 'Specialist',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Please contact clinic to cancel'),
-                  backgroundColor: Colors.orange,
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-            icon: const Icon(Icons.phone, size: 18),
-            label: const Text('Contact'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
       ),
     );
   }

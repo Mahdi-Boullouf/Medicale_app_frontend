@@ -1,87 +1,86 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/api_config.dart';
-import '../models/user_model.dart';
-import 'api_service.dart';
+import 'dart:convert';
+import 'dart:io';
+import '../services/api_service.dart';
 
 class UserService {
   /// Get current user profile
-  Future<Map<String, dynamic>> getUserProfile() async {
-    try {
-      final response = await ApiService.get(
-        ApiConfig.userProfile,
-        requiresAuth: true,
-      );
-
-      if (response['success'] == true) {
-        if (response['data'] != null) {
-          await _saveUserInfo(response['data']);
-        }
-      }
-
-      return response;
-    } catch (e) {
-      print('❌ Get Profile Error: $e');
-      return {
-        'success': false,
-        'message': 'Failed to fetch profile: $e',
-      };
-    }
+  static Future<Map<String, dynamic>> getUserProfile() async {
+    print('🔍 Fetching user profile...');
+    return await ApiService.get('/api/v1/user/profile', requiresAuth: true);
   }
 
-  /// Get user by ID
-  Future<Map<String, dynamic>> getUserById(String userId) async {
-    try {
-      final response = await ApiService.get(
-        '${ApiConfig.getUserById}/$userId',
-        requiresAuth: true,
-      );
-
-      return response;
-    } catch (e) {
-      print('❌ Get User By ID Error: $e');
-      return {
-        'success': false,
-        'message': 'Failed to fetch user: $e',
-      };
-    }
-  }
-
-  /// Update user profile
-  Future<Map<String, dynamic>> updateProfile({
+  /// Update user profile with image support
+  static Future<Map<String, dynamic>> updateUserProfile({
     String? fullName,
+    String? username,
     String? phone,
-    String? dateOfBirth,
+    String? bio,
     String? gender,
-    String? bloodGroup,
+    String? dob,
     String? address,
-    String? profileImage,
+    String? country,
+    String? language,
+    int? experienceYears,
+    String? specialty,
+    List<String>? specialties,
+    List<Map<String, dynamic>>? degrees,
+    Map<String, dynamic>? fees,
+    List<Map<String, dynamic>>? weeklySchedule,
+    String? visitingHoursText,
+    String? medicalLicenseNumber,
+    File? profileImage, // ✅ Direct File parameter
   }) async {
     try {
-      final Map<String, dynamic> body = {};
+      print('📤 Updating user profile...');
       
+      final Map<String, dynamic> body = {};
+
+      // Basic fields
       if (fullName != null) body['fullName'] = fullName;
+      if (username != null) body['username'] = username;
       if (phone != null) body['phone'] = phone;
-      if (dateOfBirth != null) body['dateOfBirth'] = dateOfBirth;
+      if (bio != null) body['bio'] = bio;
       if (gender != null) body['gender'] = gender;
-      if (bloodGroup != null) body['bloodGroup'] = bloodGroup;
+      if (dob != null) body['dob'] = dob;
       if (address != null) body['address'] = address;
-      if (profileImage != null) body['profileImage'] = profileImage;
+      if (country != null) body['country'] = country;
+      if (language != null) body['language'] = language;
+      if (experienceYears != null) body['experienceYears'] = experienceYears;
+
+      // Doctor fields
+      if (specialty != null) body['specialty'] = specialty;
+      if (specialties != null) body['specialties'] = specialties;
+      if (degrees != null) body['degrees'] = degrees;
+      if (fees != null) body['fees'] = fees;
+      if (weeklySchedule != null) body['weeklySchedule'] = weeklySchedule;
+      if (visitingHoursText != null) body['visitingHoursText'] = visitingHoursText;
+      if (medicalLicenseNumber != null) body['medicalLicenseNumber'] = medicalLicenseNumber;
+
+      // ✅ Convert image to base64 if provided
+      if (profileImage != null) {
+        print('📸 Converting image to base64...');
+        final base64Image = await imageToBase64(profileImage);
+        body['profileImage'] = base64Image;
+        print('✅ Base64 image added to payload');
+      }
+
+      print('📦 Update payload keys: ${body.keys.toList()}');
 
       final response = await ApiService.put(
-        ApiConfig.updateProfile,
+        '/api/v1/user/profile',
         body,
         requiresAuth: true,
       );
 
       if (response['success'] == true) {
-        if (response['data'] != null) {
-          await _saveUserInfo(response['data']);
-        }
+        print('✅ Profile updated successfully');
+      } else {
+        print('❌ Profile update failed: ${response['message']}');
       }
 
       return response;
     } catch (e) {
-      print('❌ Update Profile Error: $e');
+      print('❌ Update profile error: $e');
       return {
         'success': false,
         'message': 'Failed to update profile: $e',
@@ -89,52 +88,140 @@ class UserService {
     }
   }
 
-  /// Get locally saved user info
-  Future<Map<String, dynamic>> getLocalUserInfo() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      
-      return {
-        'user_id': prefs.getString('user_id') ?? '',
-        'user_name': prefs.getString('user_name') ?? '',
-        'user_email': prefs.getString('user_email') ?? '',
-        'user_role': prefs.getString('user_role') ?? '',
-        'user_phone': prefs.getString('user_phone') ?? '',
-      };
-    } catch (e) {
-      print('❌ Get Local User Info Error: $e');
-      return {};
-    }
+  /// Change password
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    print('🔐 Changing password...');
+    
+    return await ApiService.put(
+      '/api/v1/user/password',
+      {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      },
+      requiresAuth: true,
+    );
   }
 
-  /// Save user info locally
-  Future<void> _saveUserInfo(Map<String, dynamic> user) async {
+  /// Get users by role (patient | doctor | admin)
+  static Future<Map<String, dynamic>> getUsersByRole(String role) async {
+    print('🔍 Fetching users with role: $role');
+    return await ApiService.get('/api/v1/user/role/$role', requiresAuth: true);
+  }
+
+  /// Get user details by ID
+  static Future<Map<String, dynamic>> getUserDetails(String userId) async {
+    print('🔍 Fetching user details for ID: $userId');
+    return await ApiService.get('/api/v1/user/$userId', requiresAuth: true);
+  }
+
+  /// Get my dependents
+  static Future<Map<String, dynamic>> getMyDependents() async {
+    print('🔍 Fetching my dependents...');
+    return await ApiService.get('/api/v1/user/me/dependents', requiresAuth: true);
+  }
+
+  /// Add dependent
+  static Future<Map<String, dynamic>> addDependent({
+    required String fullName,
+    String? relationship,
+    String? gender,
+    String? dob,
+    String? phone,
+    String? notes,
+  }) async {
+    print('➕ Adding dependent: $fullName');
+    
+    final Map<String, dynamic> body = {'fullName': fullName};
+    
+    if (relationship != null) body['relationship'] = relationship;
+    if (gender != null) body['gender'] = gender;
+    if (dob != null) body['dob'] = dob;
+    if (phone != null) body['phone'] = phone;
+    if (notes != null) body['notes'] = notes;
+
+    return await ApiService.post(
+      '/api/v1/user/me/dependents',
+      body,
+      requiresAuth: true,
+    );
+  }
+
+  /// Update dependent
+  static Future<Map<String, dynamic>> updateDependent({
+    required String dependentId,
+    String? fullName,
+    String? relationship,
+    String? gender,
+    String? dob,
+    String? phone,
+    String? notes,
+    bool? isActive,
+  }) async {
+    print('✏️ Updating dependent: $dependentId');
+    
+    final Map<String, dynamic> body = {};
+    
+    if (fullName != null) body['fullName'] = fullName;
+    if (relationship != null) body['relationship'] = relationship;
+    if (gender != null) body['gender'] = gender;
+    if (dob != null) body['dob'] = dob;
+    if (phone != null) body['phone'] = phone;
+    if (notes != null) body['notes'] = notes;
+    if (isActive != null) body['isActive'] = isActive;
+
+    return await ApiService.patch(
+      '/api/v1/user/me/dependents/$dependentId',
+      body,
+      requiresAuth: true,
+    );
+  }
+
+  /// Delete dependent
+  static Future<Map<String, dynamic>> deleteDependent(String dependentId) async {
+    print('🗑️ Deleting dependent: $dependentId');
+    return await ApiService.delete(
+      '/api/v1/user/me/dependents/$dependentId',
+      requiresAuth: true,
+    );
+  }
+
+  /// Convert image file to base64 with proper MIME type detection
+  static Future<String> imageToBase64(File imageFile) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      print('🔄 Converting image to base64...');
+      final bytes = await imageFile.readAsBytes();
+      final base64String = base64Encode(bytes);
       
-      await prefs.setString('user_id', user['_id'] ?? user['id'] ?? '');
-      await prefs.setString('user_name', user['fullName'] ?? '');
-      await prefs.setString('user_email', user['email'] ?? '');
-      await prefs.setString('user_role', user['role'] ?? '');
+      // ✅ Detect image type from file extension
+      String mimeType = 'image/jpeg';
+      final extension = imageFile.path.split('.').last.toLowerCase();
       
-      if (user['phone'] != null) {
-        await prefs.setString('user_phone', user['phone']);
+      if (extension == 'png') {
+        mimeType = 'image/png';
+      } else if (extension == 'jpg' || extension == 'jpeg') {
+        mimeType = 'image/jpeg';
+      } else if (extension == 'webp') {
+        mimeType = 'image/webp';
+      } else if (extension == 'gif') {
+        mimeType = 'image/gif';
       }
       
-      print('✅ User info saved locally');
+      final result = 'data:$mimeType;base64,$base64String';
+      
+      print('✅ Image converted successfully');
+      print('   - Size: ${bytes.length} bytes');
+      print('   - Type: $mimeType');
+      print('   - Base64 length: ${result.length} chars');
+      
+      return result;
     } catch (e) {
-      print('❌ Save User Info Error: $e');
-    }
-  }
-
-  /// Clear local user data
-  Future<void> clearLocalUserData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      print('✅ Local user data cleared');
-    } catch (e) {
-      print('❌ Clear Local Data Error: $e');
+      print('❌ Error converting image to base64: $e');
+      rethrow;
     }
   }
 }

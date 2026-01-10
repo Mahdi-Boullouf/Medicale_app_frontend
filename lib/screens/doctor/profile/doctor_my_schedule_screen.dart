@@ -308,7 +308,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                   ),
                   Switch(
                     value: onlineAppointment,
-                    activeColor: const Color(0xFF6C63FF),
+                    activeThumbColor: const Color(0xFF6C63FF),
                     onChanged: (val) => setState(() => onlineAppointment = val),
                   ),
                 ],
@@ -371,7 +371,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                 .asMap()
                 .entries
                 .map((entry) => _buildDayItem(entry.value, entry.key))
-                .toList(),
+                ,
 
             const SizedBox(height: 20),
 

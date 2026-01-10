@@ -1,4 +1,3 @@
-import '../utils/api_config.dart';
 import 'api_service.dart';
 
 class DependentService {

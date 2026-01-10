@@ -24,6 +24,9 @@ dependencies:
   
   # HTTP & API
   http: ^1.1.0
+
+ 
+  
   
   # Media Handling
   image_picker: ^1.2.1
@@ -41,6 +44,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.4.6
   json_serializable: ^6.7.1
+  image: ^4.0.17 
 
 flutter:
   uses-material-design: true

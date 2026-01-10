@@ -541,7 +541,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                           );
                         }
                         return const SizedBox.shrink();
-                      }).toList(),
+                      }),
                     
                     if (content.isNotEmpty && content.trim() != ' ')
                       Text(

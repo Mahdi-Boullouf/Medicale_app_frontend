@@ -45,7 +45,7 @@ class DoctorListScreen extends StatelessWidget {
 class _DoctorCard extends StatelessWidget {
   final dynamic doctor;
 
-  const _DoctorCard({super.key, required this.doctor});
+  const _DoctorCard({required this.doctor});
 
   @override
   Widget build(BuildContext context) {

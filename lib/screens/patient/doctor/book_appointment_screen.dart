@@ -8,14 +8,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:docmobi/models/doctor_model.dart';
 import 'package:docmobi/models/dependent_model.dart';
+import 'package:docmobi/models/appointment_model.dart';
 import 'package:docmobi/providers/appointment_provider.dart';
 import 'package:docmobi/providers/dependent_provider.dart';
 import 'package:docmobi/utils/api_config.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
   final dynamic doctor;
+  final bool isReschedule;
+  final AppointmentModel? existingAppointment;
 
-  const BookAppointmentScreen({super.key, required this.doctor});
+  const BookAppointmentScreen({
+    super.key,
+    required this.doctor,
+    this.isReschedule = false,
+    this.existingAppointment,
+  });
 
   @override
   State<BookAppointmentScreen> createState() => _BookAppointmentScreenState();
@@ -28,7 +36,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   DependentModel? selectedDependent;
   final TextEditingController _symptomsController = TextEditingController();
 
-  List<XFile> _medicalDocuments = [];
+  final List<XFile> _medicalDocuments = [];
   XFile? _paymentScreenshot;
 
   bool _isLoading = false;
@@ -71,33 +79,42 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   void initState() {
     super.initState();
     
-    // ✅ Debug doctor data on init
-    print('🔍 === DOCTOR DATA CHECK ===');
-    print('   Doctor ID: $doctorId');
-    print('   Doctor Name: $doctorName');
-    
-    if (doctorObject != null) {
-      print('   ✅ Doctor Object exists');
-      print('   WeeklySchedule: ${doctorObject!.weeklySchedule?.length ?? 0} days configured');
-      
-      if (doctorObject!.weeklySchedule != null && doctorObject!.weeklySchedule!.isNotEmpty) {
-        print('   📅 Schedule Details:');
-        for (var day in doctorObject!.weeklySchedule!) {
-          if (day.isActive) {
-            print('      ${day.day}: ${day.slots.length} slots available');
-          }
-        }
-      } else {
-        print('   ⚠️ No weekly schedule configured');
-      }
-    } else {
-      print('   ❌ Doctor object is NULL!');
+    // ✅ Pre-fill data if reschedule mode
+    if (widget.isReschedule && widget.existingAppointment != null) {
+      _prefillDataForReschedule();
     }
-    print('🔍 === END DOCTOR CHECK ===\n');
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DependentProvider>().fetchDependents();
     });
+  }
+
+  // ✅ NEW: Pre-fill existing appointment data
+  void _prefillDataForReschedule() {
+    final appt = widget.existingAppointment!;
+    
+    // Set appointment type
+    if (appt.appointmentType?.toLowerCase() == 'video') {
+      selectedType = "Video Call";
+    } else {
+      selectedType = "Physical Visit";
+    }
+    
+    // Set symptoms
+    if (appt.symptoms != null && appt.symptoms!.isNotEmpty) {
+      _symptomsController.text = appt.symptoms!;
+    }
+    
+    // Set date and fetch slots
+    selectedDate = appt.appointmentDate;
+    if (selectedDate != null) {
+      _fetchAvailableSlots(selectedDate!);
+    }
+    
+    print('📝 Pre-filled data for reschedule:');
+    print('   Type: $selectedType');
+    print('   Date: $selectedDate');
+    print('   Symptoms: ${_symptomsController.text}');
   }
 
   @override
@@ -109,7 +126,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: selectedDate ?? DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 90)),
       builder: (context, child) => Theme(
@@ -131,42 +148,28 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   }
 
   Future<void> _fetchAvailableSlots(DateTime date) async {
-    print('\n📅 === FETCHING SLOTS ===');
-    print('   Selected Date: ${DateFormat('yyyy-MM-dd').format(date)}');
-    print('   Day: ${_getDayName(date)}');
-    
     setState(() => _isLoadingSlots = true);
 
     try {
-      // First try backend
-      print('   🌐 Attempting backend fetch...');
       final response = await _fetchFromBackend(date);
       
       if (response != null && response['success'] == true) {
-        print('   ✅ Backend returned slots');
         final slotsData = response['data']['slots'] as List;
         final unbookedSlots = slotsData
             .map((slot) => TimeSlot.fromJson(slot))
             .where((slot) => slot.isBooked != true)
             .toList();
         
-        print('   Total slots from backend: ${slotsData.length}');
-        print('   Available (unbooked): ${unbookedSlots.length}');
-        
         setState(() {
           availableSlots = unbookedSlots;
         });
       } else {
-        print('   ⚠️ Backend returned no slots, falling back to weeklySchedule');
         _loadFromWeeklySchedule(date);
       }
     } catch (e) {
-      print('   ❌ Backend error: $e');
-      print('   📋 Falling back to weeklySchedule');
       _loadFromWeeklySchedule(date);
     } finally {
       setState(() => _isLoadingSlots = false);
-      print('📅 === END FETCHING SLOTS ===\n');
     }
   }
 
@@ -189,43 +192,25 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
       if (response.statusCode == 200) {
         return json.decode(response.body);
-      } else {
-        print('   Backend status: ${response.statusCode}');
       }
     } catch (e) {
-      print('   Backend exception: $e');
+      print('Backend exception: $e');
     }
     return null;
   }
 
-  // ✅ UPDATED: Better schedule loading with detailed logs
   void _loadFromWeeklySchedule(DateTime date) {
-    print('\n📋 === LOADING FROM WEEKLY SCHEDULE ===');
-    
     final doctor = doctorObject;
     
-    if (doctor == null) {
-      print('   ❌ Doctor object is null');
+    if (doctor == null || doctor.weeklySchedule == null || doctor.weeklySchedule!.isEmpty) {
       setState(() => availableSlots = []);
       return;
     }
-    
-    if (doctor.weeklySchedule == null || doctor.weeklySchedule!.isEmpty) {
-      print('   ❌ No weeklySchedule available');
-      setState(() => availableSlots = []);
-      return;
-    }
-
-    print('   ✅ Doctor: ${doctor.name}');
-    print('   ✅ WeeklySchedule exists: ${doctor.weeklySchedule!.length} days');
 
     final dayName = _getDayName(date);
-    print('   📅 Looking for: $dayName');
-
-    // Find matching day schedule
     WeeklySchedule? daySchedule;
+    
     for (var schedule in doctor.weeklySchedule!) {
-      print('      Checking: ${schedule.day} (active: ${schedule.isActive})');
       if (schedule.day.toLowerCase() == dayName.toLowerCase() && schedule.isActive) {
         daySchedule = schedule;
         break;
@@ -233,47 +218,25 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     }
 
     if (daySchedule == null) {
-      print('   ❌ No active schedule found for $dayName');
       setState(() => availableSlots = []);
       return;
     }
 
-    print('   ✅ Day schedule found:');
-    print('      Day: ${daySchedule.day}');
-    print('      Active: ${daySchedule.isActive}');
-    print('      Slots: ${daySchedule.slots.length}');
-
-    // Load slots
-    final slots = daySchedule.slots;
-    print('   ✅ Loaded ${slots.length} slots');
-    
-    for (int i = 0; i < slots.length; i++) {
-      print('      Slot $i: ${slots[i].start} - ${slots[i].end}');
-    }
-
     setState(() {
-      availableSlots = slots;
+      availableSlots = daySchedule!.slots;
     });
-    
-    print('📋 === END WEEKLY SCHEDULE LOADING ===\n');
   }
 
-  // ✅ Helper to get day name
   String _getDayName(DateTime date) {
     const dayNames = [
-      'monday',    // weekday 1
-      'tuesday',   // weekday 2
-      'wednesday', // weekday 3
-      'thursday',  // weekday 4
-      'friday',    // weekday 5
-      'saturday',  // weekday 6
-      'sunday',    // weekday 7
+      'monday', 'tuesday', 'wednesday', 'thursday',
+      'friday', 'saturday', 'sunday',
     ];
     return dayNames[date.weekday - 1];
   }
 
   Future<void> _pickMedicalDocuments() async {
-    final List<XFile>? picked = await _picker.pickMultiImage();
+    final List<XFile> picked = await _picker.pickMultiImage();
     if (picked != null && picked.isNotEmpty && mounted) {
       setState(() => _medicalDocuments.addAll(picked));
     }
@@ -286,10 +249,14 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     }
   }
 
+  // ✅ UPDATED: Handle both create and reschedule
   Future<void> _submitAppointment() async {
     if (doctorId.isEmpty || doctorId.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid Doctor – Cannot book appointment'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Invalid Doctor – Cannot book appointment'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -301,14 +268,54 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       return;
     }
 
-    print('\n📤 === SUBMITTING APPOINTMENT ===');
-    print('   Doctor: $doctorName ($doctorId)');
-    print('   Date: ${DateFormat('yyyy-MM-dd').format(selectedDate!)}');
-    print('   Time: ${selectedTimeSlot!.start}');
-    print('   Type: $selectedType');
+    if (widget.isReschedule) {
+      await _handleReschedule();
+    } else {
+      await _handleNewAppointment();
+    }
+  }
 
+  // ✅ NEW: Handle reschedule
+  Future<void> _handleReschedule() async {
     setState(() => _isLoading = true);
 
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      // Cancel old appointment
+      final cancelResponse = await http.patch(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.appointments}/${widget.existingAppointment!.id}/status'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: json.encode({'status': 'cancelled'}),
+      );
+
+      if (cancelResponse.statusCode < 200 || cancelResponse.statusCode >= 300) {
+        throw Exception('Failed to cancel old appointment');
+      }
+
+      // Create new appointment
+      await _handleNewAppointment();
+
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Reschedule failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ✅ NEW: Handle new appointment creation
+  Future<void> _handleNewAppointment() async {
     try {
       var request = http.MultipartRequest(
         'POST',
@@ -344,39 +351,68 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
       for (var file in _medicalDocuments) {
         request.files.add(
-          await http.MultipartFile.fromPath('medicalDocuments', file.path, filename: file.name),
+          await http.MultipartFile.fromPath(
+            'medicalDocuments',
+            file.path,
+            filename: file.name,
+          ),
         );
       }
 
       if (selectedType == "Video Call") {
         if (_paymentScreenshot == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Payment screenshot required for Video Call')),
+            const SnackBar(
+              content: Text('Payment screenshot required for Video Call'),
+            ),
           );
-          setState(() => _isLoading = false);
           return;
         }
         request.files.add(
-          await http.MultipartFile.fromPath('paymentScreenshot', _paymentScreenshot!.path, filename: _paymentScreenshot!.name),
+          await http.MultipartFile.fromPath(
+            'paymentScreenshot',
+            _paymentScreenshot!.path,
+            filename: _paymentScreenshot!.name,
+          ),
         );
       }
 
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
       final response = await http.Response.fromStream(streamedResponse);
-      final jsonResponse = response.body.isNotEmpty ? json.decode(response.body) : {};
+      final jsonResponse = response.body.isNotEmpty
+          ? json.decode(response.body)
+          : {};
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        print('   ✅ Appointment booked successfully!');
         if (mounted) {
+          final message = widget.isReschedule
+              ? 'Appointment rescheduled successfully!'
+              : 'Appointment booked with Dr. $doctorName!';
+          
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Appointment booked with Dr. $doctorName!'), backgroundColor: Colors.green),
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(message)),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
           );
+          
           context.read<AppointmentProvider>().fetchAppointments();
           Navigator.pop(context);
         }
       } else {
         String msg = jsonResponse['message'] ?? 'Booking failed';
-        print('   ❌ Booking failed: $msg');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(msg), backgroundColor: Colors.red),
@@ -384,15 +420,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         }
       }
     } catch (e) {
-      print('   ❌ Exception: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-      print('📤 === END APPOINTMENT SUBMISSION ===\n');
     }
   }
 
@@ -407,12 +439,47 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text("Book Appointment", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20)),
+        title: Text(
+          widget.isReschedule ? "Reschedule Appointment" : "Book Appointment",
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Column(
           children: [
+            // ✅ Show reschedule info banner
+            if (widget.isReschedule) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade700),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'You are rescheduling your appointment. Old appointment will be cancelled.',
+                        style: TextStyle(
+                          color: Colors.blue.shade900,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             if (selectedType == "Video Call")
               Padding(
                 padding: const EdgeInsets.only(bottom: 15),
@@ -420,9 +487,30 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   child: Text.rich(
                     TextSpan(
                       children: [
-                        const TextSpan(text: '*', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 15)),
-                        const TextSpan(text: " Video appointments- patient must\nupload BaridiMob payment screenshot ", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 15)),
-                        const TextSpan(text: '*', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 15)),
+                        const TextSpan(
+                          text: '*',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const TextSpan(
+                          text: " Video appointments- patient must\nupload BaridiMob payment screenshot ",
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const TextSpan(
+                          text: '*',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
                       ],
                     ),
                     textAlign: TextAlign.center,
@@ -434,13 +522,24 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Appointment Type", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Appointment Type",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 15),
                   Row(
                     children: [
-                      _buildTypeOption('assets/icons/physical_visit.png', "Physical Visit", "Pay at Clinic"),
+                      _buildTypeOption(
+                        'assets/icons/physical_visit.png',
+                        "Physical Visit",
+                        "Pay at Clinic",
+                      ),
                       const SizedBox(width: 15),
-                      _buildTypeOption('assets/icons/video_call.png', "Video Call", "Online Payment"),
+                      _buildTypeOption(
+                        'assets/icons/video_call.png',
+                        "Video Call",
+                        "Online Payment",
+                      ),
                     ],
                   ),
                 ],
@@ -456,7 +555,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Book Appointment For", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text(
+                        "Book Appointment For",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       
                       _buildSelectForOption(
@@ -468,26 +573,47 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                       
                       if (dependents.isNotEmpty) ...[
                         const SizedBox(height: 8),
-                        const Text("Or select a dependent:", style: TextStyle(fontSize: 14, color: Colors.grey)),
+                        const Text(
+                          "Or select a dependent:",
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
                         const SizedBox(height: 8),
-                        ...dependents.map((dep) => _buildSelectForOption(
-                              icon: dep.gender?.toLowerCase() == 'male' ? Icons.boy : Icons.girl,
-                              label: dep.displayName,
-                              subtitle: dep.age,
-                              isSelected: selectedDependent?.id == dep.id,
-                              onTap: () => setState(() => selectedDependent = dep),
-                            )),
+                        ...dependents.map(
+                          (dep) => _buildSelectForOption(
+                            icon: dep.gender?.toLowerCase() == 'male'
+                                ? Icons.boy
+                                : Icons.girl,
+                            label: dep.displayName,
+                            subtitle: dep.age,
+                            isSelected: selectedDependent?.id == dep.id,
+                            onTap: () => setState(
+                              () => selectedDependent = dep,
+                            ),
+                          ),
+                        ),
                       ],
                       
                       const SizedBox(height: 12),
                       TextButton.icon(
                         onPressed: () {
-                          Navigator.pushNamed(context, '/add-dependent').then((_) {
-                            context.read<DependentProvider>().fetchDependents();
+                          Navigator.pushNamed(context, '/add-dependent')
+                              .then((_) {
+                            context
+                                .read<DependentProvider>()
+                                .fetchDependents();
                           });
                         },
-                        icon: const Icon(Icons.add_circle_outline, color: Color(0xFF0D53C1)),
-                        label: const Text('Add New Dependent', style: TextStyle(color: Color(0xFF0D53C1), fontWeight: FontWeight.bold)),
+                        icon: const Icon(
+                          Icons.add_circle_outline,
+                          color: Color(0xFF0D53C1),
+                        ),
+                        label: const Text(
+                          'Add New Dependent',
+                          style: TextStyle(
+                            color: Color(0xFF0D53C1),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   );
@@ -500,12 +626,18 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Select Date", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Select Date",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 12),
                   GestureDetector(
                     onTap: _selectDate,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Colors.black, width: 1.2),
@@ -514,10 +646,20 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            selectedDate == null ? "dd/mm/yyyy" : DateFormat('dd/MM/yyyy').format(selectedDate!),
-                            style: TextStyle(color: selectedDate == null ? Colors.grey : Colors.black, fontSize: 16),
+                            selectedDate == null
+                                ? "dd/mm/yyyy"
+                                : DateFormat('dd/MM/yyyy').format(selectedDate!),
+                            style: TextStyle(
+                              color: selectedDate == null
+                                  ? Colors.grey
+                                  : Colors.black,
+                              fontSize: 16,
+                            ),
                           ),
-                          const Icon(Icons.calendar_month_outlined, color: Colors.black),
+                          const Icon(
+                            Icons.calendar_month_outlined,
+                            color: Colors.black,
+                          ),
                         ],
                       ),
                     ),
@@ -532,7 +674,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Available Time", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      "Available Time",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 15),
                     _buildTimeSlots(),
                   ],
@@ -544,7 +692,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Describe your Symptoms", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Describe your Symptoms",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 12),
                   _buildDashedInput(_symptomsController),
                 ],
@@ -556,16 +707,27 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Upload Medical Documents", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Upload Medical Documents",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 12),
                   GestureDetector(
                     onTap: _pickMedicalDocuments,
-                    child: _buildUploadBox(Icons.cloud_upload_outlined, "Tap to Upload image or PDF"),
+                    child: _buildUploadBox(
+                      Icons.cloud_upload_outlined,
+                      "Tap to Upload image or PDF",
+                    ),
                   ),
                   if (_medicalDocuments.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 10),
-                      child: Wrap(spacing: 8, children: _medicalDocuments.map((f) => Chip(label: Text(f.name))).toList()),
+                      child: Wrap(
+                        spacing: 8,
+                        children: _medicalDocuments
+                            .map((f) => Chip(label: Text(f.name)))
+                            .toList(),
+                      ),
                     ),
                 ],
               ),
@@ -577,14 +739,26 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Upload Payment Screenshot", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      "Upload Payment Screenshot",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     GestureDetector(
                       onTap: _pickPaymentScreenshot,
-                      child: _buildUploadBox(Icons.cloud_upload_outlined, "Tap to Upload Your Payment Screenshot"),
+                      child: _buildUploadBox(
+                        Icons.cloud_upload_outlined,
+                        "Tap to Upload Your Payment Screenshot",
+                      ),
                     ),
                     if (_paymentScreenshot != null)
-                      Padding(padding: const EdgeInsets.only(top: 10), child: Chip(label: Text(_paymentScreenshot!.name))),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Chip(label: Text(_paymentScreenshot!.name)),
+                      ),
                   ],
                 ),
               ),
@@ -598,11 +772,22 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 onPressed: _isLoading ? null : _submitAppointment,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0D53C1),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("Submit Appointment Request", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    : Text(
+                        widget.isReschedule
+                            ? "Confirm Reschedule"
+                            : "Submit Appointment Request",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
             const SizedBox(height: 40),
@@ -618,7 +803,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
         ),
         child: child,
       );
@@ -633,14 +824,35 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isSelected ? const Color(0xFF0D53C1) : Colors.grey.shade300, width: isSelected ? 2 : 1),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF0D53C1)
+                  : Colors.grey.shade300,
+              width: isSelected ? 2 : 1,
+            ),
           ),
           child: Column(
             children: [
-              Image.asset(image, color: isSelected ? const Color(0xFF0D53C1) : Colors.black54, width: 30, height: 30),
+              Image.asset(
+                image,
+                color: isSelected ? const Color(0xFF0D53C1) : Colors.black54,
+                width: 30,
+                height: 30,
+              ),
               const SizedBox(height: 5),
-              Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? const Color(0xFF0D53C1) : Colors.black87)),
-              Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isSelected
+                      ? const Color(0xFF0D53C1)
+                      : Colors.black87,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
             ],
           ),
         ),
@@ -661,24 +873,45 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0D53C1).withOpacity(0.1) : Colors.white,
+          color: isSelected
+              ? const Color(0xFF0D53C1).withOpacity(0.1)
+              : Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: isSelected ? const Color(0xFF0D53C1) : Colors.grey.shade300, width: isSelected ? 2 : 1),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF0D53C1)
+                : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: isSelected ? const Color(0xFF0D53C1) : Colors.grey),
+            Icon(
+              icon,
+              color: isSelected ? const Color(0xFF0D53C1) : Colors.grey,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-                  if (subtitle != null) Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
                 ],
               ),
             ),
-            if (isSelected) const Icon(Icons.check_circle, color: Color(0xFF0D53C1)),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: Color(0xFF0D53C1)),
           ],
         ),
       ),
@@ -687,7 +920,12 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
   Widget _buildTimeSlots() {
     if (_isLoadingSlots) {
-      return const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()));
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: CircularProgressIndicator(),
+        ),
+      );
     }
 
     if (availableSlots.isEmpty) {
@@ -698,18 +936,25 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             children: [
               Icon(Icons.event_busy, size: 50, color: Colors.grey[400]),
               const SizedBox(height: 12),
-              Text('No available time slots for this date', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+              Text(
+                'No available time slots for this date',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
             ],
           ),
         ),
       );
     }
 
-    return Column(children: availableSlots.map((slot) => _buildTimeSlotCard(slot)).toList());
+    return Column(
+      children: availableSlots.map((slot) => _buildTimeSlotCard(slot)).toList(),
+    );
   }
 
   Widget _buildTimeSlotCard(TimeSlot slot) {
-    final isSelected = selectedTimeSlot?.start == slot.start && selectedTimeSlot?.end == slot.end;
+    final isSelected =
+        selectedTimeSlot?.start == slot.start &&
+        selectedTimeSlot?.end == slot.end;
     final isDisabled = slot.isBooked == true;
 
     return GestureDetector(
@@ -718,9 +963,18 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         decoration: BoxDecoration(
-          color: isDisabled ? Colors.grey[200] : (isSelected ? const Color(0xFF0D53C1) : Colors.white),
+          color: isDisabled
+              ? Colors.grey[200]
+              : (isSelected ? const Color(0xFF0D53C1) : Colors.white),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isDisabled ? Colors.grey[300]! : (isSelected ? const Color(0xFF0D53C1) : Colors.grey[300]!), width: isSelected ? 2 : 1),
+          border: Border.all(
+            color: isDisabled
+                ? Colors.grey[300]!
+                : (isSelected
+                    ? const Color(0xFF0D53C1)
+                    : Colors.grey[300]!),
+            width: isSelected ? 2 : 1,
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -730,35 +984,77 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               decoration: BoxDecoration(
                 color: isSelected ? Colors.white : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: isSelected ? const Color(0xFF0D53C1) : Colors.grey[400]!),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF0D53C1)
+                      : Colors.grey[400]!,
+                ),
               ),
               child: Text(
                 _format24To12Hour(slot.start),
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDisabled ? Colors.grey : (isSelected ? const Color(0xFF0D53C1) : Colors.black)),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: isDisabled
+                      ? Colors.grey
+                      : (isSelected
+                          ? const Color(0xFF0D53C1)
+                          : Colors.black),
+                ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text('To', style: TextStyle(fontSize: 13, color: isDisabled ? Colors.grey : (isSelected ? Colors.white : Colors.black54))),
+              child: Text(
+                'To',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDisabled
+                      ? Colors.grey
+                      : (isSelected ? Colors.white : Colors.black54),
+                ),
+              ),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
                 color: isSelected ? Colors.white : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: isSelected ? const Color(0xFF0D53C1) : Colors.grey[400]!),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF0D53C1)
+                      : Colors.grey[400]!,
+                ),
               ),
               child: Text(
                 _format24To12Hour(slot.end),
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDisabled ? Colors.grey : (isSelected ? const Color(0xFF0D53C1) : Colors.black)),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: isDisabled
+                      ? Colors.grey
+                      : (isSelected
+                          ? const Color(0xFF0D53C1)
+                          : Colors.black),
+                ),
               ),
             ),
             if (isDisabled) ...[
               const SizedBox(width: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: Colors.red[100], borderRadius: BorderRadius.circular(4)),
-                child: const Text('Booked', style: TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold)),
+                decoration: BoxDecoration(
+                  color: Colors.red[100],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'Booked',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ],
@@ -812,7 +1108,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           children: [
             Icon(icon, color: Colors.black, size: 30),
             const SizedBox(height: 10),
-            Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
           ],
         ),
       );

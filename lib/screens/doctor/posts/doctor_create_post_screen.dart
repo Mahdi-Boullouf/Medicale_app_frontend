@@ -3,7 +3,8 @@ import 'package:docmobi/screens/doctor/reels/doctor_reels_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:docmobi/services/api_service.dart';
-
+import 'package:provider/provider.dart';
+import '../../../providers/user_provider.dart';
 
 class DoctorCreatePostScreen extends StatefulWidget {
   const DoctorCreatePostScreen({super.key});
@@ -16,8 +17,18 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
   final TextEditingController _postController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   List<XFile> _selectedMediaList = [];
-  String _postType = 'normal'; // 'normal', 'photo', 'video', 'reels'
+  String _postType = 'normal';
+  String _visibility = 'public';
   bool _isUploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load user data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UserProvider>().fetchUserProfile();
+    });
+  }
 
   Future<void> _pickMedia(String type) async {
     if (type == 'Photo') {
@@ -27,9 +38,6 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
           _selectedMediaList = images;
           _postType = 'photo';
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${images.length} photos selected')),
-        );
       }
     } else if (type == 'Video') {
       final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
@@ -38,9 +46,6 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
           _selectedMediaList = [video];
           _postType = 'video';
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Video selected: ${video.name}')),
-        );
       }
     } else if (type == 'Reels') {
       final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
@@ -49,9 +54,6 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
           _selectedMediaList = [video];
           _postType = 'reels';
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Reels video selected: ${video.name}')),
-        );
       }
     }
   }
@@ -74,7 +76,6 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
       Map<String, dynamic> result;
 
       if (_postType == 'reels') {
-        // Upload as Reel
         if (_selectedMediaList.isEmpty) {
           throw Exception('Please select a video for reels');
         }
@@ -82,8 +83,9 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
         result = await ApiService.createReel(
           videoFile: File(_selectedMediaList.first.path),
           caption: text.isNotEmpty ? text : null,
-          visibility: 'public',
+          visibility: _visibility,
         );
+
         if (!mounted) return;
         setState(() {
           _isUploading = false;
@@ -92,12 +94,11 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
         if (result['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Reel uploaded successfully!'),
+              content: Text('✓ Reel uploaded successfully!'),
               backgroundColor: Colors.green,
             ),
           );
 
-          // Navigate to Reels Screen
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -113,7 +114,6 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
           );
         }
       } else {
-        // Upload as Regular Post
         List<File>? mediaFiles;
         if (_selectedMediaList.isNotEmpty) {
           mediaFiles = _selectedMediaList.map((xFile) => File(xFile.path)).toList();
@@ -122,7 +122,7 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
         result = await ApiService.createPost(
           content: text,
           mediaFiles: mediaFiles,
-          visibility: 'public',
+          visibility: _visibility,
         );
 
         if (!mounted) return;
@@ -134,13 +134,12 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
         if (result['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Post shared successfully!'),
+              content: Text('✓ Post shared successfully!'),
               backgroundColor: Colors.green,
             ),
           );
 
-          // Go back to previous screen
-          Navigator.pop(context);
+          Navigator.pop(context, true);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -224,32 +223,106 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            Row(
-              children: [
-                const CircleAvatar(
-                  radius: 28,
-                  backgroundImage:
-                      AssetImage('assets/images/doctor_booking.png'),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            
+            // ✅ Dynamic User Info
+            Consumer<UserProvider>(
+              builder: (context, userProvider, child) {
+                final user = userProvider.user;
+                
+                return Row(
                   children: [
-                    const Text('Dr. Joynal Abedin',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        _buildSmallDropdown(Icons.public, 'Public'),
-                        const SizedBox(width: 8),
-                        _buildSmallDropdown(Icons.add, 'Album'),
-                      ],
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundImage: user?.profileImage != null && 
+                                      user!.profileImage!.isNotEmpty
+                          ? NetworkImage(user.profileImage!)
+                          : const AssetImage('assets/images/doctor_booking.png')
+                              as ImageProvider,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user?.fullName ?? 'Doctor',
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 5),
+                          
+                          // ✅ Visibility Dropdown (Public/Private)
+                          GestureDetector(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                builder: (context) => Container(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ListTile(
+                                        leading: const Icon(Icons.public),
+                                        title: const Text('Public'),
+                                        trailing: _visibility == 'public'
+                                            ? const Icon(Icons.check, color: Colors.blue)
+                                            : null,
+                                        onTap: () {
+                                          setState(() {
+                                            _visibility = 'public';
+                                          });
+                                          Navigator.pop(context);
+                                        },
+                                      ),
+                                      ListTile(
+                                        leading: const Icon(Icons.lock),
+                                        title: const Text('Private'),
+                                        trailing: _visibility == 'private'
+                                            ? const Icon(Icons.check, color: Colors.blue)
+                                            : null,
+                                        onTap: () {
+                                          setState(() {
+                                            _visibility = 'private';
+                                          });
+                                          Navigator.pop(context);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                  color: const Color(0xFFE8EEF9),
+                                  borderRadius: BorderRadius.circular(8)),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _visibility == 'public' ? Icons.public : Icons.lock,
+                                    size: 14,
+                                    color: Colors.black87,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _visibility == 'public' ? 'Public' : 'Private',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                                  ),
+                                  const Icon(Icons.keyboard_arrow_down, size: 16),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                ),
-              ],
+                );
+              },
             ),
+            
             const SizedBox(height: 30),
             TextField(
               controller: _postController,
@@ -262,7 +335,6 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
               style: const TextStyle(fontSize: 20),
             ),
             
-            // Display selected media
             if (_selectedMediaList.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
@@ -273,7 +345,6 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
 
             const SizedBox(height: 100),
             
-            // Media Selection Grid
             Row(
               children: [
                 Expanded(
@@ -386,25 +457,6 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildSmallDropdown(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-          color: const Color(0xFFE8EEF9),
-          borderRadius: BorderRadius.circular(8)),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: Colors.black87),
-          const SizedBox(width: 4),
-          Text(label,
-              style:
-                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-          const Icon(Icons.keyboard_arrow_down, size: 16),
-        ],
       ),
     );
   }

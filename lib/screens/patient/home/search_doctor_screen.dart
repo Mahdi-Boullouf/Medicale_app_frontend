@@ -28,7 +28,7 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
       reviews: 120 + index * 10,
       experience: '${10 + index} years',
       location: 'Salem Hospital, Dhaka',
-      distance: '${index + 2}.${index} km',
+      distance: '${index + 2}.$index km',
       isAvailable: index % 2 == 0,
       fees: {'amount': 500 + index * 50, 'currency': 'BDT'},
       weeklySchedule: [],

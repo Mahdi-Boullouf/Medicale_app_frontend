@@ -6,7 +6,7 @@ import 'package:docmobi/screens/auth/sign_up_screen.dart';
 import 'package:docmobi/screens/auth/forgot_password_screen.dart';
 import 'package:docmobi/widgets/custom_button.dart';
 import 'package:docmobi/widgets/custom_text_field.dart';
-import 'package:docmobi/services/auth_service.dart';
+import 'package:docmobi/services/api_service.dart'; // ✅ Changed from auth_service to api_service
 
 class SignInScreen extends StatefulWidget {
   final String userType;
@@ -25,8 +25,6 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
-  final AuthService _authService = AuthService();
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -42,7 +40,8 @@ class _SignInScreenState extends State<SignInScreen> {
     try {
       print('🔄 Starting login process...');
       
-      final result = await _authService.login(
+      // ✅ Use ApiService.login() instead of AuthService.login()
+      final result = await ApiService.login(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
@@ -53,10 +52,13 @@ class _SignInScreenState extends State<SignInScreen> {
       print('📥 Login result: ${result['success']}');
 
       if (result['success'] == true) {
-        // ✅ Get role from response (already saved in SharedPreferences)
+        // ✅ Get role from response
         final userData = result['data'];
-        final userRole = userData?['user']?['role']?.toString().toLowerCase();
-        final userName = userData?['user']?['fullName'] ?? 'User';
+        final userRole = userData?['user']?['role']?.toString().toLowerCase() ?? 
+                        userData?['role']?.toString().toLowerCase();
+        final userName = userData?['user']?['fullName'] ?? 
+                        userData?['fullName'] ?? 
+                        'User';
 
         print('✅ Login successful - Role: $userRole');
         print('   Expected role: ${widget.userType.toLowerCase()}');
@@ -93,12 +95,12 @@ class _SignInScreenState extends State<SignInScreen> {
             // Unknown role
             print('⚠️ Unknown role: $userRole');
             _showSnackBar('Invalid account type', isError: true);
-            await _authService.logout();
+            await ApiService.clearToken();
           }
         } else {
-          // Wrong login type (e.g., doctor trying to login as patient)
+          // Wrong login type
           print('⚠️ Role mismatch: Expected ${widget.userType}, Got $userRole');
-          await _authService.logout();
+          await ApiService.clearToken();
           _showSnackBar(
             'This account is registered as ${_capitalize(userRole ?? "user")}. '
             'Please use the correct login option.',
@@ -147,7 +149,6 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  // ✅ Back button handler
   void _handleBackPress() {
     Navigator.pushAndRemoveUntil(
       context,
@@ -161,10 +162,10 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // ✅ Default back behavior disable
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        _handleBackPress(); // ✅ Device back button handle
+        _handleBackPress();
       },
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -173,7 +174,7 @@ class _SignInScreenState extends State<SignInScreen> {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Color(0xFF0B3267)),
-            onPressed: _handleBackPress, // ✅ AppBar back button handle
+            onPressed: _handleBackPress,
           ),
         ),
         body: SafeArea(

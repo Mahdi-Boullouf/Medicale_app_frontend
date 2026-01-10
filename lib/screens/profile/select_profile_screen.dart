@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:docmobi/screens/auth/sign_in_screen.dart';
 import 'package:docmobi/widgets/custom_button.dart';
 // আপনার হোম স্ক্রিনটি ইম্পোর্ট করুন
-import 'package:docmobi/screens/patient/home/patient_home_screen.dart'; 
 
 class SelectProfileScreen extends StatefulWidget {
   const SelectProfileScreen({super.key});

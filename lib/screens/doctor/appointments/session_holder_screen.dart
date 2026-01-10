@@ -45,7 +45,7 @@ class _SessionHolderScreenState extends State<SessionHolderScreen> {
       print('📤 Completing appointment:');
       print('   ID: ${widget.appointment.id}');
       print('   Patient: $patientName');
-      print('   Amount: $amount USD'); // ✅ Logged in USD
+      print('   Amount: $amount DZD'); // ✅ Logged in DZD
 
       final provider = context.read<AppointmentProvider>();
       final success = await provider.completeAppointment(
@@ -208,7 +208,7 @@ class _SessionHolderScreenState extends State<SessionHolderScreen> {
 
               // Payable Amount Input
               _buildInputField(
-                label: "Payable Amount (USD)", // ✅ Changed BDT to USD
+                label: "Payable Amount (DZD)", // ✅ Changed BDT to DZD
                 hint: "Enter amount received",
                 controller: _amountController,
                 keyboardType: TextInputType.number,

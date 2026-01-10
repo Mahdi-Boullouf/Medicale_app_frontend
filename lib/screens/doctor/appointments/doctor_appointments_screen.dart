@@ -1,4 +1,3 @@
-import 'package:docmobi/screens/doctor/home/doctor_home_screen.dart';
 import 'package:docmobi/screens/doctor/navigation/doctor_main_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -71,27 +70,31 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Tab Buttons
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildTabButton(
-                      "Pending",
-                      provider.pendingAppointments.length,
-                    ),
-                    _buildTabButton(
-                      "Confirmed",
-                      provider.acceptedAppointments.length,
-                    ),
-                    _buildTabButton(
-                      "Completed",
-                      provider.completedAppointments.length,
-                    ),
-                  ],
-                ),
-              ),
+             // Tab Buttons - FIX OVERFLOW
+Padding(
+  padding: const EdgeInsets.symmetric(horizontal: 15),
+  child: SingleChildScrollView(
+    scrollDirection: Axis.horizontal, 
+    child: Row(
+      children: [
+        _buildTabButton(
+          "Pending",
+          provider.pendingAppointments.length,
+        ),
+        const SizedBox(width: 5), 
+        _buildTabButton(
+          "Confirmed",
+          provider.acceptedAppointments.length,
+        ),
+        const SizedBox(width: 5), 
+        _buildTabButton(
+          "Completed",
+          provider.completedAppointments.length,
+        ),
+      ],
+    ),
+  ),
+),
               const SizedBox(height: 10),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),

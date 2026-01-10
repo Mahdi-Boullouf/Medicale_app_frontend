@@ -531,7 +531,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           );
                         }
                         return const SizedBox.shrink();
-                      }).toList(),
+                      }),
                     
                     if (text.isNotEmpty)
                       Text(

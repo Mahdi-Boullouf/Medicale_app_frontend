@@ -76,62 +76,67 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
-                          Row(
-                            children: [
-                              // ✅ Fixed Profile Image
-                              _buildProfileAvatar(userProvider.user?.profileImage),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      userProvider.user?.fullName ?? 'The King',
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1B2C49),
-                                      ),
-                                    ),
-                                    const Row(
-                                      children: [
-                                        Icon(Icons.location_on, size: 16, color: Colors.grey),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Koln - Germany',
-                                          style: TextStyle(fontSize: 14, color: Colors.grey),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const NotificationScreen()),
-                                ),
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
-                                        blurRadius: 10,
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.notifications_none_rounded,
-                                    size: 28,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                         // Line 85-118 replace করো এই code দিয়ে
+
+Row(
+  children: [
+    _buildProfileAvatar(userProvider.user?.profileImage),
+    const SizedBox(width: 12),
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            userProvider.user?.fullName ?? 'The King',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1B2C49),
+            ),
+          ),
+          Row(
+            children: [
+              const Icon(Icons.location_on, size: 16, color: Colors.grey),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  userProvider.user?.address ?? 'Location not set',
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+    GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const NotificationScreen()),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.notifications_none_rounded,
+          size: 28,
+          color: Colors.black87,
+        ),
+      ),
+    ),
+  ],
+),
                           const SizedBox(height: 20),
                           Container(
                             decoration: BoxDecoration(

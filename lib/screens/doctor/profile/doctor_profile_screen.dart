@@ -3,11 +3,10 @@ import 'package:docmobi/screens/doctor/profile/doctor_personal_info_screen.dart'
 import 'package:docmobi/screens/doctor/profile/doctor_my_schedule_screen.dart';
 import 'package:docmobi/screens/doctor/profile/doctor_earnigs.dart';
 import 'package:docmobi/screens/patient/profile/change_password_screen.dart';
-
 import 'package:provider/provider.dart';
 import '../../../providers/user_provider.dart';
 import '../../../services/auth_service.dart';
-import '../../auth/sign_in_screen.dart';  // ✅ Fixed - removed one ../
+import '../../auth/sign_in_screen.dart';
 
 class DoctorProfileScreen extends StatefulWidget {
   const DoctorProfileScreen({super.key});
@@ -17,16 +16,20 @@ class DoctorProfileScreen extends StatefulWidget {
 }
 
 class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
-  String selectedLanguage = 'English';
   bool isVoiceVideoCallActive = false;
 
   @override
   void initState() {
     super.initState();
-    // Load profile data
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<UserProvider>().fetchUserProfile();
-    });
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    await context.read<UserProvider>().fetchUserProfile();
+  }
+
+  Future<void> _refreshProfile() async {
+    await context.read<UserProvider>().fetchUserProfile();
   }
 
   @override
@@ -34,7 +37,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(0, 255, 255, 255),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: const Text(
@@ -45,197 +48,233 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
             fontSize: 22,
           ),
         ),
+        centerTitle: true,
       ),
       body: Consumer<UserProvider>(
         builder: (context, userProvider, child) {
           final user = userProvider.user;
-          final userName = user?.fullName ?? 'The king';
-          final userRole = user?.role ?? 'Cardiologist';
+          final isLoading = userProvider.isLoading;
 
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                // --- Profile Header ---
-                Center(
-                  child: Column(
-                    children: [
-                      Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 55,
-                            backgroundImage: user?.profileImage != null
-                                ? NetworkImage(user!.profileImage!)
-                                : const AssetImage('assets/images/doctor_booking.png') as ImageProvider,
-                          ),
-                          if (userProvider.isLoading)
-                            Positioned.fill(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.black26,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          if (isLoading && user == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final userName = user?.fullName ?? 'Doctor';
+          final userRole = user?.role ?? 'doctor';
+          final profileImageUrl = user?.profileImage;
+
+          return RefreshIndicator(
+            onRefresh: _refreshProfile,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  
+                  // ✅ Profile Picture Section
+                  Center(
+                    child: Column(
+                      children: [
+                        Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 55,
+                              backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
+                                  ? NetworkImage(profileImageUrl)
+                                  : const AssetImage('assets/images/doctor_booking.png') as ImageProvider,
+                            ),
+                            if (isLoading)
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black26,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
                                   ),
                                 ),
                               ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          userName,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1B2C49),
+                          ),
+                        ),
+                        Text(
+                          userRole.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        
+                        // ✅ Show Specialty
+                        if (user?.specialty != null && user!.specialty!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            user.specialty!,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF1664CD),
+                              fontWeight: FontWeight.w500,
                             ),
+                          ),
                         ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        userName,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1B2C49),
-                        ),
-                      ),
-                      Text(
-                        userRole,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                        
+                        // ✅ Show Bio
+                        if (user?.bio != null && user!.bio!.isNotEmpty) ...[
+                          const SizedBox(height: 15),
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 25),
+                            padding: const EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE9F0FF),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              user.bio!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF1B2C49),
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 30),
+                  const SizedBox(height: 30),
 
-                _buildProfileItem(
-                  icon: Icons.person_outline,
-                  title: 'Personal Info',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const DoctorPersonalInfoScreen()),
-                    );
-                  },
-                ),
-
-                _buildProfileItem(
-                  icon: Icons.calendar_today_outlined,
-                  title: 'Appointment Setting',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const DoctorMyScheduleScreen()),
-                    );
-                  },
-                ),
-
-                _buildProfileItem(
-                  icon: Icons.phone_outlined,
-                  title: 'Voice and Video call',
-                  trailing: Switch(
-                    value: isVoiceVideoCallActive,
-                    activeColor: Colors.white,
-                    activeTrackColor: const Color(0xFF1664CD),
-                    inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: Colors.grey[300],
-                    onChanged: (value) {
-                      setState(() {
-                        isVoiceVideoCallActive = value;
-                      });
+                  // ✅ Profile Menu Items
+                  _buildProfileItem(
+                    icon: Icons.person_outline,
+                    title: 'Personal Info',
+                    onTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DoctorPersonalInfoScreen(),
+                        ),
+                      );
+                      if (result == true) {
+                        _refreshProfile();
+                      }
                     },
                   ),
-                ),
 
-                _buildLanguageDropdown(),
+                  _buildProfileItem(
+                    icon: Icons.calendar_today_outlined,
+                    title: 'Appointment Setting',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DoctorMyScheduleScreen(),
+                        ),
+                      );
+                    },
+                  ),
 
-                _buildProfileItem(
-                  icon: Icons.attach_money_outlined,
-                  title: 'My Earning',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const EarningOverviewScreen()),
-                    );
-                  },
-                ),
+                  _buildProfileItem(
+                    icon: Icons.phone_outlined,
+                    title: 'Voice and Video call',
+                    trailing: Switch(
+                      value: isVoiceVideoCallActive,
+                      activeThumbColor: Colors.white,
+                      activeTrackColor: const Color(0xFF1664CD),
+                      inactiveThumbColor: Colors.white,
+                      inactiveTrackColor: Colors.grey[300],
+                      onChanged: (value) {
+                        setState(() {
+                          isVoiceVideoCallActive = value;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              value
+                                  ? 'Voice/Video calls enabled'
+                                  : 'Voice/Video calls disabled',
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
 
-                _buildProfileItem(
-                  icon: Icons.lock_outline,
-                  title: 'Change Password',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
-                    );
-                  },
-                ),
+                  _buildProfileItem(
+                    icon: Icons.attach_money_outlined,
+                    title: 'My Earning',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EarningOverviewScreen(),
+                        ),
+                      );
+                    },
+                  ),
 
-                _buildProfileItem(
-                  icon: Icons.headphones_outlined,
-                  title: 'Help & Support',
-                  onTap: () {},
-                ),
+                  _buildProfileItem(
+                    icon: Icons.lock_outline,
+                    title: 'Change Password',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ChangePasswordScreen(),
+                        ),
+                      );
+                    },
+                  ),
 
-                const SizedBox(height: 25),
+                  const SizedBox(height: 25),
 
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _showLogoutDialog(context),
-                      icon: const Icon(Icons.logout, color: Colors.white),
-                      label: const Text(
-                        'Log Out',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  // ✅ Logout Button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showLogoutDialog(context),
+                        icon: const Icon(Icons.logout, color: Colors.white),
+                        label: const Text(
+                          'Log Out',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 40),
-              ],
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildLanguageDropdown() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE9F0FF),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-          child: const Icon(Icons.language_outlined, color: Color(0xFF1B2C49), size: 22),
-        ),
-        title: const Text('Language', style: TextStyle(fontSize: 16, color: Color(0xFF1B2C49), fontWeight: FontWeight.w600)),
-        trailing: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: selectedLanguage,
-            icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF1B2C49)),
-            items: <String>['French', 'English', 'Arabic'].map((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value, style: const TextStyle(color: Color(0xFF1B2C49))),
-              );
-            }).toList(),
-            onChanged: (val) => setState(() => selectedLanguage = val!),
-          ),
-        ),
       ),
     );
   }
@@ -257,14 +296,26 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
         leading: Container(
           padding: const EdgeInsets.all(8),
-          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+          ),
           child: Icon(icon, color: const Color(0xFF1B2C49), size: 22),
         ),
         title: Text(
           title,
-          style: const TextStyle(fontSize: 16, color: Color(0xFF1B2C49), fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            fontSize: 16,
+            color: Color(0xFF1B2C49),
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF1B2C49)),
+        trailing: trailing ??
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Color(0xFF1B2C49),
+            ),
       ),
     );
   }
@@ -288,7 +339,9 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
               showDialog(
                 context: context,
                 barrierDismissible: false,
-                builder: (context) => const Center(child: CircularProgressIndicator()),
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
               );
 
               await AuthService().logout();
@@ -296,7 +349,9 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
 
               if (mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
-                 MaterialPageRoute(builder: (context) => const SignInScreen(userType: 'doctor')),
+                  MaterialPageRoute(
+                    builder: (context) => const SignInScreen(userType: 'doctor'),
+                  ),
                   (route) => false,
                 );
               }

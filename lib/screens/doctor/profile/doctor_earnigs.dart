@@ -206,7 +206,7 @@ class _EarningOverviewScreenState extends State<EarningOverviewScreen> {
                     style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                   Text(
-                    '\$${total.toDouble().toStringAsFixed(2)}', // USD Display
+                    '${total.toDouble().toStringAsFixed(2)}', // DZD  Display
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,

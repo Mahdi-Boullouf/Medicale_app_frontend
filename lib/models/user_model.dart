@@ -9,6 +9,25 @@ class UserModel {
   final String? bloodGroup;
   final String? address;
   final String? profileImage;
+  
+  // ✅ Doctor fields from backend
+  final String? bio;
+  final String? specialty;
+  final List<String>? specialties;
+  final int? experienceYears;
+  final String? medicalLicenseNumber;
+  final String? visitingHoursText;
+  
+  // ✅ Fees structure
+  final double? feesAmount;
+  final String? feesCurrency;
+  
+  // ✅ Degrees
+  final List<Degree>? degrees;
+  
+  // ✅ Weekly schedule
+  final List<DaySchedule>? weeklySchedule;
+  
   final DateTime? createdAt;
 
   UserModel({
@@ -22,6 +41,16 @@ class UserModel {
     this.bloodGroup,
     this.address,
     this.profileImage,
+    this.bio,
+    this.specialty,
+    this.specialties,
+    this.experienceYears,
+    this.medicalLicenseNumber,
+    this.visitingHoursText,
+    this.feesAmount,
+    this.feesCurrency,
+    this.degrees,
+    this.weeklySchedule,
     this.createdAt,
   });
 
@@ -32,11 +61,38 @@ class UserModel {
       email: json['email'] ?? '',
       role: json['role'] ?? '',
       phone: json['phone'],
-      dateOfBirth: json['dateOfBirth'],
+      dateOfBirth: json['dob'],
       gender: json['gender'],
       bloodGroup: json['bloodGroup'],
       address: json['address'],
-      profileImage: json['profileImage'],
+      
+      // ✅ Handle avatar object from backend
+      profileImage: json['avatar']?['url'] ?? json['profileImage'],
+      
+      // ✅ Doctor fields
+      bio: json['bio'],
+      specialty: json['specialty'],
+      specialties: json['specialties'] != null 
+          ? List<String>.from(json['specialties']) 
+          : null,
+      experienceYears: json['experienceYears'],
+      medicalLicenseNumber: json['medicalLicenseNumber'],
+      visitingHoursText: json['visitingHoursText'],
+      
+      // ✅ Fees
+      feesAmount: json['fees']?['amount']?.toDouble(),
+      feesCurrency: json['fees']?['currency'],
+      
+      // ✅ Degrees
+      degrees: json['degrees'] != null
+          ? (json['degrees'] as List).map((d) => Degree.fromJson(d)).toList()
+          : null,
+      
+      // ✅ Weekly schedule
+      weeklySchedule: json['weeklySchedule'] != null
+          ? (json['weeklySchedule'] as List).map((d) => DaySchedule.fromJson(d)).toList()
+          : null,
+      
       createdAt: json['createdAt'] != null 
           ? DateTime.parse(json['createdAt']) 
           : null,
@@ -50,11 +106,23 @@ class UserModel {
       'email': email,
       'role': role,
       'phone': phone,
-      'dateOfBirth': dateOfBirth,
+      'dob': dateOfBirth,
       'gender': gender,
       'bloodGroup': bloodGroup,
       'address': address,
       'profileImage': profileImage,
+      'bio': bio,
+      'specialty': specialty,
+      'specialties': specialties,
+      'experienceYears': experienceYears,
+      'medicalLicenseNumber': medicalLicenseNumber,
+      'visitingHoursText': visitingHoursText,
+      'fees': {
+        'amount': feesAmount,
+        'currency': feesCurrency,
+      },
+      'degrees': degrees?.map((d) => d.toJson()).toList(),
+      'weeklySchedule': weeklySchedule?.map((d) => d.toJson()).toList(),
       'createdAt': createdAt?.toIso8601String(),
     };
   }
@@ -70,6 +138,16 @@ class UserModel {
     String? bloodGroup,
     String? address,
     String? profileImage,
+    String? bio,
+    String? specialty,
+    List<String>? specialties,
+    int? experienceYears,
+    String? medicalLicenseNumber,
+    String? visitingHoursText,
+    double? feesAmount,
+    String? feesCurrency,
+    List<Degree>? degrees,
+    List<DaySchedule>? weeklySchedule,
     DateTime? createdAt,
   }) {
     return UserModel(
@@ -83,7 +161,102 @@ class UserModel {
       bloodGroup: bloodGroup ?? this.bloodGroup,
       address: address ?? this.address,
       profileImage: profileImage ?? this.profileImage,
+      bio: bio ?? this.bio,
+      specialty: specialty ?? this.specialty,
+      specialties: specialties ?? this.specialties,
+      experienceYears: experienceYears ?? this.experienceYears,
+      medicalLicenseNumber: medicalLicenseNumber ?? this.medicalLicenseNumber,
+      visitingHoursText: visitingHoursText ?? this.visitingHoursText,
+      feesAmount: feesAmount ?? this.feesAmount,
+      feesCurrency: feesCurrency ?? this.feesCurrency,
+      degrees: degrees ?? this.degrees,
+      weeklySchedule: weeklySchedule ?? this.weeklySchedule,
       createdAt: createdAt ?? this.createdAt,
     );
+  }
+}
+
+// ✅ Degree model
+class Degree {
+  final String title;
+  final String? institute;
+  final int? year;
+
+  Degree({
+    required this.title,
+    this.institute,
+    this.year,
+  });
+
+  factory Degree.fromJson(Map<String, dynamic> json) {
+    return Degree(
+      title: json['title'] ?? '',
+      institute: json['institute'],
+      year: json['year'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'institute': institute,
+      'year': year,
+    };
+  }
+}
+
+// ✅ Day schedule model
+class DaySchedule {
+  final String day;
+  final bool isActive;
+  final List<TimeSlot>? slots;
+
+  DaySchedule({
+    required this.day,
+    required this.isActive,
+    this.slots,
+  });
+
+  factory DaySchedule.fromJson(Map<String, dynamic> json) {
+    return DaySchedule(
+      day: json['day'] ?? '',
+      isActive: json['isActive'] ?? false,
+      slots: json['slots'] != null
+          ? (json['slots'] as List).map((s) => TimeSlot.fromJson(s)).toList()
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'day': day,
+      'isActive': isActive,
+      'slots': slots?.map((s) => s.toJson()).toList(),
+    };
+  }
+}
+
+// ✅ Time slot model
+class TimeSlot {
+  final String start;
+  final String end;
+
+  TimeSlot({
+    required this.start,
+    required this.end,
+  });
+
+  factory TimeSlot.fromJson(Map<String, dynamic> json) {
+    return TimeSlot(
+      start: json['start'] ?? '',
+      end: json['end'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'start': start,
+      'end': end,
+    };
   }
 }

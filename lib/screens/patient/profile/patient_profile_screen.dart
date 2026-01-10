@@ -1,10 +1,7 @@
 import 'package:docmobi/screens/patient/appointments/patient_appointments_screen.dart';
-import 'package:docmobi/screens/patient/profile/add_dependents_screen.dart';
 import 'package:docmobi/screens/patient/profile/dependents_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/screens/patient/profile/personal_info_screen.dart';
-import 'package:docmobi/screens/patient/profile/my_wishlist_screen.dart';
-import 'package:docmobi/screens/patient/profile/help_support_screen.dart';
 import 'package:docmobi/screens/patient/profile/change_password_screen.dart';
 import 'package:docmobi/screens/patient/navigation/patient_main_navigation.dart';
 
@@ -67,7 +64,8 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
           // Get user data
           final user = userProvider.user;
           final userName = user?.fullName ?? 'The king';
-          final userLocation = 'Keim - Germany'; // Static for now
+          // final userLocation = 'Keim - Germany'; // Static for now
+          final userLocation = user?.address ?? 'Location not set';
           
           return SingleChildScrollView(
             child: Column(
@@ -150,16 +148,16 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   },
                 ),
 
-                _buildMenuItem(
-                  icon: Icons.group_add_outlined,
-                  title: 'Add Dependents',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const AddDependentScreen()),
-                    );
-                  },
-                ),
+                // _buildMenuItem(
+                //   icon: Icons.group_add_outlined,
+                //   title: 'Add Dependents',
+                //   onTap: () {
+                //     Navigator.push(
+                //       context,
+                //       MaterialPageRoute(builder: (context) => const AddDependentScreen()),
+                //     );
+                //   },
+                // ),
 
                   _buildMenuItem(
                   icon: Icons.group_add_outlined,

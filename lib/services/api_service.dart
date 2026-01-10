@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/api_config.dart';
+import '../utils/api_config.dart'; // ✅ Import ApiConfig
 
 class ApiService {
   static String? _token;
-  static const String _baseUrl = 'http://localhost:5000';
+  static String get _baseUrl => ApiConfig.baseUrl; // ✅ Use ApiConfig
 
   /// Initialize - Token load kora
   static Future<void> init() async {
@@ -16,6 +16,7 @@ class ApiService {
       print('✅ ApiService initialized. Token: ${_token != null ? "Found" : "Not found"}');
       
       if (_token != null) {
+        print('🔍 Token preview: ${_token!.substring(0, min(_token!.length, 20))}...');
         print('🔍 Token status: ${isLoggedIn ? "Logged In" : "Not Logged In"}');
       }
     } catch (e) {
@@ -29,7 +30,7 @@ class ApiService {
       _token = token;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', token);
-      print('✅ Token saved: ${token.substring(0, 20)}...');
+      print('✅ Token saved: ${token.substring(0, min(token.length, 20))}...');
     } catch (e) {
       print('❌ Error saving token: $e');
     }
@@ -62,9 +63,9 @@ class ApiService {
 
     if (requiresAuth && _token != null && _token!.isNotEmpty) {
       headers['Authorization'] = 'Bearer $_token';
-      print('🔐 Token added to headers: Bearer ${_token!.substring(0, 20)}...');
+      print('🔐 Token added to headers: Bearer ${_token!.substring(0, min(_token!.length, 20))}...');
     } else if (requiresAuth && (_token == null || _token!.isEmpty)) {
-      print('⚠️ Auth required but no token available');
+      print('⚠️ WARNING: Auth required but no token available!');
     }
 
     return headers;
@@ -76,9 +77,20 @@ class ApiService {
     bool requiresAuth = true,
   }) async {
     try {
-      final url = '${ApiConfig.baseUrl}$endpoint';
+      // Token check BEFORE request
+      if (requiresAuth && !isLoggedIn) {
+        print('❌ No token found - cannot make authenticated request');
+        return {
+          'success': false,
+          'message': 'Token not found. Please login again.',
+          'requiresLogin': true,
+        };
+      }
+
+      final url = '$_baseUrl$endpoint';
       print('📤 GET: $url');
       print('🔐 Auth Required: $requiresAuth');
+      print('🔐 Token Status: ${isLoggedIn ? "Available" : "Missing"}');
 
       final headers = _getHeaders(requiresAuth: requiresAuth);
       print('📋 Headers: ${headers.keys.toList()}');
@@ -105,10 +117,21 @@ class ApiService {
     bool requiresAuth = true,
   }) async {
     try {
-      final url = '${ApiConfig.baseUrl}$endpoint';
+      // Token check BEFORE request
+      if (requiresAuth && !isLoggedIn) {
+        print('❌ No token found - cannot make authenticated request');
+        return {
+          'success': false,
+          'message': 'Token not found. Please login again.',
+          'requiresLogin': true,
+        };
+      }
+
+      final url = '$_baseUrl$endpoint';
       print('📤 POST: $url');
       print('📦 Body: $body');
       print('🔐 Auth Required: $requiresAuth');
+      print('🔐 Token Status: ${isLoggedIn ? "Available" : "Missing"}');
 
       final headers = _getHeaders(requiresAuth: requiresAuth);
 
@@ -135,10 +158,17 @@ class ApiService {
     bool requiresAuth = true,
   }) async {
     try {
-      final url = '${ApiConfig.baseUrl}$endpoint';
+      if (requiresAuth && !isLoggedIn) {
+        return {
+          'success': false,
+          'message': 'Token not found. Please login again.',
+          'requiresLogin': true,
+        };
+      }
+
+      final url = '$_baseUrl$endpoint';
       print('📤 PUT: $url');
       print('📦 Body: $body');
-      print('🔐 Auth Required: $requiresAuth');
 
       final headers = _getHeaders(requiresAuth: requiresAuth);
 
@@ -165,10 +195,17 @@ class ApiService {
     bool requiresAuth = true,
   }) async {
     try {
-      final url = '${ApiConfig.baseUrl}$endpoint';
+      if (requiresAuth && !isLoggedIn) {
+        return {
+          'success': false,
+          'message': 'Token not found. Please login again.',
+          'requiresLogin': true,
+        };
+      }
+
+      final url = '$_baseUrl$endpoint';
       print('📤 PATCH: $url');
       print('📦 Body: $body');
-      print('🔐 Auth Required: $requiresAuth');
 
       final headers = _getHeaders(requiresAuth: requiresAuth);
 
@@ -194,9 +231,16 @@ class ApiService {
     bool requiresAuth = true,
   }) async {
     try {
-      final url = '${ApiConfig.baseUrl}$endpoint';
+      if (requiresAuth && !isLoggedIn) {
+        return {
+          'success': false,
+          'message': 'Token not found. Please login again.',
+          'requiresLogin': true,
+        };
+      }
+
+      final url = '$_baseUrl$endpoint';
       print('📤 DELETE: $url');
-      print('🔐 Auth Required: $requiresAuth');
 
       final headers = _getHeaders(requiresAuth: requiresAuth);
 
@@ -216,24 +260,128 @@ class ApiService {
   }
 
   // ========================================
-  // 📱 CHAT & MESSAGING APIs - FIXED VERSION
+  // 🔐 AUTH APIs
   // ========================================
 
-  /// ✅ Get Chat Messages - Based on your backend structure
+  /// Login
+  static Future<Map<String, dynamic>> login({
+    required String email,
+    required String password,
+  }) async {
+    final result = await post(
+      '/api/v1/auth/login',
+      {
+        'email': email,
+        'password': password,
+      },
+      requiresAuth: false,
+    );
+
+    // Auto-save token on successful login
+    if (result['success'] == true) {
+      final token = result['data']?['accessToken'] ?? 
+                    result['data']?['token'] ?? 
+                    result['token'] ?? 
+                    result['accessToken'];
+      
+      final userRole = result['data']?['user']?['role'] ?? 
+                      result['data']?['role'] ?? 
+                      result['user']?['role'] ??
+                      result['role'];
+      
+      if (token != null) {
+        await saveToken(token);
+        print('✅ Login successful - Token saved');
+        
+        if (userRole != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_role', userRole.toString().toLowerCase());
+          print('✅ User role saved: $userRole');
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /// Register
+  static Future<Map<String, dynamic>> register({
+    required String fullName,
+    required String email,
+    required String password,
+    required String role,
+    String? medicalLicenseNumber,
+    String? specialty,
+    String? experienceYears,
+  }) async {
+    final Map<String, dynamic> body = {
+      'fullName': fullName,
+      'email': email,
+      'password': password,
+      'confirmPassword': password, // Backend might require this
+      'role': role.toLowerCase(),
+    };
+
+    // Add doctor-specific fields
+    if (role.toLowerCase() == 'doctor') {
+      if (medicalLicenseNumber != null) {
+        body['medicalLicenseNumber'] = medicalLicenseNumber;
+      }
+      if (specialty != null) {
+        body['specialty'] = specialty;
+      }
+      if (experienceYears != null) {
+        body['experienceYears'] = experienceYears;
+      }
+    }
+
+    final result = await post(
+      '/api/v1/auth/register',
+      body,
+      requiresAuth: false,
+    );
+
+    return result;
+  }
+
+  /// Logout
+  static Future<Map<String, dynamic>> logout() async {
+    try {
+      await post(
+        '/api/v1/auth/logout',
+        {},
+        requiresAuth: true,
+      );
+    } catch (e) {
+      print('⚠️ Logout request failed: $e');
+    }
+
+    await clearToken();
+    
+    return {
+      'success': true,
+      'message': 'Logged out successfully',
+    };
+  }
+
+  // ========================================
+  // 📱 CHAT & MESSAGING APIs
+  // ========================================
+
+  /// Get Chat Messages
   static Future<Map<String, dynamic>> getChatMessages({
     required String chatId,
     required int page,
     required int limit,
   }) async {
     print('🔍 Getting messages for chatId: $chatId');
-    // Try both possible endpoints
     return await get(
       '/api/v1/chat/$chatId/messages?page=$page&limit=$limit',
       requiresAuth: true,
     );
   }
 
-  /// ✅ Get My Chats
+  /// Get My Chats
   static Future<Map<String, dynamic>> getMyChats() async {
     print('🔍 Getting my chats');
     return await get(
@@ -242,7 +390,7 @@ class ApiService {
     );
   }
 
-  /// ✅ Create or Get Chat
+  /// Create or Get Chat
   static Future<Map<String, dynamic>> createOrGetChat({
     required String userId,
   }) async {
@@ -254,84 +402,96 @@ class ApiService {
     );
   }
 
-  /// ✅ FIXED: Send Message - Using correct endpoint based on your backend
-/// ✅ CORRECT: Send Message - Matches your backend exactly
-static Future<Map<String, dynamic>> sendMessage({
-  required String chatId,
-  String? content,
-  List<File>? files,
-  String? contentType,
-}) async {
-  try {
-    // ✅ YOUR BACKEND ROUTE: /api/v1/chat/{chatId}/messages
-    final url = '${ApiConfig.baseUrl}/api/v1/chat/$chatId/messages';
-    print('📤 POST (Multipart): $url');
-    print('📦 Chat ID: $chatId');
-    print('📦 Content: $content');
-    print('📦 Files: ${files?.length ?? 0}');
-
-    var request = http.MultipartRequest('POST', Uri.parse(url));
-    
-    // Add auth header
-    if (_token != null && _token!.isNotEmpty) {
-      request.headers['Authorization'] = 'Bearer $_token';
-    }
-
-    // ✅ IMPORTANT: Backend expects "content" field (required in Message model)
-    // If no text, send empty string or space
-    if (content != null && content.isNotEmpty) {
-      request.fields['content'] = content;
-    } else {
-      // Backend Message model requires content, so send placeholder if only files
-      request.fields['content'] = files != null && files.isNotEmpty ? ' ' : '';
-    }
-    
-    // Determine content type
-    if (contentType != null) {
-      request.fields['contentType'] = contentType;
-    } else if (files != null && files.isNotEmpty) {
-      request.fields['contentType'] = 'file';
-    } else {
-      request.fields['contentType'] = 'text';
-    }
-
-    // ✅ Add files with correct field name "files" (from your backend)
-    if (files != null && files.isNotEmpty) {
-      for (var file in files) {
-        request.files.add(
-          await http.MultipartFile.fromPath('files', file.path),
-        );
+  /// Send Message
+  static Future<Map<String, dynamic>> sendMessage({
+    required String chatId,
+    String? content,
+    List<File>? files,
+    String? contentType,
+  }) async {
+    try {
+      if (!isLoggedIn) {
+        return {
+          'success': false,
+          'message': 'Token not found. Please login again.',
+          'requiresLogin': true,
+        };
       }
+
+      final url = '$_baseUrl/api/v1/chat/$chatId/messages';
+      print('📤 POST (Multipart): $url');
+      print('📦 Chat ID: $chatId');
+      print('📦 Content: $content');
+      print('📦 Files: ${files?.length ?? 0}');
+
+      var request = http.MultipartRequest('POST', Uri.parse(url));
+      
+      // Add auth header
+      if (_token != null && _token!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $_token';
+      }
+
+      // Add content
+      if (content != null && content.isNotEmpty) {
+        request.fields['content'] = content;
+      } else {
+        request.fields['content'] = files != null && files.isNotEmpty ? ' ' : '';
+      }
+      
+      // Determine content type
+      if (contentType != null) {
+        request.fields['contentType'] = contentType;
+      } else if (files != null && files.isNotEmpty) {
+        request.fields['contentType'] = 'file';
+      } else {
+        request.fields['contentType'] = 'text';
+      }
+
+      // Add files
+      if (files != null && files.isNotEmpty) {
+        for (var file in files) {
+          request.files.add(
+            await http.MultipartFile.fromPath('files', file.path),
+          );
+        }
+      }
+
+      print('📋 Request Fields: ${request.fields}');
+      print('📋 Request Files: ${request.files.length}');
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      return _handleResponse(response);
+    } catch (e) {
+      print('❌ Send Message Error: $e');
+      return {
+        'success': false,
+        'message': _getErrorMessage(e),
+      };
     }
-
-    print('📋 Request Fields: ${request.fields}');
-    print('📋 Request Files: ${request.files.length}');
-
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-
-    return _handleResponse(response);
-  } catch (e) {
-    print('❌ Send Message Error: $e');
-    return {
-      'success': false,
-      'message': _getErrorMessage(e),
-    };
   }
-}
 
   // ========================================
-  // 📝 POST APIs (for social features)
+  // 📝 POST APIs
   // ========================================
 
-  /// Create Post (with multipart/form-data for file upload)
+  /// Create Post
   static Future<Map<String, dynamic>> createPost({
     required String content,
     List<File>? mediaFiles,
     String visibility = 'public',
   }) async {
     try {
-      final url = '${ApiConfig.baseUrl}/api/v1/posts';
+      if (!isLoggedIn) {
+        return {
+          'success': false,
+          'message': 'Token not found. Please login again.',
+          'requiresLogin': true,
+        };
+      }
+
+      final url = '$_baseUrl/api/v1/posts';
       print('📤 POST (Multipart): $url');
       print('📦 Content: $content');
       print('📦 Visibility: $visibility');
@@ -352,7 +512,7 @@ static Future<Map<String, dynamic>> sendMessage({
       if (mediaFiles != null && mediaFiles.isNotEmpty) {
         for (var file in mediaFiles) {
           request.files.add(
-            await http.MultipartFile.fromPath('mediaFiles', file.path),
+             await http.MultipartFile.fromPath('media', file.path),
           );
         }
       }
@@ -376,7 +536,7 @@ static Future<Map<String, dynamic>> sendMessage({
     int limit = 20,
   }) async {
     return await get(
-      '/api/v1/posts?page=$page&limit=$limit',
+      '${ApiConfig.posts}?page=$page&limit=$limit', // ✅ Use ApiConfig
       requiresAuth: true,
     );
   }
@@ -393,16 +553,7 @@ static Future<Map<String, dynamic>> sendMessage({
     );
   }
 
-  /// Like Post
-  static Future<Map<String, dynamic>> likePost({
-    required String postId,
-  }) async {
-    return await post(
-      '/api/v1/posts/$postId/like',
-      {},
-      requiresAuth: true,
-    );
-  }
+
 
   /// Comment on Post
   static Future<Map<String, dynamic>> commentOnPost({
@@ -415,16 +566,24 @@ static Future<Map<String, dynamic>> sendMessage({
       requiresAuth: true,
     );
   }
-
-  /// Delete Post
-  static Future<Map<String, dynamic>> deletePost({
-    required String postId,
-  }) async {
-    return await delete(
+// ✅ KEEP ONLY THIS:
+static Future<Map<String, dynamic>> deletePost(String postId) async {
+  try {
+    print('🗑️ Deleting post: $postId');
+    
+    final response = await delete(
       '/api/v1/posts/$postId',
       requiresAuth: true,
     );
+    
+    return response;
+  } catch (e) {
+    return {
+      'success': false,
+      'message': 'Failed to delete post: $e',
+    };
   }
+}
 
   // ========================================
   // 👤 USER APIs
@@ -435,8 +594,8 @@ static Future<Map<String, dynamic>> sendMessage({
     String? userId,
   }) async {
     final endpoint = userId != null 
-        ? '/api/v1/users/$userId' 
-        : '/api/v1/user/profile';
+        ? '${ApiConfig.getUserById}/$userId' 
+        : ApiConfig.userProfile;
     return await get(endpoint, requiresAuth: true);
   }
 
@@ -470,7 +629,7 @@ static Future<Map<String, dynamic>> sendMessage({
   /// Get Appointments
   static Future<Map<String, dynamic>> getAppointments() async {
     return await get(
-      '/api/v1/appointment',
+      ApiConfig.appointments, // ✅ Use ApiConfig
       requiresAuth: true,
     );
   }
@@ -575,61 +734,165 @@ static Future<Map<String, dynamic>> sendMessage({
   // 🎬 REELS APIs
   // ========================================
 
-  /// Create Reel (with multipart/form-data for video upload)
-  static Future<Map<String, dynamic>> createReel({
-    File? videoFile,
-    String? caption,
-    String visibility = 'public',
-  }) async {
-    try {
-      final url = '${ApiConfig.baseUrl}/api/v1/reels';
-      print('📤 POST (Multipart): $url');
-      print('📦 Caption: $caption');
-      print('📦 Visibility: $visibility');
-
-      var request = http.MultipartRequest('POST', Uri.parse(url));
-      
-      // Add auth header
-      if (_token != null && _token!.isNotEmpty) {
-        request.headers['Authorization'] = 'Bearer $_token';
-      }
-
-      // Add text fields
-      request.fields['visibility'] = visibility;
-      if (caption != null && caption.isNotEmpty) {
-        request.fields['caption'] = caption;
-      }
-
-      // Add video file
-      if (videoFile != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath('videoFile', videoFile.path),
-        );
-      }
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      return _handleResponse(response);
-    } catch (e) {
-      print('❌ Create Reel Error: $e');
+  /// Create Reel - FIXED
+static Future<Map<String, dynamic>> createReel({
+  File? videoFile,
+  String? caption,
+  String visibility = 'public',
+}) async {
+  try {
+    if (!isLoggedIn) {
       return {
         'success': false,
-        'message': _getErrorMessage(e),
+        'message': 'Token not found. Please login again.',
+        'requiresLogin': true,
       };
     }
-  }
 
-  /// Get All Reels
-  static Future<Map<String, dynamic>> getAllReels({
-    int page = 1,
-    int limit = 20,
-  }) async {
-    return await get(
-      '/api/v1/reels?page=$page&limit=$limit',
+    final url = '$_baseUrl/api/v1/reels';
+    print('📤 POST (Multipart): $url');
+    print('📦 Caption: $caption');
+    print('📦 Visibility: $visibility');
+    print('📦 Video file: ${videoFile?.path}');
+
+    var request = http.MultipartRequest('POST', Uri.parse(url));
+    
+    // Add auth header
+    if (_token != null && _token!.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $_token';
+      print('🔐 Token added to request');
+    }
+
+    // Add text fields
+    request.fields['visibility'] = visibility;
+    if (caption != null && caption.isNotEmpty) {
+      request.fields['caption'] = caption;
+    }
+    
+    print('📋 Fields: ${request.fields}');
+
+    // ✅ FIXED: Use 'video' as field name (NOT 'videoFile')
+    if (videoFile != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'video',  // ✅ Backend expects 'video'
+          videoFile.path,
+        ),
+      );
+      print('📹 Video file added: ${videoFile.path}');
+    }
+
+    print('📤 Sending request...');
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    
+    print('📥 Response status: ${response.statusCode}');
+    print('📥 Response body: ${response.body}');
+
+    return _handleResponse(response);
+  } catch (e) {
+    print('❌ Create Reel Error: $e');
+    return {
+      'success': false,
+      'message': 'Failed to upload reel: $e',
+    };
+  }
+}
+
+/// Get All Reels - FIXED
+static Future<Map<String, dynamic>> getAllReels({
+  int page = 1,
+  int limit = 20,
+}) async {
+  try {
+    print('📤 Fetching all reels (page: $page, limit: $limit)');
+    
+    final response = await get(
+      '/api/v1/reels/all-reels?page=$page&limit=$limit',
       requiresAuth: true,
     );
+    
+    print('📥 Reels response: $response');
+    return response;
+  } catch (e) {
+    print('❌ Error fetching reels: $e');
+    return {
+      'success': false,
+      'message': 'Failed to fetch reels: $e',
+    };
   }
+}
+
+
+/// Like/Unlike a reel
+static Future<Map<String, dynamic>> likeReel(String reelId) async {
+  try {
+    print('❤️ Toggling like for reel: $reelId');
+    
+    final result = await post(
+      '/api/v1/reels/$reelId/like',
+      {},
+      requiresAuth: true,
+    );
+    
+    print('✅ Like reel response: $result');
+    return result;
+  } catch (e) {
+    print('❌ Error liking reel: $e');
+    return {'success': false, 'message': 'Failed to like reel'};
+  }
+}
+
+
+
+
+/// Add comment to a reel
+static Future<Map<String, dynamic>> addReelComment({
+  required String reelId,
+  required String content,
+}) async {
+  try {
+    print('💬 Adding comment to reel: $reelId');
+    
+    final result = await post(
+      '/api/v1/reels/$reelId/comments',
+      {'content': content},
+      requiresAuth: true,
+    );
+    
+    print('✅ Comment added successfully');
+    return result;
+  } catch (e) {
+    print('❌ Error adding reel comment: $e');
+    return {'success': false, 'message': 'Failed to add comment'};
+  }
+}
+
+/// Get comments for a reel
+static Future<Map<String, dynamic>> getReelComments({
+  required String reelId,
+  int page = 1,
+  int limit = 50,
+}) async {
+  try {
+    print('📥 Fetching reel comments (reelId: $reelId, page: $page, limit: $limit)');
+    
+    final result = await get(
+      '/api/v1/reels/$reelId/comments?page=$page&limit=$limit',
+      requiresAuth: true,
+    );
+    
+    print('✅ Reel comments response: ${result['data']?['items']?.length ?? 0} comments');
+    return result;
+  } catch (e) {
+    print('❌ Error fetching reel comments: $e');
+    return {
+      'success': false,
+      'message': 'Failed to fetch comments',
+      'data': {'items': [], 'pagination': {}}
+    };
+  }
+}
 
   // ========================================
   // 📤 FILE UPLOAD APIs
@@ -641,7 +904,15 @@ static Future<Map<String, dynamic>> sendMessage({
     required String fieldName,
   }) async {
     try {
-      final url = '${ApiConfig.baseUrl}/api/v1/upload';
+      if (!isLoggedIn) {
+        return {
+          'success': false,
+          'message': 'Token not found. Please login again.',
+          'requiresLogin': true,
+        };
+      }
+
+      final url = '$_baseUrl/api/v1/upload';
       print('📤 Uploading file: $filePath');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
@@ -670,7 +941,15 @@ static Future<Map<String, dynamic>> sendMessage({
     required String fieldName,
   }) async {
     try {
-      final url = '${ApiConfig.baseUrl}/api/v1/upload/multiple';
+      if (!isLoggedIn) {
+        return {
+          'success': false,
+          'message': 'Token not found. Please login again.',
+          'requiresLogin': true,
+        };
+      }
+
+      final url = '$_baseUrl/api/v1/upload/multiple';
       print('📤 Uploading ${filePaths.length} files');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
@@ -695,6 +974,105 @@ static Future<Map<String, dynamic>> sendMessage({
     }
   }
 
+
+
+
+// ========================================
+// 📝 UPDATED POST APIs
+// ========================================
+/// Like/Unlike Post - SINGLE METHOD
+static Future<Map<String, dynamic>> likePost(String postId) async {
+  try {
+    print('❤️ Toggling like for post: $postId');
+    
+    final response = await post(
+      '/api/v1/posts/$postId/like',
+      {},
+      requiresAuth: true,
+    );
+    
+    print('📥 Like response: $response');
+    return response;
+  } catch (e) {
+    print('❌ Error liking post: $e');
+    return {
+      'success': false,
+      'message': 'Failed to like post: $e',
+    };
+  }
+}
+
+/// Get Post Likes
+static Future<Map<String, dynamic>> getPostLikes({
+  required String postId,
+  int page = 1,
+  int limit = 20,
+}) async {
+  return await get(
+    '/api/v1/posts/$postId/likes?page=$page&limit=$limit',
+    requiresAuth: true,
+  );
+}
+
+/// Add Post Comment - NEW
+static Future<Map<String, dynamic>> addPostComment({
+  required String postId,
+  required String content,
+}) async {
+  return await post(
+    '/api/v1/posts/$postId/comments',
+    {'content': content},
+    requiresAuth: true,
+  );
+}
+
+/// Get Post Comments - NEW
+static Future<Map<String, dynamic>> getPostComments({
+  required String postId,
+  int page = 1,
+  int limit = 20,
+}) async {
+  return await get(
+    '/api/v1/posts/$postId/comments?page=$page&limit=$limit',
+    requiresAuth: true,
+  );
+}
+
+/// Delete Comment
+static Future<Map<String, dynamic>> deletePostComment({
+  required String postId,
+  required String commentId,
+}) async {
+  return await delete(
+    '/api/v1/posts/$postId/comments/$commentId',
+    requiresAuth: true,
+  );
+}
+
+/// Share Post (Future implementation)
+static Future<Map<String, dynamic>> sharePost({
+  required String postId,
+}) async {
+  return await post(
+    '/api/v1/posts/$postId/share',
+    {},
+    requiresAuth: true,
+  );
+}
+
+
+
+
+
+
+
+
+
+
+  // ========================================
+  // 🔧 HELPER METHODS
+  // ========================================
+
   /// Response handler
   static Map<String, dynamic> _handleResponse(http.Response response) {
     print('📥 Status: ${response.statusCode}');
@@ -703,7 +1081,7 @@ static Future<Map<String, dynamic>> sendMessage({
     final bodyPreview = response.body.length > 500 
         ? response.body.substring(0, 500) 
         : response.body;
-    print('📥 Response Body: $bodyPreview...');
+    print('📥 Response Body: $bodyPreview${response.body.length > 500 ? "..." : ""}');
 
     try {
       final data = json.decode(response.body) as Map<String, dynamic>;
@@ -796,4 +1174,7 @@ static Future<Map<String, dynamic>> sendMessage({
       return 'An error occurred: ${error.toString()}';
     }
   }
+
+  /// Helper for min function
+  static int min(int a, int b) => a < b ? a : b;
 }

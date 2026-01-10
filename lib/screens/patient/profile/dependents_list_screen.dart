@@ -4,7 +4,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import 'package:docmobi/providers/dependent_provider.dart';
 import 'package:docmobi/models/dependent_model.dart';
 
@@ -468,132 +467,133 @@ class _DependentsListScreenState extends State<DependentsListScreen> {
   }
 
   Future<void> _deleteDependent(
-    DependentModel dependent,
-    DependentProvider provider,
-  ) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+  DependentModel dependent,
+  DependentProvider provider,
+) async {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(
+      child: CircularProgressIndicator(),
+    ),
+  );
 
-    final success = await provider.deleteDependent(dependent.id);
+  final success = await provider.deleteDependent(dependent.id);
 
-    if (mounted) {
-      Navigator.pop(context);
+  if (mounted) {
+    Navigator.pop(context); // Close loading
 
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${dependent.fullName} deleted successfully'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${dependent.fullName} deleted successfully'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      final errorMessage = provider.error ?? 'Failed to delete dependent';
+      
+      // ✅ UPDATED: Better error dialog with "Go to Appointments" button
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-        );
-      } else {
-        final errorMessage = provider.error ?? 'Failed to delete dependent';
-        
-        showDialog(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.error_outline,
-                    color: Colors.red.shade700,
-                    size: 24,
-                  ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Cannot Delete',
-                    style: TextStyle(fontSize: 18),
-                  ),
+                child: Icon(
+                  Icons.error_outline,
+                  color: Colors.red.shade700,
+                  size: 24,
                 ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  errorMessage,
-                  style: const TextStyle(fontSize: 15),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.lightbulb_outline,
-                            size: 18,
-                            color: Colors.blue.shade700,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'How to fix:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        '1. Go to My Appointments\n'
-                        '2. Cancel any pending/accepted appointments for this dependent\n'
-                        '3. Then try deleting again',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Close'),
               ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(dialogContext);
-                  Navigator.pushNamed(context, '/my-appointments');
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0D53C1),
-                ),
-                child: const Text(
-                  'Go to Appointments',
-                  style: TextStyle(color: Colors.white),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Cannot Delete',
+                  style: TextStyle(fontSize: 18),
                 ),
               ),
             ],
           ),
-        );
-      }
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                errorMessage,
+                style: const TextStyle(fontSize: 15),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.lightbulb_outline,
+                          size: 18,
+                          color: Colors.blue.shade700,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'How to fix:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '1. Go to My Appointments\n'
+                      '2. Cancel any pending/accepted appointments for this dependent\n'
+                      '3. Then try deleting again',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Close'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext); // Close dialog
+                Navigator.pushNamed(context, '/my-appointments'); // ✅ Navigate to appointments
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D53C1),
+              ),
+              child: const Text(
+                'Go to Appointments',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
     }
   }
+}
 }
