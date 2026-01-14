@@ -1,5 +1,6 @@
 import 'package:docmobi/screens/patient/home/dialog/location_permission_dialog.dart';
 import 'package:docmobi/screens/patient/home/upcoming_appointment_card.dart';
+import 'package:docmobi/screens/patient/profile/patient_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:docmobi/models/doctor_model.dart';

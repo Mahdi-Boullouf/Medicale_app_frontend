@@ -71,7 +71,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                 children: [
                   const SizedBox(height: 10),
                   
-                  // ✅ Profile Picture Section
+                  // Profile Picture Section
                   Center(
                     child: Column(
                       children: [
@@ -118,7 +118,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                           ),
                         ),
                         
-                        // ✅ Show Specialty
+                        // Show Specialty
                         if (user?.specialty != null && user!.specialty!.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
@@ -131,7 +131,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                           ),
                         ],
                         
-                        // ✅ Show Bio
+                        // Show Bio
                         if (user?.bio != null && user!.bio!.isNotEmpty) ...[
                           const SizedBox(height: 15),
                           Container(
@@ -156,8 +156,8 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
-
-                  // ✅ Profile Menu Items
+                  
+                  // Profile Menu Items
                   _buildProfileItem(
                     icon: Icons.person_outline,
                     title: 'Personal Info',
@@ -173,7 +173,6 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                       }
                     },
                   ),
-
                   _buildProfileItem(
                     icon: Icons.calendar_today_outlined,
                     title: 'Appointment Setting',
@@ -186,7 +185,6 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                       );
                     },
                   ),
-
                   _buildProfileItem(
                     icon: Icons.phone_outlined,
                     title: 'Voice and Video call',
@@ -213,7 +211,6 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                       },
                     ),
                   ),
-
                   _buildProfileItem(
                     icon: Icons.attach_money_outlined,
                     title: 'My Earning',
@@ -226,7 +223,6 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                       );
                     },
                   ),
-
                   _buildProfileItem(
                     icon: Icons.lock_outline,
                     title: 'Change Password',
@@ -239,10 +235,9 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                       );
                     },
                   ),
-
                   const SizedBox(height: 25),
-
-                  // ✅ Logout Button
+                  
+                  // Logout Button
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 25),
                     child: SizedBox(
@@ -335,7 +330,6 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-
               showDialog(
                 context: context,
                 barrierDismissible: false,
@@ -343,10 +337,8 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                   child: CircularProgressIndicator(),
                 ),
               );
-
               await AuthService().logout();
               context.read<UserProvider>().clearUser();
-
               if (mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(

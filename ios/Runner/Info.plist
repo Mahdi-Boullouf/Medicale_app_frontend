@@ -50,33 +50,41 @@
 	
 	<!-- Photo Library Access (Gallery theke video select korar jonno) -->
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>We need access to your photo library to select and upload medical reels</string>
+	<string>We need access to your photo library to select and upload medical reels and share images in chat</string>
 	
 	<!-- Photo Library Add Only (iOS 14+) -->
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>We need access to save videos to your photo library</string>
+	<string>We need access to save videos and images to your photo library</string>
 	
-	<!-- Camera Access (Video record korar jonno) -->
+	<!-- ==================== VIDEO/AUDIO CALL PERMISSIONS ==================== -->
+	
+	<!-- Camera Access (Video call and reel recording er jonno) -->
 	<key>NSCameraUsageDescription</key>
-	<string>We need access to your camera to record and upload medical reels</string>
+	<string>We need camera access for video calls with doctors and to record medical reels</string>
 	
-	<!-- Microphone Access (Video er audio record korar jonno) -->
+	<!-- Microphone Access (Audio/Video call er audio and reel audio er jonno) -->
 	<key>NSMicrophoneUsageDescription</key>
-	<string>We need access to your microphone to record audio for videos</string>
+	<string>We need microphone access for audio and video calls with doctors, and to record audio for medical reels</string>
 	
 	<!-- Motion Usage (Optional - video recording er shomoy) -->
 	<key>NSMotionUsageDescription</key>
 	<string>We use motion data to enhance video recording quality</string>
 	
-	<!-- Local Network (Development er jonno - localhost API) -->
+	<!-- Local Network (Development er jonno - localhost API and WebRTC) -->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>We need access to local network for API communication during development</string>
+	<string>We need access to local network for API communication and real-time video/audio calls</string>
 	
-	<!-- App Transport Security Settings (HTTP API calls er jonno) -->
+	<!-- ==================== NETWORK SECURITY SETTINGS ==================== -->
+	
+	<!-- App Transport Security Settings (HTTP API calls and WebRTC er jonno) -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- Allow all HTTP connections (Development only) -->
 		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		
+		<!-- Allow local networking for WebRTC STUN/TURN servers -->
+		<key>NSAllowsLocalNetworking</key>
 		<true/>
 		
 		<!-- Production e use korben (specific domain er jonno) -->
@@ -91,21 +99,42 @@
 				<true/>
 				<key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
 				<true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+			<key>stun.l.google.com</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
 			</dict>
 		</dict>
 		-->
 	</dict>
 	
-	<!-- Background Modes (Optional - video upload continue korar jonno) -->
+	<!-- ==================== BACKGROUND MODES ==================== -->
+	
+	<!-- Background Modes (Video upload, call notifications, audio playback) -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
 		<string>remote-notification</string>
+		<string>audio</string>
+		<string>voip</string>
 	</array>
 	
-	<!-- Notification Permissions (Required for local notifications) -->
-	<key>NSUserNotificationsUsageDescription</key>
-	<string>We need to send you notifications about appointments and messages</string>
+	<!-- ==================== ADDITIONAL SETTINGS FOR CALLS ==================== -->
+	
+	<!-- Status bar settings -->
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	
+	<!-- Allow arbitrary web content loads (for WebRTC media streams) -->
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
 	
 </dict>
 </plist>

@@ -15,7 +15,9 @@ class AppointmentModel {
   final String? notes;
   final String? reason;
   final DateTime? createdAt;
-  final BookedForInfo? bookedFor; // ✅ NEW
+  final BookedForInfo? bookedFor;
+  final List<String>? medicalDocuments; // ✅ FIXED: Added proper field
+  final String? paymentScreenshot; // ✅ FIXED: Added proper field
 
   AppointmentModel({
     required this.id,
@@ -34,7 +36,9 @@ class AppointmentModel {
     this.notes,
     this.reason,
     this.createdAt,
-    this.bookedFor, // ✅ NEW
+    this.bookedFor,
+    this.medicalDocuments, // ✅ FIXED
+    this.paymentScreenshot, // ✅ FIXED
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
@@ -103,6 +107,73 @@ class AppointmentModel {
       print('⚠️ CreatedAt parse error: $e');
     }
 
+    // ✅ FIXED: Parse medicalDocuments
+    List<String>? medicalDocuments;
+    if (json['medicalDocuments'] != null) {
+      print('🔍 Raw medicalDocuments: ${json['medicalDocuments']}'); // Debug
+      
+      if (json['medicalDocuments'] is List) {
+        medicalDocuments = (json['medicalDocuments'] as List)
+            .map((doc) {
+              String docStr = doc.toString();
+              print('📄 Processing doc: $docStr'); // Debug
+              
+              // ✅ Extract Cloudinary URL if present
+              if (docStr.contains('https://res.cloudinary.com')) {
+                final match = RegExp(r'https://res\.cloudinary\.com[^\s,}]+')
+                    .firstMatch(docStr);
+                if (match != null) {
+                  String url = match.group(0)!;
+                  print('☁️ Extracted Cloudinary URL: $url'); // Debug
+                  return url;
+                }
+              }
+              
+              // ✅ Extract public_id if present
+              if (docStr.contains('public_id')) {
+                final match = RegExp(r'"public_id"\s*:\s*"([^"]+)"')
+                    .firstMatch(docStr);
+                if (match != null) {
+                  String publicId = match.group(1)!;
+                  print('📁 Extracted public_id: $publicId'); // Debug
+                  return publicId;
+                }
+              }
+              
+              return docStr;
+            })
+            .where((url) => url.isNotEmpty) // Remove empty strings
+            .toList();
+        
+        print('✅ Final medicalDocuments: $medicalDocuments'); // Debug
+      }
+    } else {
+      print('⚠️ No medicalDocuments in JSON'); // Debug
+    }
+
+    // ✅ FIXED: Parse paymentScreenshot
+    String? paymentScreenshot;
+    if (json['paymentScreenshot'] != null) {
+      String psStr = json['paymentScreenshot'].toString();
+      print('💳 Raw paymentScreenshot: $psStr'); // Debug
+      
+      // ✅ Extract Cloudinary URL if present
+      if (psStr.contains('https://res.cloudinary.com')) {
+        final match = RegExp(r'https://res\.cloudinary\.com[^\s,}]+')
+            .firstMatch(psStr);
+        if (match != null) {
+          paymentScreenshot = match.group(0)!;
+          print('☁️ Extracted payment URL: $paymentScreenshot'); // Debug
+        }
+      } else {
+        paymentScreenshot = psStr;
+      }
+      
+      print('✅ Final paymentScreenshot: $paymentScreenshot'); // Debug
+    } else {
+      print('⚠️ No paymentScreenshot in JSON'); // Debug
+    }
+
     return AppointmentModel(
       id: json['_id'] ?? json['id'] ?? '',
       doctorId: doctorId,
@@ -120,9 +191,11 @@ class AppointmentModel {
       notes: json['notes'],
       reason: json['reason'],
       createdAt: createdAt,
-      bookedFor: json['bookedFor'] != null // ✅ NEW - Parse bookedFor
+      bookedFor: json['bookedFor'] != null
           ? BookedForInfo.fromJson(json['bookedFor'])
           : null,
+      medicalDocuments: medicalDocuments, // ✅ FIXED
+      paymentScreenshot: paymentScreenshot, // ✅ FIXED
     );
   }
 
@@ -135,7 +208,11 @@ class AppointmentModel {
       if (symptoms != null && symptoms!.isNotEmpty) 'symptoms': symptoms,
       if (notes != null && notes!.isNotEmpty) 'notes': notes,
       if (reason != null && reason!.isNotEmpty) 'reason': reason,
-      if (bookedFor != null) 'bookedFor': bookedFor!.toJson(), // ✅ NEW
+      if (bookedFor != null) 'bookedFor': bookedFor!.toJson(),
+      if (medicalDocuments != null && medicalDocuments!.isNotEmpty) 
+        'medicalDocuments': medicalDocuments,
+      if (paymentScreenshot != null && paymentScreenshot!.isNotEmpty) 
+        'paymentScreenshot': paymentScreenshot,
     };
   }
 
@@ -183,7 +260,9 @@ class AppointmentModel {
     String? notes,
     String? reason,
     DateTime? createdAt,
-    BookedForInfo? bookedFor, // ✅ NEW
+    BookedForInfo? bookedFor,
+    List<String>? medicalDocuments,
+    String? paymentScreenshot,
   }) {
     return AppointmentModel(
       id: id ?? this.id,
@@ -202,12 +281,14 @@ class AppointmentModel {
       notes: notes ?? this.notes,
       reason: reason ?? this.reason,
       createdAt: createdAt ?? this.createdAt,
-      bookedFor: bookedFor ?? this.bookedFor, // ✅ NEW
+      bookedFor: bookedFor ?? this.bookedFor,
+      medicalDocuments: medicalDocuments ?? this.medicalDocuments,
+      paymentScreenshot: paymentScreenshot ?? this.paymentScreenshot,
     );
   }
 }
 
-// ✅ FIXED BookedForInfo Class - Now shows relationship properly
+// ✅ BookedForInfo Class
 class BookedForInfo {
   final String type; // "self" or "dependent"
   final String? dependentId;
@@ -221,7 +302,7 @@ class BookedForInfo {
     this.relationship,
   });
 
-  // ✅ FIXED: Properly shows relationship/category in UI
+  // ✅ Properly shows relationship/category in UI
   String get bookingLabel {
     if (type == 'dependent') {
       // যদি name এবং relationship দুটোই থাকে: "John (Son)"
@@ -253,7 +334,7 @@ class BookedForInfo {
       type: json['type']?.toString() ?? 'self',
       dependentId: json['dependentId']?.toString(),
       dependentName: json['dependentName']?.toString(),
-      relationship: json['relationship']?.toString(), // ✅ This is your category
+      relationship: json['relationship']?.toString(),
     );
   }
 
@@ -266,4 +347,3 @@ class BookedForInfo {
     };
   }
 }
-

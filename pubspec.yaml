@@ -31,7 +31,7 @@ dependencies:
   socket_io_client: ^2.0.3+1
   permission_handler: ^11.3.1
   wakelock_plus: ^1.2.8
-  
+  url_launcher: ^6.2.0
   
   # Media Handling
   image_picker: ^1.2.1

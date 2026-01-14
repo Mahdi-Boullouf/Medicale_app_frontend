@@ -39,12 +39,17 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   bool _isSending = false;
   List<File> _selectedFiles = [];
   String? _currentUserId;
+  String? _currentUserRole;
   String? _resolvedOtherUserId;
-  String? _otherUserRole; // ✅ Track other user's role
-  String? _actualUserAvatar; // ✅ Real avatar from API
+  String? _otherUserRole;
+  String? _actualUserAvatar;
   
   Timer? _refreshTimer;
   Set<String> _messageIds = {};
+
+  bool get _shouldShowAudioIcon {
+    return _currentUserRole == 'doctor' && _otherUserRole == 'doctor';
+  }
 
   @override
   void initState() {
@@ -61,6 +66,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     final socket = SocketService.instance.socket;
     if (socket != null) {
       socket.on('call:incoming', (data) {
+        print('📞 Incoming call event received: $data');
         if (data['chatId'] == widget.chatId) {
           _showIncomingCall(
             callerId: data['fromUserId'],
@@ -158,8 +164,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       if (profileResult['success'] == true) {
         setState(() {
           _currentUserId = profileResult['data']['_id']?.toString();
+          _currentUserRole = profileResult['data']['role']?.toString();
         });
         print('✅ Current user ID: $_currentUserId');
+        print('✅ Current user role: $_currentUserRole');
       }
     } catch (e) {
       print('❌ Error loading current user ID: $e');
@@ -195,13 +203,14 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           _isLoading = false;
         });
 
-        // ✅ Get other user's role and avatar from messages
-        if (_messages.isNotEmpty && _currentUserId != null && _resolvedOtherUserId == null) {
+        if (_messages.isNotEmpty && _currentUserId != null) {
           for (var msg in _messages) {
             final senderId = msg['sender']?['_id']?.toString();
             if (senderId != null && senderId != _currentUserId) {
               setState(() {
-                _resolvedOtherUserId = senderId;
+                if (_resolvedOtherUserId == null) {
+                  _resolvedOtherUserId = senderId;
+                }
                 _otherUserRole = msg['sender']?['role']?.toString();
                 _actualUserAvatar = msg['sender']?['avatar']?['url']?.toString();
               });
@@ -311,52 +320,75 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       return;
     }
 
-    final socket = SocketService.instance.socket;
-    if (socket == null || !socket.connected) {
-      if (_currentUserId != null) {
-        await SocketService.instance.connect(_currentUserId!);
-        await Future.delayed(const Duration(seconds: 1));
-      }
+    try {
+      print('🎤 Starting audio call...');
+      print('👤 Current user: $_currentUserId');
+      print('👤 Other user: $_resolvedOtherUserId');
+      print('💬 Chat ID: ${widget.chatId}');
       
-      if (SocketService.instance.socket == null || 
-          !SocketService.instance.socket!.connected) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Cannot connect to call server'),
-              backgroundColor: Colors.red,
-            ),
-          );
+      final socket = SocketService.instance.socket;
+      if (socket == null || !socket.connected) {
+        print('⚠️ Socket not connected, attempting to connect...');
+        
+        if (_currentUserId != null) {
+          await SocketService.instance.connect(_currentUserId!);
+          await Future.delayed(const Duration(seconds: 2));
         }
-        return;
+        
+        if (SocketService.instance.socket == null || 
+            !SocketService.instance.socket!.connected) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Cannot connect to server. Please try again.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
       }
-    }
 
-    SocketService.instance.emit('call:request', {
-      'fromUserId': _currentUserId,
-      'toUserId': _resolvedOtherUserId,
-      'chatId': widget.chatId,
-      'isVideo': false,
-    });
+      print('✅ Socket connected, sending call request...');
+      
+      SocketService.instance.emit('call:request', {
+        'fromUserId': _currentUserId,
+        'toUserId': _resolvedOtherUserId,
+        'chatId': widget.chatId,
+        'isVideo': false,
+      });
 
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => AudioCallScreen(
-            chatId: widget.chatId,
-            userName: widget.userName,
-            userAvatar: _actualUserAvatar ?? widget.userAvatar,
-            otherUserId: _resolvedOtherUserId!,
-            isInitiator: true,
+      print('📤 Call request sent');
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AudioCallScreen(
+              chatId: widget.chatId,
+              userName: widget.userName,
+              userAvatar: _actualUserAvatar ?? widget.userAvatar,
+              otherUserId: _resolvedOtherUserId!,
+              isInitiator: true,
+            ),
           ),
-        ),
-      );
+        );
+      }
+    } catch (e) {
+      print('❌ Error starting audio call: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to start call: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   void _startVideoCall() async {
-    if (_resolvedOtherUserId == null) {
+    if (_resolvedOtherUserId == null && widget.otherUserId == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -368,53 +400,73 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       return;
     }
 
-    final socket = SocketService.instance.socket;
-    if (socket == null || !socket.connected) {
-      if (_currentUserId != null) {
-        await SocketService.instance.connect(_currentUserId!);
-        await Future.delayed(const Duration(seconds: 1));
-      }
+    final targetUserId = _resolvedOtherUserId ?? widget.otherUserId;
+    
+    try {
+      print('📹 Starting video call...');
+      print('👤 Current user: $_currentUserId');
+      print('👤 Other user: $targetUserId');
+      print('💬 Chat ID: ${widget.chatId}');
       
-      if (SocketService.instance.socket == null || 
-          !SocketService.instance.socket!.connected) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Cannot connect to call server'),
-              backgroundColor: Colors.red,
-            ),
-          );
+      final socket = SocketService.instance.socket;
+      if (socket == null || !socket.connected) {
+        print('⚠️ Socket not connected, attempting to connect...');
+        
+        if (_currentUserId != null) {
+          await SocketService.instance.connect(_currentUserId!);
+          await Future.delayed(const Duration(seconds: 2));
         }
-        return;
+        
+        if (SocketService.instance.socket == null || 
+            !SocketService.instance.socket!.connected) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Cannot connect to server. Please try again.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      print('✅ Socket connected, sending call request...');
+      
+      SocketService.instance.emit('call:request', {
+        'fromUserId': _currentUserId,
+        'toUserId': targetUserId,
+        'chatId': widget.chatId,
+        'isVideo': true,
+      });
+
+      print('📤 Call request sent');
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VideoCallScreen(
+              chatId: widget.chatId,
+              userName: widget.userName,
+              userAvatar: _actualUserAvatar ?? widget.userAvatar,
+              otherUserId: targetUserId!,
+              isInitiator: true,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error starting video call: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to start call: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
-
-    SocketService.instance.emit('call:request', {
-      'fromUserId': _currentUserId,
-      'toUserId': _resolvedOtherUserId,
-      'chatId': widget.chatId,
-      'isVideo': true,
-    });
-
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => VideoCallScreen(
-            chatId: widget.chatId,
-            userName: widget.userName,
-            userAvatar: _actualUserAvatar ?? widget.userAvatar,
-            otherUserId: _resolvedOtherUserId!,
-            isInitiator: true,
-          ),
-        ),
-      );
-    }
-  }
-
-  // ✅ Check if should show audio icon (only for doctor-to-doctor)
-  bool get _shouldShowAudioIcon {
-    return _otherUserRole == 'doctor';
   }
 
   @override
@@ -455,7 +507,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  // ✅ Removed "Live" status - just showing role
                   Text(
                     _otherUserRole == 'doctor' ? 'Doctor' : 'Patient',
                     style: const TextStyle(
@@ -469,13 +520,11 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           ],
         ),
         actions: [
-          // ✅ LOGIC: Show audio icon only for doctor-to-doctor chat
           if (_shouldShowAudioIcon)
             IconButton(
               icon: const Icon(Icons.phone_outlined, color: Colors.black, size: 24),
               onPressed: _startAudioCall,
             ),
-          // ✅ Always show video icon
           IconButton(
             icon: const Icon(Icons.videocam_outlined, color: Colors.black, size: 28),
             onPressed: _startVideoCall,
@@ -762,7 +811,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
             const Padding(
               padding: EdgeInsets.only(left: 8),
               child: CircleAvatar(
-                radius: 16,
+               radius: 16,
                 backgroundImage: AssetImage("assets/images/profile.png"),
               ),
             ),

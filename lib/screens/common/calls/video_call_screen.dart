@@ -1,8 +1,10 @@
+import 'package:docmobi/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:docmobi/services/webrtc_service.dart';
 import 'package:docmobi/services/socket_service.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:docmobi/services/webrtc_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 
 class VideoCallScreen extends StatefulWidget {
   final String chatId;
@@ -28,370 +30,526 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
   final RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
   
-  WebRTCService? _webrtcService;
+  WebRTCService? _webRTCService;
   bool _isMuted = false;
-  bool _isVideoEnabled = true; // ✅ Track video state
-  bool _isFrontCamera = true;
-  bool _callConnected = false;
+  bool _isVideoOff = false;
+  bool _isCallConnected = false;
+  bool _isInitializing = true;
+  String _callStatus = 'Connecting...';
+  String? _currentUserId;
+  
+  Timer? _callTimer;
+  int _callDurationSeconds = 0;
+  String _callDuration = '00:00';
 
   @override
   void initState() {
     super.initState();
-    WakelockPlus.enable();
-    _initializeCall();
+    _loadCurrentUserIdAndInitialize();
+  }
+
+  // ✅ Load current user ID first, then initialize call
+  Future<void> _loadCurrentUserIdAndInitialize() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      
+      // Try to get from API
+      final profileResult = await ApiService.getUserProfile();
+      if (profileResult['success'] == true) {
+        _currentUserId = profileResult['data']['_id']?.toString();
+        print('✅ Current user ID loaded: $_currentUserId');
+        
+        // Now initialize the call
+        await _initializeCall();
+      } else {
+        throw Exception('Failed to load user profile');
+      }
+    } catch (e) {
+      print('❌ Error loading user ID: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to initialize: $e')),
+        );
+        Navigator.pop(context);
+      }
+    }
   }
 
   Future<void> _initializeCall() async {
     try {
+      print('🎥 Initializing video call...');
+      print('💬 Chat ID: ${widget.chatId}');
+      print('👤 Other user: ${widget.otherUserId}');
+      print('👤 Current user: $_currentUserId');
+      print('🎬 Is Initiator: ${widget.isInitiator}');
+      
+      // Initialize renderers
       await _localRenderer.initialize();
       await _remoteRenderer.initialize();
+      print('✅ Renderers initialized');
 
-      final socket = SocketService.instance.socket;
-      if (socket == null) {
-        throw Exception('Socket not connected');
-      }
-
-      _webrtcService = WebRTCService(
-        socket: socket,
+      // Initialize WebRTC service
+      _webRTCService = WebRTCService(
+        socket: SocketService.instance.socket!,
         chatId: widget.chatId,
         isVideo: true,
         onRemoteStream: (stream) {
+          print('📹 Remote stream received in callback!');
           if (mounted) {
             setState(() {
               _remoteRenderer.srcObject = stream;
-              _callConnected = true;
+              _isCallConnected = true;
+              _callStatus = 'Connected';
             });
+            
+            // ✅ Start timer when remote stream is received
+            if (!_isTimerRunning()) {
+              _startCallTimer();
+            }
           }
         },
         onCallEnded: () {
+          print('📴 Call ended callback triggered');
           _endCall();
         },
       );
 
-      await _webrtcService!.initialize();
-      
-      if (mounted) {
-        setState(() {
-          _localRenderer.srcObject = _webrtcService!.localStream;
-        });
-      }
+      // ✅ Set current user ID in WebRTC service
+      _webRTCService!.setCurrentUserId(_currentUserId!);
+
+      await _webRTCService!.initialize();
+      print('✅ WebRTC service initialized');
+
+      // Set local stream
+      setState(() {
+        _localRenderer.srcObject = _webRTCService!.localStream;
+        _isInitializing = false;
+        _callStatus = widget.isInitiator ? 'Calling...' : 'Connecting...';
+      });
+      print('✅ Local stream set');
 
       // Setup socket listeners
-      socket.on('call:offer', (data) async {
-        if (data['chatId'] == widget.chatId) {
-          await _webrtcService!.handleOffer(data['offer']);
-        }
-      });
-
-      socket.on('call:answer', (data) async {
-        if (data['chatId'] == widget.chatId) {
-          await _webrtcService!.handleAnswer(data['answer']);
-          if (mounted) {
-            setState(() {
-              _callConnected = true;
-            });
-          }
-        }
-      });
-
-      socket.on('call:iceCandidate', (data) async {
-        if (data['chatId'] == widget.chatId) {
-          await _webrtcService!.addIceCandidate(data['candidate']);
-        }
-      });
-
-      socket.on('call:end', (data) {
-        if (data['chatId'] == widget.chatId) {
-          _endCall();
-        }
-      });
+      _setupSocketListeners();
 
       // If initiator, create offer
       if (widget.isInitiator) {
-        await _webrtcService!.createOffer(widget.otherUserId);
+        print('📤 Creating offer as initiator...');
+        await Future.delayed(const Duration(milliseconds: 500));
+        await _webRTCService!.createOffer(widget.otherUserId);
+      } else {
+        print('📥 Waiting for offer as receiver...');
       }
     } catch (e) {
       print('❌ Error initializing call: $e');
-      _showError('Failed to start call: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to start call: $e')),
+        );
+        Navigator.pop(context);
+      }
     }
+  }
+
+  void _setupSocketListeners() {
+    final socket = SocketService.instance.socket;
+    if (socket == null) {
+      print('⚠️ Socket is null in _setupSocketListeners');
+      return;
+    }
+
+    print('👂 Setting up socket listeners for chat: ${widget.chatId}');
+
+    socket.on('call:offer', (data) async {
+      print('📥 Received call:offer event: $data');
+      if (data['chatId'] == widget.chatId) {
+        print('✅ Offer is for this chat, handling...');
+        final fromUserId = data['fromUserId'] ?? widget.otherUserId;
+        await _webRTCService?.handleOffer(data['offer'], fromUserId);
+      }
+    });
+
+    socket.on('call:answer', (data) async {
+      print('📥 Received call:answer event: $data');
+      if (data['chatId'] == widget.chatId) {
+        print('✅ Answer is for this chat, handling...');
+        await _webRTCService?.handleAnswer(data['answer']);
+        
+        setState(() {
+          _callStatus = 'Connected';
+          _isCallConnected = true;
+        });
+        
+        // ✅ Start timer when answer is received (for initiator)
+        if (!_isTimerRunning()) {
+          _startCallTimer();
+        }
+      }
+    });
+
+    socket.on('call:iceCandidate', (data) async {
+      print('📥 Received ICE candidate: ${data['candidate']}');
+      if (data['chatId'] == widget.chatId) {
+        await _webRTCService?.addIceCandidate(data['candidate']);
+      }
+    });
+
+    socket.on('call:ended', (data) {
+      print('📥 Received call:ended event');
+      if (data['chatId'] == widget.chatId) {
+        print('📴 Call ended by remote user');
+        _endCall();
+      }
+    });
+
+    socket.on('call:rejected', (data) {
+      print('📥 Received call:rejected event');
+      if (data['chatId'] == widget.chatId) {
+        print('❌ Call was rejected');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Call was rejected')),
+          );
+          Navigator.pop(context);
+        }
+      }
+    });
+    
+    socket.on('call:accepted', (data) {
+      print('📥 Received call:accepted event');
+      if (data['chatId'] == widget.chatId) {
+        print('✅ Call was accepted by receiver');
+        setState(() {
+          _callStatus = 'Connecting...';
+        });
+      }
+    });
+    
+    print('✅ All socket listeners set up');
+  }
+
+  // ✅ Check if timer is running
+  bool _isTimerRunning() {
+    return _callTimer != null && _callTimer!.isActive;
+  }
+
+  // ✅ Start call timer
+  void _startCallTimer() {
+    if (_isTimerRunning()) {
+      print('⏱️ Timer already running');
+      return;
+    }
+    
+    print('⏱️ Starting call timer');
+    _callTimer?.cancel();
+    _callDurationSeconds = 0; // Reset to 0
+    
+    _callTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _callDurationSeconds++;
+          final minutes = (_callDurationSeconds ~/ 60).toString().padLeft(2, '0');
+          final seconds = (_callDurationSeconds % 60).toString().padLeft(2, '0');
+          _callDuration = '$minutes:$seconds';
+        });
+        print('⏱️ Call duration: $_callDuration');
+      } else {
+        timer.cancel();
+      }
+    });
+    
+    print('✅ Call timer started');
   }
 
   void _toggleMute() {
-    if (_webrtcService != null) {
-      setState(() {
-        _isMuted = !_isMuted;
-      });
-      _webrtcService!.toggleAudio();
-    }
+    setState(() {
+      _isMuted = !_isMuted;
+    });
+    _webRTCService?.toggleAudio();
+    print('🎤 Audio ${_isMuted ? "muted" : "unmuted"}');
   }
 
-  // ✅ FIXED: Toggle video with proper state management
   void _toggleVideo() {
-    if (_webrtcService != null) {
-      setState(() {
-        _isVideoEnabled = !_isVideoEnabled;
-      });
-      _webrtcService!.toggleVideo();
-      
-      // Update local renderer visibility
-      if (!_isVideoEnabled) {
-        // Video is OFF - hide local video
-        setState(() {});
-      }
-    }
-  }
-
-  // ✅ FIXED: Camera switch
-  Future<void> _switchCamera() async {
-    if (_webrtcService == null || !_isVideoEnabled) return;
-    
-    try {
-      final videoTrack = _webrtcService!.localStream?.getVideoTracks().first;
-      if (videoTrack != null) {
-        await Helper.switchCamera(videoTrack);
-        setState(() {
-          _isFrontCamera = !_isFrontCamera;
-        });
-      }
-    } catch (e) {
-      print('❌ Error switching camera: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to switch camera')),
-      );
-    }
+    setState(() {
+      _isVideoOff = !_isVideoOff;
+    });
+    _webRTCService?.toggleVideo();
+    print('📹 Video ${_isVideoOff ? "disabled" : "enabled"}');
   }
 
   void _endCall() {
-    if (!mounted) return;
+    print('📴 Ending call...');
+    
+    _callTimer?.cancel();
+    _callTimer = null;
     
     SocketService.instance.emit('call:end', {
       'chatId': widget.chatId,
       'toUserId': widget.otherUserId,
+      'fromUserId': _currentUserId,
     });
-    
-    Navigator.pop(context);
-  }
 
-  void _showError(String message) {
-    if (!mounted) return;
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
-    Navigator.pop(context);
-  }
-
-  @override
-  void dispose() {
-    WakelockPlus.disable();
+    _webRTCService?.dispose();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
-    _webrtcService?.dispose();
     
-    // Remove socket listeners
-    SocketService.instance.off('call:offer');
-    SocketService.instance.off('call:answer');
-    SocketService.instance.off('call:iceCandidate');
-    SocketService.instance.off('call:end');
+    print('✅ Call ended, navigating back');
     
-    super.dispose();
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // ✅ Remote video (full screen)
-          if (_callConnected)
-            Positioned.fill(
-              child: RTCVideoView(
-                _remoteRenderer,
-                objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            if (_isCallConnected)
+              Positioned.fill(
+                child: RTCVideoView(
+                  _remoteRenderer,
+                  objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                  mirror: false,
+                ),
+              )
+            else
+              Container(
+                color: const Color(0xFF1B2C49),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 60,
+                        backgroundImage: widget.userAvatar != null &&
+                                widget.userAvatar!.isNotEmpty &&
+                                widget.userAvatar != 'file:///' &&
+                                (widget.userAvatar!.startsWith('http://') ||
+                                    widget.userAvatar!.startsWith('https://'))
+                            ? NetworkImage(widget.userAvatar!)
+                            : const AssetImage('assets/images/doctor1.png')
+                                as ImageProvider,
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        widget.userName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _isCallConnected ? _callDuration : _callStatus,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                      ),
+                      if (_isInitializing)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 20),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
-            )
-          else
-            // ✅ Connecting state
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundImage: widget.userAvatar != null
-                        ? NetworkImage(widget.userAvatar!)
-                        : const AssetImage('assets/images/doctor.png') as ImageProvider,
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    widget.userName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Connecting...',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ],
-              ),
-            ),
 
-          // ✅ Local video preview (small box)
-          if (_isVideoEnabled) // Only show if video is enabled
+            if (!_isVideoOff)
+              Positioned(
+                top: 20,
+                right: 20,
+                child: Container(
+                  width: 120,
+                  height: 160,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: RTCVideoView(
+                      _localRenderer,
+                      objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                      mirror: true,
+                    ),
+                  ),
+                ),
+              ),
+
             Positioned(
-              top: 50,
-              right: 20,
+              top: 0,
+              left: 0,
+              right: 0,
               child: Container(
-                width: 120,
-                height: 160,
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.7),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundImage: widget.userAvatar != null &&
+                              widget.userAvatar!.isNotEmpty &&
+                              widget.userAvatar != 'file:///' &&
+                              (widget.userAvatar!.startsWith('http://') ||
+                                  widget.userAvatar!.startsWith('https://'))
+                          ? NetworkImage(widget.userAvatar!)
+                          : const AssetImage('assets/images/doctor1.png')
+                              as ImageProvider,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.userName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            _isCallConnected ? _callDuration : _callStatus,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: RTCVideoView(
-                    _localRenderer,
-                    mirror: _isFrontCamera,
-                    objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
-                  ),
-                ),
               ),
             ),
 
-          // ✅ User name badge
-          Positioned(
-            top: 50,
-            left: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_callConnected)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  if (_callConnected) const SizedBox(width: 8),
-                  Text(
-                    widget.userName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 30),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.8),
+                      Colors.transparent,
+                    ],
                   ),
-                ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildControlButton(
+                      icon: _isMuted ? Icons.mic_off : Icons.mic,
+                      label: _isMuted ? 'Unmute' : 'Mute',
+                      onPressed: _toggleMute,
+                      color: _isMuted ? Colors.red : Colors.white,
+                    ),
+
+                    _buildControlButton(
+                      icon: _isVideoOff ? Icons.videocam_off : Icons.videocam,
+                      label: _isVideoOff ? 'Turn On' : 'Turn Off',
+                      onPressed: _toggleVideo,
+                      color: _isVideoOff ? Colors.red : Colors.white,
+                    ),
+
+                    _buildControlButton(
+                      icon: Icons.call_end,
+                      label: 'End',
+                      onPressed: _endCall,
+                      color: Colors.red,
+                      isEndCall: true,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-
-          // ✅ Controls at bottom
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Mute button
-                _buildControlButton(
-                  icon: _isMuted ? Icons.mic_off : Icons.mic,
-                  onPressed: _toggleMute,
-                  backgroundColor: _isMuted 
-                      ? Colors.red 
-                      : Colors.white.withOpacity(0.3),
-                ),
-                
-                // End call button
-                _buildControlButton(
-                  icon: Icons.call_end,
-                  onPressed: _endCall,
-                  backgroundColor: Colors.red,
-                ),
-                
-                // Video toggle button
-                _buildControlButton(
-                  icon: _isVideoEnabled ? Icons.videocam : Icons.videocam_off,
-                  onPressed: _toggleVideo,
-                  backgroundColor: _isVideoEnabled 
-                      ? Colors.white.withOpacity(0.3) 
-                      : Colors.red,
-                ),
-                
-                // Camera switch button
-                _buildControlButton(
-                  icon: Icons.cameraswitch,
-                  onPressed: _isVideoEnabled ? _switchCamera : null,
-                  backgroundColor: _isVideoEnabled
-                      ? Colors.white.withOpacity(0.3)
-                      : Colors.grey.withOpacity(0.3),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildControlButton({
     required IconData icon,
-    required VoidCallback? onPressed,
-    required Color backgroundColor,
+    required String label,
+    required VoidCallback onPressed,
+    required Color color,
+    bool isEndCall = false,
   }) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: isEndCall ? 70 : 60,
+          height: isEndCall ? 70 : 60,
+          decoration: BoxDecoration(
+            color: isEndCall ? Colors.red : Colors.white.withOpacity(0.2),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+          ),
+          child: IconButton(
+            icon: Icon(icon, color: color, size: isEndCall ? 32 : 28),
+            onPressed: onPressed,
+          ),
         ),
-        child: Icon(
-          icon,
-          color: Colors.white,
-          size: 32,
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-      ),
+      ],
     );
   }
+
+  @override
+  void dispose() {
+    print('🧹 Disposing VideoCallScreen');
+    
+    _callTimer?.cancel();
+    _callTimer = null;
+    
+    _webRTCService?.dispose();
+    _localRenderer.dispose();
+    _remoteRenderer.dispose();
+    
+    final socket = SocketService.instance.socket;
+    socket?.off('call:offer');
+    socket?.off('call:answer');
+    socket?.off('call:iceCandidate');
+    socket?.off('call:ended');
+    socket?.off('call:rejected');
+    socket?.off('call:accepted');
+    
+    print('✅ VideoCallScreen disposed');
+    
+    super.dispose();
+  }
 }
+
+// ✅ Import for API service

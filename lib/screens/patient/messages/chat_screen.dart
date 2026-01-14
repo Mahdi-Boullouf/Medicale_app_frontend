@@ -288,18 +288,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     });
   }
 
-  void _startVideoCall() async {
-    if (_otherUserId == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cannot start call - user ID not found'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
+  // Video Call শুরু করতে
+void _startVideoCall() async {
+  SocketService.instance.emit('call:request', {
+    'fromUserId': _currentUserId,
+    'toUserId': _otherUserId,
+    'chatId': widget.chatId,
+    'isVideo': true,
+  });
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => VideoCallScreen(
+        chatId: widget.chatId,
+        userName: widget.doctorName,
+        userAvatar: widget.doctorAvatar,
+        otherUserId: _otherUserId!,
+        isInitiator: true,
+      ),
+    ),
+  );
+
 
     final socket = SocketService.instance.socket;
     if (socket == null || !socket.connected) {
