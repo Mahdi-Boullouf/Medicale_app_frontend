@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:docmobi/services/webrtc_service.dart';
-import 'package:docmobi/services/socket_service.dart';
-import 'package:docmobi/services/api_service.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import '../../../services/api_service.dart';
+import '../../../services/socket_service.dart';
+import '../../../services/webrtc_service.dart';
 
 class AudioCallScreen extends StatefulWidget {
   final String chatId;
@@ -27,15 +27,15 @@ class AudioCallScreen extends StatefulWidget {
 }
 
 class _AudioCallScreenState extends State<AudioCallScreen> {
-  WebRTCService? _webrtcService;
+  WebRTCService? _webRTCService;
   bool _isMuted = false;
+  bool _isSpeakerOn = false;
   bool _callConnected = false;
-  String _callDuration = '00:00';
-  String _callStatus = 'Calling...';
-  Timer? _timer;
-  Timer? _timeoutTimer;
-  int _seconds = 0;
+  Timer? _callTimer;
+  int _callDuration = 0;
   String? _currentUserId;
+  bool _isDisposed = false;
+  String _callStatus = 'Initializing...';
 
   @override
   void initState() {
@@ -46,64 +46,65 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
   Future<void> _initializeCall() async {
     try {
+      await _loadCurrentUserId();
+      
+      if (_currentUserId == null) {
+        _showError('Failed to get user ID');
+        return;
+      }
+      
+      setState(() {
+        _callStatus = 'Setting up audio...';
+      });
+
+      print('🎙️ Initializing audio call...');
+      print('   • Chat ID: ${widget.chatId}');
+      print('   • Other User: ${widget.otherUserId}');
+      print('   • Is Initiator: ${widget.isInitiator}');
+      print('   • Current User: $_currentUserId');
+      
       final socket = SocketService.instance.socket;
-      if (socket == null || !socket.connected) {
+      if (socket == null || !SocketService.instance.isConnected) {
         throw Exception('Socket not connected');
       }
 
-      setState(() {
-        _callStatus = 'Setting up...';
-      });
-
-      // ✅ Create WebRTC service (audio only)
-      _webrtcService = WebRTCService(
+      _webRTCService = WebRTCService(
         chatId: widget.chatId,
         isVideo: false,
         onRemoteStream: (stream) {
-          setState(() {
-            _callConnected = true;
-          });
-          _startTimer();
+          if (mounted && !_isDisposed) {
+            print('✅ Remote audio stream received - call connected!');
+            setState(() {
+              _callConnected = true;
+              _callStatus = 'Connected';
+            });
+            _startCallTimer();
+          }
         },
         onCallEnded: () {
+          print('📴 Call ended by peer');
           _endCall();
         },
       );
 
-      await _webrtcService!.initialize();
+      await _webRTCService!.initialize();
+      _webRTCService!.setCurrentUserId(_currentUserId!);
 
-      // Setup socket listeners
-      socket.on('call:offer', (data) async {
-        if (data['chatId'] == widget.chatId) {
-          await _webrtcService!.handleOffer(data['offer']);
-        }
+      print('✅ WebRTC initialized');
+
+      _setupSocketListeners();
+
+      setState(() {
+        _callStatus = widget.isInitiator ? 'Calling...' : 'Connecting...';
       });
 
-      socket.on('call:answer', (data) async {
-        if (data['chatId'] == widget.chatId) {
-          await _webrtcService!.handleAnswer(data['answer']);
-          setState(() {
-            _callConnected = true;
-          });
-          _startTimer();
-        }
-      });
-
-      socket.on('call:iceCandidate', (data) async {
-        if (data['chatId'] == widget.chatId) {
-          await _webrtcService!.addIceCandidate(data['candidate']);
-        }
-      });
-
-      socket.on('call:end', (data) {
-        if (data['chatId'] == widget.chatId) {
-          _endCall();
-        }
-      });
-
-      // If initiator, create offer
       if (widget.isInitiator) {
-        await _webrtcService!.createOffer(widget.otherUserId);
+        await Future.delayed(const Duration(milliseconds: 1000));
+        if (mounted && !_isDisposed) {
+          print('📤 Creating offer as initiator...');
+          await _webRTCService!.createOffer(widget.otherUserId);
+          print('✅ Offer created and sent');
+        }
       }
     } catch (e) {
       print('❌ Error initializing call: $e');
@@ -111,91 +112,160 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
     }
   }
 
-  void _startTimer() {
-    if (_isTimerRunning()) {
-      print('⏱️ Timer already running');
-      return;
+  Future<void> _loadCurrentUserId() async {
+    try {
+      final profileResult = await ApiService.getUserProfile();
+      if (profileResult['success'] == true && mounted) {
+        setState(() {
+          _currentUserId = profileResult['data']['_id']?.toString();
+        });
+        print('✅ Current user ID loaded: $_currentUserId');
+      }
+    } catch (e) {
+      print('❌ Error loading user ID: $e');
     }
-    
-    print('⏱️ Starting call timer');
-    _timer?.cancel();
-    _seconds = 0; // Reset to 0
-    
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _seconds++;
-        final minutes = (_seconds ~/ 60).toString().padLeft(2, '0');
-        final secs = (_seconds % 60).toString().padLeft(2, '0');
-        _callDuration = '$minutes:$secs';
-      });
+  }
+
+  void _setupSocketListeners() {
+    final socket = SocketService.instance.socket;
+    if (socket == null) return;
+
+    socket.off('call:offer');
+    socket.off('call:answer');
+    socket.off('call:iceCandidate');
+    socket.off('call:end');
+
+    socket.on('call:offer', (data) async {
+      print('📥 Received offer: $data');
+      if (data['chatId'] == widget.chatId && mounted && !_isDisposed) {
+        final fromUserId = data['fromUserId']?.toString();
+        if (fromUserId != null && _webRTCService != null) {
+          setState(() {
+            _callStatus = 'Connecting...';
+          });
+          await _webRTCService!.handleOffer(data['offer'], fromUserId);
+        }
+      }
     });
-    
-    print('✅ Call timer started');
+
+    socket.on('call:answer', (data) async {
+      print('📥 Received answer: $data');
+      if (data['chatId'] == widget.chatId && mounted && !_isDisposed) {
+        if (_webRTCService != null) {
+          await _webRTCService!.handleAnswer(data['answer']);
+          setState(() {
+            _callStatus = 'Establishing connection...';
+          });
+        }
+      }
+    });
+
+    socket.on('call:iceCandidate', (data) async {
+      print('📥 Received ICE candidate');
+      if (data['chatId'] == widget.chatId && mounted && !_isDisposed) {
+        if (_webRTCService != null) {
+          await _webRTCService!.addIceCandidate(data['candidate']);
+        }
+      }
+    });
+
+    socket.on('call:end', (data) {
+      print('📥 Received call:end event');
+      if (data['chatId'] == widget.chatId && mounted && !_isDisposed) {
+        _endCall();
+      }
+    });
+
+    print('✅ Socket listeners setup complete');
+  }
+
+  void _startCallTimer() {
+    _callTimer?.cancel();
+    _callTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _callDuration++;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  String _formatDuration(int seconds) {
+    int minutes = seconds ~/ 60;
+    int remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 
   void _toggleMute() {
-    setState(() {
-      _isMuted = !_isMuted;
-      _webrtcService?.toggleAudio();
-    });
+    if (_webRTCService != null && mounted && !_isDisposed) {
+      setState(() {
+        _isMuted = !_isMuted;
+      });
+      _webRTCService!.toggleAudio();
+    }
   }
 
   void _toggleSpeaker() {
-    setState(() {
-      _isSpeakerOn = !_isSpeakerOn;
-      // TODO: Implement speaker toggle
-    });
+    if (mounted && !_isDisposed) {
+      setState(() {
+        _isSpeakerOn = !_isSpeakerOn;
+      });
+      // Note: Actual speaker toggle requires platform-specific implementation
+      print('🔊 Speaker ${_isSpeakerOn ? "ON" : "OFF"}');
+    }
   }
 
   void _endCall() {
-    SocketService.instance.emit('call:end', {
-      'chatId': widget.chatId,
-      'toUserId': widget.otherUserId,
-    });
+    if (_isDisposed) return;
     
-    Navigator.pop(context);
+    print('📴 Ending call...');
+    
+    _callTimer?.cancel();
+    _callTimer = null;
+    
+    // Emit call end event
+    if (SocketService.instance.isConnected) {
+      SocketService.instance.emit('call:end', {
+        'chatId': widget.chatId,
+        'toUserId': widget.otherUserId,
+      });
+    }
+    
+    // Safe navigation pop
+    if (mounted && Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
   }
 
   void _showError(String message) {
+    if (!mounted || _isDisposed) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
       ),
     );
-    Navigator.pop(context);
-  }
-
-  @override
-  void dispose() {
-    WakelockPlus.disable();
-    _timer?.cancel();
-    _webrtcService?.dispose();
     
-    // Remove socket listeners
-    SocketService.instance.off('call:offer');
-    SocketService.instance.off('call:answer');
-    SocketService.instance.off('call:iceCandidate');
-    SocketService.instance.off('call:end');
-    
-    super.dispose();
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1E3C72),
-              Color(0xFF2A5298),
-            ],
-          ),
-        ),
-        child: SafeArea(
+    return WillPopScope(
+      onWillPop: () async {
+        _endCall();
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF1B2C49),
+        body: SafeArea(
           child: Column(
             children: [
               const SizedBox(height: 60),
@@ -224,54 +294,55 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
               
               // Call Status
               Text(
-                _callConnected ? _callDuration : 'Calling...',
+                _callConnected 
+                    ? _formatDuration(_callDuration)
+                    : _callStatus,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
+                  color: _callConnected ? Colors.greenAccent : Colors.white70,
                   fontSize: 18,
                 ),
               ),
               
+              if (!_callConnected)
+                const Padding(
+                  padding: EdgeInsets.only(top: 20),
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              
               const Spacer(),
               
-              // Controls
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildControlButton(
-                      icon: _isMuted ? Icons.mic_off : Icons.mic,
-                      label: _isMuted ? 'Unmute' : 'Mute',
-                      onPressed: _toggleMute,
-                      backgroundColor: _isMuted ? Colors.red : Colors.white.withOpacity(0.3),
-                    ),
-                    _buildControlButton(
-                      icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
-                      label: 'Speaker',
-                      onPressed: _toggleSpeaker,
-                      backgroundColor: _isSpeakerOn ? Colors.blue : Colors.white.withOpacity(0.3),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 40),
-              
-              // End Call Button
-              GestureDetector(
-                onTap: _endCall,
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
+              // Call Controls
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Mute Button
+                  _buildControlButton(
+                    icon: _isMuted ? Icons.mic_off : Icons.mic,
+                    onPressed: _toggleMute,
+                    backgroundColor: _isMuted 
+                        ? Colors.red 
+                        : Colors.white.withOpacity(0.3),
                   ),
-                  child: const Icon(
-                    Icons.call_end,
-                    color: Colors.white,
-                    size: 40,
+                  
+                  // End Call Button
+                  _buildControlButton(
+                    icon: Icons.call_end,
+                    onPressed: _endCall,
+                    backgroundColor: Colors.red,
+                    size: 70,
                   ),
-                ),
+                  
+                  // Speaker Button
+                  _buildControlButton(
+                    icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
+                    onPressed: _toggleSpeaker,
+                    backgroundColor: _isSpeakerOn 
+                        ? Colors.blue 
+                        : Colors.white.withOpacity(0.3),
+                  ),
+                ],
               ),
               
               const SizedBox(height: 60),
@@ -284,36 +355,56 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
   Widget _buildControlButton({
     required IconData icon,
-    required String label,
     required VoidCallback onPressed,
     required Color backgroundColor,
+    double size = 60,
   }) {
-    return Column(
-      children: [
-        GestureDetector(
-          onTap: onPressed,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              shape: BoxShape.circle,
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
+          ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-          ),
+        child: Icon(
+          icon,
+          color: Colors.white,
+          size: size * 0.5,
         ),
-      ],
+      ),
     );
+  }
+
+  @override
+  void dispose() {
+    print('🧹 Disposing AudioCallScreen');
+    
+    _isDisposed = true;
+    
+    WakelockPlus.disable();
+    
+    _callTimer?.cancel();
+    _callTimer = null;
+    
+    _webRTCService?.dispose();
+    
+    final socket = SocketService.instance.socket;
+    socket?.off('call:offer');
+    socket?.off('call:answer');
+    socket?.off('call:iceCandidate');
+    socket?.off('call:end');
+    
+    print('✅ AudioCallScreen disposed');
+    
+    super.dispose();
   }
 }

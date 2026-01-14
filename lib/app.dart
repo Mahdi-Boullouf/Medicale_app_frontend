@@ -302,7 +302,7 @@ class _MyAppState extends State<MyApp> {
       CallManager.instance.dispose();
       
       // ✅ Disconnect socket
-      SocketService.instance.close();
+      SocketService.instance.disconnect();
       print('✅ Socket disconnected');
       
       final prefs = await SharedPreferences.getInstance();

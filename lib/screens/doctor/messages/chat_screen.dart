@@ -39,27 +39,20 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   bool _isSending = false;
   List<File> _selectedFiles = [];
   String? _currentUserId;
-<<<<<<< HEAD
   String? _currentUserRole;
-  String? _resolvedOtherUserId;
-  String? _otherUserRole;
-  String? _actualUserAvatar;
-=======
-  String? _currentUserAvatar; // ✅ Store current user's real avatar
-  String? _resolvedOtherUserId;
-  String? _otherUserRole;
+  String? _currentUserAvatar;
   String? _currentUserName;
+  String? _resolvedOtherUserId;
+  String? _otherUserRole;
   String? _actualUserAvatar;
   String? _actualUserName;
->>>>>>> 410893a (calling)
   
   Timer? _refreshTimer;
   Set<String> _messageIds = {};
   bool _isAutoScrollEnabled = true;
 
-  bool get _shouldShowAudioIcon {
-    return _currentUserRole == 'doctor' && _otherUserRole == 'doctor';
-  }
+  // ✅ FIXED: Always show both audio and video icons
+  bool get _shouldShowCallIcons => true;
 
   @override
   void initState() {
@@ -68,12 +61,11 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     _otherUserRole = widget.userRole;
     _actualUserAvatar = widget.userAvatar;
     _actualUserName = widget.userName;
-    _loadCurrentUserProfile(); // ✅ Load full profile first
+    _loadCurrentUserProfile();
     _loadMessages();
     _startAutoRefresh();
-     _setupSocketListeners();
+    _setupSocketListeners();
     
-    // ✅ Scroll listener
     _scrollController.addListener(() {
       if (_scrollController.hasClients) {
         final maxScroll = _scrollController.position.maxScrollExtent;
@@ -83,49 +75,47 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     });
   }
 
-Future<void> _loadCurrentUserProfile() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString('user_data');
-    
-    final profileResult = await ApiService.getUserProfile();
-    if (profileResult['success'] == true) {
-      setState(() {
-        _currentUserId = profileResult['data']['_id']?.toString();
-        _currentUserAvatar = profileResult['data']['avatar']?['url']?.toString();
-        _currentUserName = profileResult['data']['fullName']?.toString();  // <-- এই line যোগ করুন
-      });
-      print('✅ Current user profile loaded:');
-      print('   ID: $_currentUserId');
-      print('   Avatar: $_currentUserAvatar');
-      print('   Name: $_currentUserName');
+  Future<void> _loadCurrentUserProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      
+      final profileResult = await ApiService.getUserProfile();
+      if (profileResult['success'] == true) {
+        setState(() {
+          _currentUserId = profileResult['data']['_id']?.toString();
+          _currentUserRole = profileResult['data']['role']?.toString();
+          _currentUserAvatar = profileResult['data']['avatar']?['url']?.toString();
+          _currentUserName = profileResult['data']['fullName']?.toString();
+        });
+        print('✅ Current user profile loaded:');
+        print('   ID: $_currentUserId');
+        print('   Role: $_currentUserRole');
+        print('   Avatar: $_currentUserAvatar');
+        print('   Name: $_currentUserName');
+      }
+    } catch (e) {
+      print('❌ Error loading user profile: $e');
     }
-  } catch (e) {
-    print('❌ Error loading user profile: $e');
   }
-}
 
   void _setupSocketListeners() {
     final socket = SocketService.instance.socket;
     if (socket != null) {
-<<<<<<< HEAD
       socket.on('call:incoming', (data) {
         print('📞 Incoming call event received: $data');
-        if (data['chatId'] == widget.chatId) {
+        if (data['chatId'] == widget.chatId && mounted) {
           _showIncomingCall(
             callerId: data['fromUserId'],
-            callerName: widget.userName,
-            callerAvatar: _actualUserAvatar ?? widget.userAvatar,
+            callerName: data['callerName'] ?? widget.userName,
+            callerAvatar: data['callerAvatar'] ?? _actualUserAvatar,
             isVideoCall: data['isVideo'] ?? true,
           );
         }
       });
-=======
-      
->>>>>>> 410893a (calling)
 
       socket.on('message:new', (data) {
-        if (data['chatId'] == widget.chatId) {
+        if (data['chatId'] == widget.chatId && mounted) {
           _loadMessagesQuietly();
         }
       });
@@ -138,6 +128,8 @@ Future<void> _loadCurrentUserProfile() async {
     String? callerAvatar,
     required bool isVideoCall,
   }) {
+    if (!mounted) return;
+    
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -186,7 +178,6 @@ Future<void> _loadCurrentUserProfile() async {
             _messageIds = newMessageIds;
           });
           
-          // ✅ Only auto-scroll if user is near bottom
           if (_isAutoScrollEnabled) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (_scrollController.hasClients) {
@@ -205,28 +196,6 @@ Future<void> _loadCurrentUserProfile() async {
     }
   }
 
-<<<<<<< HEAD
-  Future<void> _loadCurrentUserId() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString('user_data');
-      
-      final profileResult = await ApiService.getUserProfile();
-      if (profileResult['success'] == true) {
-        setState(() {
-          _currentUserId = profileResult['data']['_id']?.toString();
-          _currentUserRole = profileResult['data']['role']?.toString();
-        });
-        print('✅ Current user ID: $_currentUserId');
-        print('✅ Current user role: $_currentUserRole');
-      }
-    } catch (e) {
-      print('❌ Error loading current user ID: $e');
-    }
-  }
-
-=======
->>>>>>> 410893a (calling)
   Future<void> _loadMessages() async {
     setState(() {
       _isLoading = true;
@@ -321,7 +290,7 @@ Future<void> _loadCurrentUserProfile() async {
         _controller.clear();
         setState(() {
           _selectedFiles = [];
-          _isAutoScrollEnabled = true; // ✅ Enable auto-scroll when sending
+          _isAutoScrollEnabled = true;
         });
         
         await _loadMessages();
@@ -365,358 +334,197 @@ Future<void> _loadCurrentUserProfile() async {
     });
   }
 
-// ✅ FOR DOCTOR CHAT SCREEN ONLY - Replace _startAudioCall() and _startVideoCall()
-
-// ✅ Find these lines in your doctor_chat_detail_screen.dart
-
-// Line ~443-460: REPLACE eventData section with this:
-
-void _startAudioCall() async {
-  print('');
-  print('╔══════════════════════════════════════════════════════════════╗');
-  print('║                  📞 STARTING AUDIO CALL                      ║');
-  print('╚══════════════════════════════════════════════════════════════╝');
-  
-  // ✅ FIXED: Check both _resolvedOtherUserId and get from widget
-  final targetUserId = _resolvedOtherUserId ?? widget.otherUserId;
-  
-  if (_currentUserId == null || targetUserId == null) {
-    print('❌ Missing user IDs');
-    print('   • Current: $_currentUserId');
-    print('   • Target: $targetUserId');
-    print('   • _resolvedOtherUserId: $_resolvedOtherUserId');
-    print('   • widget.otherUserId: ${widget.otherUserId}');
+  void _startAudioCall() async {
+    print('');
+    print('╔══════════════════════════════════════════════════════════════╗');
+    print('║                  📞 STARTING AUDIO CALL                      ║');
+    print('╚══════════════════════════════════════════════════════════════╝');
     
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot start call - user ID not found'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-    return;
-  }
-
-  final socket = SocketService.instance.socket;
-  if (socket == null || !socket.connected) {
-    print('⚠️ Socket not connected, attempting reconnect...');
-    try {
-      await SocketService.instance.connect(_currentUserId!);
-      await Future.delayed(const Duration(milliseconds: 1500));
-      
-      if (!SocketService.instance.isConnected) {
-        throw Exception('Failed to connect');
-      }
-    } catch (e) {
-      print('❌ Socket connection failed: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cannot connect to server'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-  }
-
-<<<<<<< HEAD
-    try {
-      print('🎤 Starting audio call...');
-      print('👤 Current user: $_currentUserId');
-      print('👤 Other user: $_resolvedOtherUserId');
-      print('💬 Chat ID: ${widget.chatId}');
-      
-      final socket = SocketService.instance.socket;
-      if (socket == null || !socket.connected) {
-        print('⚠️ Socket not connected, attempting to connect...');
-        
-        if (_currentUserId != null) {
-          await SocketService.instance.connect(_currentUserId!);
-          await Future.delayed(const Duration(seconds: 2));
-        }
-        
-        if (SocketService.instance.socket == null || 
-            !SocketService.instance.socket!.connected) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Cannot connect to server. Please try again.'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
-        }
-      }
-
-      print('✅ Socket connected, sending call request...');
-      
-      SocketService.instance.emit('call:request', {
-        'fromUserId': _currentUserId,
-        'toUserId': _resolvedOtherUserId,
-        'chatId': widget.chatId,
-        'isVideo': false,
-      });
-
-      print('📤 Call request sent');
-
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AudioCallScreen(
-              chatId: widget.chatId,
-              userName: widget.userName,
-              userAvatar: _actualUserAvatar ?? widget.userAvatar,
-              otherUserId: _resolvedOtherUserId!,
-              isInitiator: true,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      print('❌ Error starting audio call: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to start call: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-=======
-  // ✅ FIXED: Use targetUserId
-  final eventData = {
-    'fromUserId': _currentUserId,
-    'toUserId': targetUserId,  // ✅ Use targetUserId instead
-    'chatId': widget.chatId,
-    'isVideo': false,
-    'callerName': _currentUserName, // আপনার current user এর name
-  'callerAvatar': _currentUserAvatar,
-  };
-
-  print('📤 Emitting call:request');
-  print('   • Data: $eventData');
-  print('   • Socket connected: ${socket?.connected}');
-  print('   • Socket ID: ${socket?.id}');
-
-  try {
-    SocketService.instance.emit('call:request', eventData);
-    print('✅ Event emitted successfully');
-  } catch (e) {
-    print('❌ Error emitting event: $e');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to initiate call'),
-          backgroundColor: Colors.red,
-        ),
-      );
->>>>>>> 410893a (calling)
-    }
-    return;
-  }
-
-<<<<<<< HEAD
-  void _startVideoCall() async {
-    if (_resolvedOtherUserId == null && widget.otherUserId == null) {
-=======
-  print('╚══════════════════════════════════════════════════════════════╝');
-  print('');
-
-  await Future.delayed(const Duration(milliseconds: 300));
-
-  if (mounted) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AudioCallScreen(
-          chatId: widget.chatId,
-          userName: _actualUserName ?? widget.userName,
-          userAvatar: _actualUserAvatar,
-          otherUserId: targetUserId,  // ✅ Use targetUserId
-          isInitiator: true,
-        ),
-      ),
-    );
-  }
-}
-
-void _startVideoCall() async {
-  print('');
-  print('╔══════════════════════════════════════════════════════════════╗');
-  print('║                  📹 STARTING VIDEO CALL                      ║');
-  print('╚══════════════════════════════════════════════════════════════╝');
-  
-  // ✅ FIXED: Check both _resolvedOtherUserId and get from widget
-  final targetUserId = _resolvedOtherUserId ?? widget.otherUserId;
-  
-  if (_currentUserId == null || targetUserId == null) {
-    print('❌ Missing user IDs');
-    print('   • Current: $_currentUserId');
-    print('   • Target: $targetUserId');
-    print('   • _resolvedOtherUserId: $_resolvedOtherUserId');
-    print('   • widget.otherUserId: ${widget.otherUserId}');
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot start call - user ID not found'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-    return;
-  }
-
-  final socket = SocketService.instance.socket;
-  if (socket == null || !socket.connected) {
-    print('⚠️ Socket not connected, attempting reconnect...');
-    try {
-      await SocketService.instance.connect(_currentUserId!);
-      await Future.delayed(const Duration(milliseconds: 1500));
-      
-      if (!SocketService.instance.isConnected) {
-        throw Exception('Failed to connect');
-      }
-    } catch (e) {
-      print('❌ Socket connection failed: $e');
->>>>>>> 410893a (calling)
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cannot connect to server'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-  }
-
-<<<<<<< HEAD
     final targetUserId = _resolvedOtherUserId ?? widget.otherUserId;
     
-    try {
-      print('📹 Starting video call...');
-      print('👤 Current user: $_currentUserId');
-      print('👤 Other user: $targetUserId');
-      print('💬 Chat ID: ${widget.chatId}');
+    if (_currentUserId == null || targetUserId == null) {
+      print('❌ Missing user IDs');
+      print('   • Current: $_currentUserId');
+      print('   • Target: $targetUserId');
       
-      final socket = SocketService.instance.socket;
-      if (socket == null || !socket.connected) {
-        print('⚠️ Socket not connected, attempting to connect...');
-        
-        if (_currentUserId != null) {
-          await SocketService.instance.connect(_currentUserId!);
-          await Future.delayed(const Duration(seconds: 2));
-        }
-        
-        if (SocketService.instance.socket == null || 
-            !SocketService.instance.socket!.connected) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Cannot connect to server. Please try again.'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
-        }
-      }
-
-      print('✅ Socket connected, sending call request...');
-      
-      SocketService.instance.emit('call:request', {
-        'fromUserId': _currentUserId,
-        'toUserId': targetUserId,
-        'chatId': widget.chatId,
-        'isVideo': true,
-      });
-
-      print('📤 Call request sent');
-
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VideoCallScreen(
-              chatId: widget.chatId,
-              userName: widget.userName,
-              userAvatar: _actualUserAvatar ?? widget.userAvatar,
-              otherUserId: targetUserId!,
-              isInitiator: true,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      print('❌ Error starting video call: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to start call: $e'),
+          const SnackBar(
+            content: Text('Cannot start call - user ID not found'),
             backgroundColor: Colors.red,
           ),
         );
       }
+      return;
     }
-=======
-  // ✅ FIXED: Use targetUserId
-  final eventData = {
-    'fromUserId': _currentUserId,
-    'toUserId': targetUserId,  // ✅ Use targetUserId instead
-    'chatId': widget.chatId,
-    'isVideo': true,
-    'callerName': _currentUserName, // আপনার current user এর name
-  'callerAvatar': _currentUserAvatar,
-  };
 
-  print('📤 Emitting call:request');
-  print('   • Data: $eventData');
-  print('   • Socket connected: ${socket?.connected}');
-  print('   • Socket ID: ${socket?.id}');
+    // ✅ Ensure socket is connected
+    if (!SocketService.instance.isConnected) {
+      print('⚠️ Socket not connected, attempting reconnect...');
+      try {
+        await SocketService.instance.connect(_currentUserId!);
+        await Future.delayed(const Duration(milliseconds: 1500));
+        
+        if (!SocketService.instance.isConnected) {
+          throw Exception('Failed to connect');
+        }
+      } catch (e) {
+        print('❌ Socket connection failed: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Cannot connect to server'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+    }
 
-  try {
-    SocketService.instance.emit('call:request', eventData);
-    print('✅ Event emitted successfully');
-  } catch (e) {
-    print('❌ Error emitting event: $e');
+    final eventData = {
+      'fromUserId': _currentUserId,
+      'toUserId': targetUserId,
+      'chatId': widget.chatId,
+      'isVideo': false,
+      'callerName': _currentUserName,
+      'callerAvatar': _currentUserAvatar,
+    };
+
+    print('📤 Emitting call:request');
+    print('   • Data: $eventData');
+
+    try {
+      await SocketService.instance.emit('call:request', eventData);
+      print('✅ Event emitted successfully');
+    } catch (e) {
+      print('❌ Error emitting event: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to initiate call'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    print('╚══════════════════════════════════════════════════════════════╝');
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to initiate call'),
-          backgroundColor: Colors.red,
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AudioCallScreen(
+            chatId: widget.chatId,
+            userName: _actualUserName ?? widget.userName,
+            userAvatar: _actualUserAvatar,
+            otherUserId: targetUserId,
+            isInitiator: true,
+          ),
         ),
       );
     }
-    return;
   }
 
-  print('╚══════════════════════════════════════════════════════════════╝');
-  print('');
+  void _startVideoCall() async {
+    print('');
+    print('╔══════════════════════════════════════════════════════════════╗');
+    print('║                  📹 STARTING VIDEO CALL                      ║');
+    print('╚══════════════════════════════════════════════════════════════╝');
+    
+    final targetUserId = _resolvedOtherUserId ?? widget.otherUserId;
+    
+    if (_currentUserId == null || targetUserId == null) {
+      print('❌ Missing user IDs');
+      print('   • Current: $_currentUserId');
+      print('   • Target: $targetUserId');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot start call - user ID not found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
 
-  await Future.delayed(const Duration(milliseconds: 300));
+    // ✅ Ensure socket is connected
+    if (!SocketService.instance.isConnected) {
+      print('⚠️ Socket not connected, attempting reconnect...');
+      try {
+        await SocketService.instance.connect(_currentUserId!);
+        await Future.delayed(const Duration(milliseconds: 1500));
+        
+        if (!SocketService.instance.isConnected) {
+          throw Exception('Failed to connect');
+        }
+      } catch (e) {
+        print('❌ Socket connection failed: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Cannot connect to server'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+    }
 
-  if (mounted) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => VideoCallScreen(
-          chatId: widget.chatId,
-          userName: _actualUserName ?? widget.userName,
-          userAvatar: _actualUserAvatar,
-          otherUserId: targetUserId,  // ✅ Use targetUserId
-          isInitiator: true,
+    final eventData = {
+      'fromUserId': _currentUserId,
+      'toUserId': targetUserId,
+      'chatId': widget.chatId,
+      'isVideo': true,
+      'callerName': _currentUserName,
+      'callerAvatar': _currentUserAvatar,
+    };
+
+    print('📤 Emitting call:request');
+    print('   • Data: $eventData');
+
+    try {
+      await SocketService.instance.emit('call:request', eventData);
+      print('✅ Event emitted successfully');
+    } catch (e) {
+      print('❌ Error emitting event: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to initiate call'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    print('╚══════════════════════════════════════════════════════════════╝');
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => VideoCallScreen(
+            chatId: widget.chatId,
+            userName: _actualUserName ?? widget.userName,
+            userAvatar: _actualUserAvatar,
+            otherUserId: targetUserId,
+            isInitiator: true,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
-}
 
   ImageProvider _getAvatarImage(String? avatarUrl) {
     if (avatarUrl != null &&
@@ -728,7 +536,6 @@ void _startVideoCall() async {
     return const AssetImage('assets/images/doctor.png');
   }
 
-  // ✅ Get current user's real avatar
   ImageProvider _getCurrentUserAvatar() {
     if (_currentUserAvatar != null &&
         _currentUserAvatar!.isNotEmpty &&
@@ -738,7 +545,6 @@ void _startVideoCall() async {
       return NetworkImage(_currentUserAvatar!);
     }
     return const AssetImage('assets/images/profile.png');
->>>>>>> 410893a (calling)
   }
 
   @override
@@ -786,18 +592,12 @@ void _startVideoCall() async {
           ],
         ),
         actions: [
-<<<<<<< HEAD
-          if (_shouldShowAudioIcon)
-            IconButton(
-              icon: const Icon(Icons.phone_outlined, color: Colors.black, size: 24),
-              onPressed: _startAudioCall,
-            ),
-=======
+          // ✅ Always show audio icon
           IconButton(
             icon: const Icon(Icons.phone_outlined, color: Colors.black, size: 24),
             onPressed: _startAudioCall,
           ),
->>>>>>> 410893a (calling)
+          // ✅ Always show video icon
           IconButton(
             icon: const Icon(Icons.videocam_outlined, color: Colors.black, size: 28),
             onPressed: _startVideoCall,
@@ -1074,18 +874,12 @@ void _startVideoCall() async {
                 ),
             ],
           ),
-          // ✅ Show real current user avatar
           if (isMe)
             Padding(
               padding: const EdgeInsets.only(left: 8),
               child: CircleAvatar(
-<<<<<<< HEAD
-               radius: 16,
-                backgroundImage: AssetImage("assets/images/profile.png"),
-=======
                 radius: 16,
                 backgroundImage: _getCurrentUserAvatar(),
->>>>>>> 410893a (calling)
               ),
             ),
         ],
@@ -1113,9 +907,9 @@ void _startVideoCall() async {
     _refreshTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
-    //SocketService.instance.off('call:incoming');
+    SocketService.instance.off('call:incoming');
     SocketService.instance.off('message:new');
-    print('✅ Auto-refresh stopped');
+    print('Auto-refresh stopped');
     super.dispose();
   }
 }

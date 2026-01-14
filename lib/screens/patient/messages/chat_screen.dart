@@ -53,7 +53,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _loadCurrentUserProfile();
     _loadMessages();
     _startAutoRefresh();
-    _setupSocketListeners(); // ✅ UNCOMMENT THIS - IT'S NEEDED!
+    _setupSocketListeners();
     
     _scrollController.addListener(() {
       if (_scrollController.hasClients) {
@@ -65,47 +65,39 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Future<void> _loadCurrentUserProfile() async {
-  try {
-    final profileResult = await ApiService.getUserProfile();
-    if (profileResult['success'] == true) {
-      setState(() {
-        _currentUserId = profileResult['data']['_id']?.toString();
-        _currentUserAvatar = profileResult['data']['avatar']?['url']?.toString();
-        _currentUserName = profileResult['data']['fullName']?.toString();  // <-- এই line যোগ করুন
-      });
-      print('✅ Current user profile loaded:');
-      print('   ID: $_currentUserId');
-      print('   Avatar: $_currentUserAvatar');
-      print('   Name: $_currentUserName');
+    try {
+      final profileResult = await ApiService.getUserProfile();
+      if (profileResult['success'] == true) {
+        setState(() {
+          _currentUserId = profileResult['data']['_id']?.toString();
+          _currentUserAvatar = profileResult['data']['avatar']?['url']?.toString();
+          _currentUserName = profileResult['data']['fullName']?.toString();
+        });
+        print('✅ Current user profile loaded');
+        print('   ID: $_currentUserId');
+        print('   Name: $_currentUserName');
+      }
+    } catch (e) {
+      print('❌ Error loading user profile: $e');
     }
-  } catch (e) {
-    print('❌ Error loading user profile: $e');
   }
-}
 
-  // ✅ KEEP THIS - Only listen for new messages, NOT calls (CallManager handles calls)
   void _setupSocketListeners() {
     final socket = SocketService.instance.socket;
     if (socket != null) {
-      // ✅ Only listen for new messages
       socket.on('message:new', (data) {
         print('📨 New message received: $data');
         if (data['chatId'] == widget.chatId) {
           _loadMessagesQuietly();
         }
       });
-      
-      print('✅ Socket listeners setup (message:new only)');
-    } else {
-      print('⚠️ Socket not available');
+      print('✅ Socket listeners setup');
     }
   }
 
   void _startAutoRefresh() {
     _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (mounted) {
-        _loadMessagesQuietly();
-      }
+      if (mounted) _loadMessagesQuietly();
     });
   }
 
@@ -123,9 +115,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         Set<String> newMessageIds = {};
         for (var msg in newMessages) {
           final msgId = msg['_id']?.toString();
-          if (msgId != null) {
-            newMessageIds.add(msgId);
-          }
+          if (msgId != null) newMessageIds.add(msgId);
         }
 
         if (newMessageIds.length != _messageIds.length || 
@@ -154,9 +144,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Future<void> _loadMessages() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final result = await ApiService.getChatMessages(
@@ -171,9 +159,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         Set<String> ids = {};
         for (var msg in messages) {
           final msgId = msg['_id']?.toString();
-          if (msgId != null) {
-            ids.add(msgId);
-          }
+          if (msgId != null) ids.add(msgId);
         }
         
         setState(() {
@@ -191,18 +177,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 _actualDoctorAvatar = msg['sender']?['avatar']?['url']?.toString();
                 _actualDoctorName = msg['sender']?['fullName']?.toString();
               });
-              print('✅ Loaded real doctor data:');
-              print('   Name: $_actualDoctorName');
-              print('   Avatar: $_actualDoctorAvatar');
               break;
             }
           }
         }
 
         if (_otherUserId == null && widget.doctorId != null) {
-          setState(() {
-            _otherUserId = widget.doctorId;
-          });
+          setState(() => _otherUserId = widget.doctorId);
         }
         
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -211,15 +192,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           }
         });
       } else {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     } catch (e) {
       print('❌ Error loading messages: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -229,9 +206,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (content.isEmpty && _selectedFiles.isEmpty) return;
     if (_isSending) return;
 
-    setState(() {
-      _isSending = true;
-    });
+    setState(() => _isSending = true);
 
     try {
       final result = await ApiService.sendMessage(
@@ -247,7 +222,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           _selectedFiles = [];
           _isAutoScrollEnabled = true;
         });
-        
         await _loadMessages();
       } else {
         if (mounted) {
@@ -264,9 +238,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         );
       }
     } finally {
-      setState(() {
-        _isSending = false;
-      });
+      setState(() => _isSending = false);
     }
   }
 
@@ -274,9 +246,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        setState(() {
-          _selectedFiles.add(File(image.path));
-        });
+        setState(() => _selectedFiles.add(File(image.path)));
       }
     } catch (e) {
       print('Error picking image: $e');
@@ -284,72 +254,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   void _removeFile(int index) {
-    setState(() {
-      _selectedFiles.removeAt(index);
-    });
+    setState(() => _selectedFiles.removeAt(index));
   }
 
-<<<<<<< HEAD
-  // Video Call শুরু করতে
-void _startVideoCall() async {
-  SocketService.instance.emit('call:request', {
-    'fromUserId': _currentUserId,
-    'toUserId': _otherUserId,
-    'chatId': widget.chatId,
-    'isVideo': true,
-  });
-
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => VideoCallScreen(
-        chatId: widget.chatId,
-        userName: widget.doctorName,
-        userAvatar: widget.doctorAvatar,
-        otherUserId: _otherUserId!,
-        isInitiator: true,
-      ),
-    ),
-  );
-
-=======
-  // ✅ Replace _startAudioCall() and _startVideoCall() in BOTH chat screens with these:
-
-// ✅ Line 204 থেকে এই দুইটা function replace করুন
-
-void _startAudioCall() async {
-  print('');
-  print('╔══════════════════════════════════════════════════════════════╗');
-  print('║                  📞 STARTING AUDIO CALL                      ║');
-  print('╚══════════════════════════════════════════════════════════════╝');
-  
-  if (_currentUserId == null || _otherUserId == null) {
-    print('❌ Missing user IDs');
-    print('   • Current: $_currentUserId');
-    print('   • Other: $_otherUserId');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot start call - user ID not found'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-    return;
-  }
-
-  final socket = SocketService.instance.socket;
-  if (socket == null || !socket.connected) {
-    print('⚠️ Socket not connected, attempting reconnect...');
-    try {
-      await SocketService.instance.connect(_currentUserId!);
-      await Future.delayed(const Duration(milliseconds: 1500));
-      
-      if (!SocketService.instance.isConnected) {
-        throw Exception('Failed to connect');
+  void _startAudioCall() async {
+    print('📞 Starting audio call...');
+    
+    if (_currentUserId == null || _otherUserId == null) {
+      print('❌ Missing user IDs');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot start call - user ID not found'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
-    } catch (e) {
-      print('❌ Socket connection failed: $e');
+      return;
+    }
+
+    final socket = SocketService.instance.socket;
+    if (socket == null || !socket.connected) {
+      print('⚠️ Socket not connected');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -360,93 +286,63 @@ void _startAudioCall() async {
       }
       return;
     }
-  }
->>>>>>> 410893a (calling)
 
-  final eventData = {
-    'fromUserId': _currentUserId,
-    'toUserId': _otherUserId,
-    'chatId': widget.chatId,
-    'isVideo': false,
-    'callerName': _currentUserName, // আপনার current user এর name
-  'callerAvatar': _currentUserAvatar,
-  };
+    final eventData = {
+      'fromUserId': _currentUserId,
+      'toUserId': _otherUserId,
+      'chatId': widget.chatId,
+      'isVideo': false,
+      'callerName': _currentUserName,
+      'callerAvatar': _currentUserAvatar,
+    };
 
-  print('📤 Emitting call:request');
-  print('   • Data: $eventData');
-  print('   • Socket connected: ${socket?.connected}');
-  print('   • Socket ID: ${socket?.id}');
+    print('📤 Emitting call:request: $eventData');
 
-  try {
-    SocketService.instance.emit('call:request', eventData);
-    print('✅ Event emitted successfully');
-  } catch (e) {
-    print('❌ Error emitting event: $e');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to initiate call'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-    return;
-  }
-
-  print('╚══════════════════════════════════════════════════════════════╝');
-  print('');
-
-  await Future.delayed(const Duration(milliseconds: 300));
-
-  if (mounted) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AudioCallScreen(
-          chatId: widget.chatId,
-          userName: _actualDoctorName ?? widget.doctorName,
-          userAvatar: _actualDoctorAvatar,
-          otherUserId: _otherUserId!,
-          isInitiator: true,
-        ),
-      ),
-    );
-  }
-}
-
-void _startVideoCall() async {
-  print('');
-  print('╔══════════════════════════════════════════════════════════════╗');
-  print('║                  📹 STARTING VIDEO CALL                      ║');
-  print('╚══════════════════════════════════════════════════════════════╝');
-  
-  if (_currentUserId == null || _otherUserId == null) {
-    print('❌ Missing user IDs');
-    print('   • Current: $_currentUserId');
-    print('   • Other: $_otherUserId');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot start call - user ID not found'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-    return;
-  }
-
-  final socket = SocketService.instance.socket;
-  if (socket == null || !socket.connected) {
-    print('⚠️ Socket not connected, attempting reconnect...');
     try {
-      await SocketService.instance.connect(_currentUserId!);
-      await Future.delayed(const Duration(milliseconds: 1500));
-      
-      if (!SocketService.instance.isConnected) {
-        throw Exception('Failed to connect');
-      }
+      await SocketService.instance.emit('call:request', eventData);
+      print('✅ Event emitted');
     } catch (e) {
-      print('❌ Socket connection failed: $e');
+      print('❌ Error emitting: $e');
+      return;
+    }
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AudioCallScreen(
+            chatId: widget.chatId,
+            userName: _actualDoctorName ?? widget.doctorName,
+            userAvatar: _actualDoctorAvatar,
+            otherUserId: _otherUserId!,
+            isInitiator: true,
+          ),
+        ),
+      );
+    }
+  }
+
+  void _startVideoCall() async {
+    print('📹 Starting video call...');
+    
+    if (_currentUserId == null || _otherUserId == null) {
+      print('❌ Missing user IDs');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot start call - user ID not found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    final socket = SocketService.instance.socket;
+    if (socket == null || !socket.connected) {
+      print('⚠️ Socket not connected');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -457,58 +353,43 @@ void _startVideoCall() async {
       }
       return;
     }
-  }
 
-  final eventData = {
-    'fromUserId': _currentUserId,
-    'toUserId': _otherUserId,
-    'chatId': widget.chatId,
-    'isVideo': true,
-    'callerName': _currentUserName, // আপনার current user এর name
-  'callerAvatar': _currentUserAvatar,
-  };
+    final eventData = {
+      'fromUserId': _currentUserId,
+      'toUserId': _otherUserId,
+      'chatId': widget.chatId,
+      'isVideo': true,
+      'callerName': _currentUserName,
+      'callerAvatar': _currentUserAvatar,
+    };
 
-  print('📤 Emitting call:request');
-  print('   • Data: $eventData');
-  print('   • Socket connected: ${socket?.connected}');
-  print('   • Socket ID: ${socket?.id}');
+    print('📤 Emitting call:request: $eventData');
 
-  try {
-    SocketService.instance.emit('call:request', eventData);
-    print('✅ Event emitted successfully');
-  } catch (e) {
-    print('❌ Error emitting event: $e');
+    try {
+      await SocketService.instance.emit('call:request', eventData);
+      print('✅ Event emitted');
+    } catch (e) {
+      print('❌ Error emitting: $e');
+      return;
+    }
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to initiate call'),
-          backgroundColor: Colors.red,
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => VideoCallScreen(
+            chatId: widget.chatId,
+            userName: _actualDoctorName ?? widget.doctorName,
+            userAvatar: _actualDoctorAvatar,
+            otherUserId: _otherUserId!,
+            isInitiator: true,
+          ),
         ),
       );
     }
-    return;
   }
-
-  print('╚══════════════════════════════════════════════════════════════╝');
-  print('');
-
-  await Future.delayed(const Duration(milliseconds: 300));
-
-  if (mounted) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => VideoCallScreen(
-          chatId: widget.chatId,
-          userName: _actualDoctorName ?? widget.doctorName,
-          userAvatar: _actualDoctorAvatar,
-          otherUserId: _otherUserId!,
-          isInitiator: true,
-        ),
-      ),
-    );
-  }
-}
 
   ImageProvider _getAvatarImage(String? avatarUrl) {
     if (avatarUrl != null &&
@@ -604,11 +485,6 @@ void _startVideoCall() async {
                               'No messages yet',
                               style: TextStyle(color: Colors.grey[600], fontSize: 16),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Start a conversation with ${_actualDoctorName ?? widget.doctorName}',
-                              style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                            ),
                           ],
                         ),
                       )
@@ -673,13 +549,6 @@ void _startVideoCall() async {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(35),
                 border: Border.all(color: Colors.grey.shade200),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  )
-                ],
               ),
               child: Row(
                 children: [
@@ -699,7 +568,6 @@ void _startVideoCall() async {
                     icon: const Icon(Icons.image_outlined, color: Colors.black87),
                     onPressed: _pickImage,
                   ),
-                  const SizedBox(width: 5),
                   IconButton(
                     icon: _isSending
                         ? const SizedBox(
@@ -714,7 +582,6 @@ void _startVideoCall() async {
               ),
             ),
           ),
-          const SizedBox(height: 10),
         ],
       ),
     );
@@ -724,146 +591,64 @@ void _startVideoCall() async {
     final String text = message['content']?.toString() ?? '';
     final String senderId = message['sender']?['_id']?.toString() ?? '';
     final String? senderAvatar = message['sender']?['avatar']?['url']?.toString();
-    
     final bool isMe = _currentUserId != null && senderId == _currentUserId;
-    
     final List<dynamic> attachments = message['fileUrl'] ?? [];
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Row(
-            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (!isMe)
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: _getAvatarImage(senderAvatar),
-                ),
-              if (!isMe) const SizedBox(width: 8),
-              Container(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.7,
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isMe ? const Color(0xFF6C5CE7) : Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(20),
-                    topRight: const Radius.circular(20),
-                    bottomLeft: isMe ? const Radius.circular(20) : const Radius.circular(5),
-                    bottomRight: isMe ? const Radius.circular(5) : const Radius.circular(20),
-                  ),
-                  boxShadow: [
-                    if (!isMe)
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 5,
-                        offset: const Offset(0, 2),
-                      ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (attachments.isNotEmpty)
-                      ...attachments.map((att) {
-                        final String? url = att['url']?.toString();
-                        if (url != null && url.isNotEmpty && url != 'file:///' &&
-                            (url.startsWith('http://') || url.startsWith('https://'))) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                url,
-                                width: 200,
-                                height: 200,
-                                fit: BoxFit.cover,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Container(
-                                    width: 200,
-                                    height: 200,
-                                    color: Colors.grey[300],
-                                    child: const Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  );
-                                },
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: 200,
-                                    height: 200,
-                                    color: Colors.grey[300],
-                                    child: const Icon(Icons.broken_image),
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }),
-                    
-                    if (text.isNotEmpty)
-                      Text(
-                        text,
-                        style: TextStyle(
-                          color: isMe ? Colors.white : Colors.black87,
-                          fontSize: 16,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (isMe) const SizedBox(width: 8),
-              if (isMe)
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: _getCurrentUserAvatar(),
-                ),
-            ],
-          ),
-          
-          if (message['createdAt'] != null)
-            Padding(
-              padding: EdgeInsets.only(
-                left: isMe ? 0 : 45,
-                right: isMe ? 45 : 0,
-                top: 5,
-              ),
-              child: Text(
-                _formatTime(message['createdAt']),
-                style: const TextStyle(color: Colors.grey, fontSize: 11),
+          if (!isMe)
+            CircleAvatar(radius: 20, backgroundImage: _getAvatarImage(senderAvatar)),
+          if (!isMe) const SizedBox(width: 8),
+          Container(
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            decoration: BoxDecoration(
+              color: isMe ? const Color(0xFF6C5CE7) : Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(20),
+                topRight: const Radius.circular(20),
+                bottomLeft: isMe ? const Radius.circular(20) : const Radius.circular(5),
+                bottomRight: isMe ? const Radius.circular(5) : const Radius.circular(20),
               ),
             ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (attachments.isNotEmpty)
+                  ...attachments.map((att) {
+                    final String? url = att['url']?.toString();
+                    if (url != null && url.isNotEmpty && url != 'file:///' &&
+                        (url.startsWith('http://') || url.startsWith('https://'))) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(url, width: 200, height: 200, fit: BoxFit.cover),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }),
+                if (text.isNotEmpty)
+                  Text(
+                    text,
+                    style: TextStyle(
+                      color: isMe ? Colors.white : Colors.black87,
+                      fontSize: 16,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (isMe) const SizedBox(width: 8),
+          if (isMe) CircleAvatar(radius: 20, backgroundImage: _getCurrentUserAvatar()),
         ],
       ),
     );
-  }
-
-  String _formatTime(dynamic timestamp) {
-    try {
-      final DateTime dateTime = DateTime.parse(timestamp.toString());
-      final now = DateTime.now();
-      final difference = now.difference(dateTime);
-
-      if (difference.inMinutes < 1) {
-        return 'Just now';
-      } else if (difference.inHours < 1) {
-        return '${difference.inMinutes}m ago';
-      } else if (difference.inDays < 1) {
-        return '${difference.inHours}h ago';
-      } else {
-        return '${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-      }
-    } catch (e) {
-      return '';
-    }
   }
 
   @override
@@ -871,7 +656,6 @@ void _startVideoCall() async {
     _refreshTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
-    // ✅ Only remove message listener
     SocketService.instance.off('message:new');
     super.dispose();
   }
