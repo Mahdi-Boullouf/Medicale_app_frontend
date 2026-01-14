@@ -29,15 +29,16 @@ class VideoCallScreen extends StatefulWidget {
 class _VideoCallScreenState extends State<VideoCallScreen> {
   final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
   final RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
-  
+
   WebRTCService? _webRTCService;
   bool _isMuted = false;
   bool _isVideoOff = false;
   bool _isCallConnected = false;
   bool _isInitializing = true;
+  bool _remoteVideoEnabled = true; // ✅ Track remote video status
   String _callStatus = 'Connecting...';
   String? _currentUserId;
-  
+
   Timer? _callTimer;
   int _callDurationSeconds = 0;
   String _callDuration = '00:00';
@@ -53,13 +54,19 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userDataString = prefs.getString('user_data');
-      
+
       // Try to get from API
       final profileResult = await ApiService.getUserProfile();
       if (profileResult['success'] == true) {
         _currentUserId = profileResult['data']['_id']?.toString();
         print('✅ Current user ID loaded: $_currentUserId');
-        
+
+        // ✅ Check permissions first
+        bool permissionsGranted = await WebRTCService.checkPermissions(true);
+        if (!permissionsGranted) {
+          throw Exception('Microphone or Camera permission denied');
+        }
+
         // Now initialize the call
         await _initializeCall();
       } else {
@@ -68,10 +75,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     } catch (e) {
       print('❌ Error loading user ID: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to initialize: $e')),
-        );
-        Navigator.pop(context);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Failed to initialize: $e')));
+            Navigator.pop(context);
+          }
+        });
       }
     }
   }
@@ -83,7 +94,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       print('👤 Other user: ${widget.otherUserId}');
       print('👤 Current user: $_currentUserId');
       print('🎬 Is Initiator: ${widget.isInitiator}');
-      
+
       // Initialize renderers
       await _localRenderer.initialize();
       await _remoteRenderer.initialize();
@@ -95,19 +106,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         chatId: widget.chatId,
         isVideo: true,
         onRemoteStream: (stream) {
-          print('📹 Remote stream received in callback!');
-          if (mounted) {
-            setState(() {
-              _remoteRenderer.srcObject = stream;
-              _isCallConnected = true;
-              _callStatus = 'Connected';
-            });
-            
-            // ✅ Start timer when remote stream is received
-            if (!_isTimerRunning()) {
-              _startCallTimer();
-            }
-          }
+          _handleRemoteStream(stream);
         },
         onCallEnded: () {
           print('📴 Call ended callback triggered');
@@ -122,10 +121,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       print('✅ WebRTC service initialized');
 
       // Set local stream
-      setState(() {
-        _localRenderer.srcObject = _webRTCService!.localStream;
-        _isInitializing = false;
-        _callStatus = widget.isInitiator ? 'Calling...' : 'Connecting...';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _localRenderer.srcObject = _webRTCService!.localStream;
+            _isInitializing = false;
+            _callStatus = widget.isInitiator ? 'Calling...' : 'Connecting...';
+          });
+        }
       });
       print('✅ Local stream set');
 
@@ -133,20 +136,47 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       _setupSocketListeners();
 
       // If initiator, create offer
+      // If initiator, wait for call:accepted before creating offer
       if (widget.isInitiator) {
-        print('📤 Creating offer as initiator...');
-        await Future.delayed(const Duration(milliseconds: 500));
-        await _webRTCService!.createOffer(widget.otherUserId);
+        print('⏳ Waiting for receiver to accept before creating offer...');
+        // createOffer will be called inside call:accepted listener
       } else {
         print('📥 Waiting for offer as receiver...');
+        // ✅ For receiver, sometimes the remote stream is already available
+        if (_webRTCService?.remoteStream != null && !_isCallConnected) {
+          _handleRemoteStream(_webRTCService!.remoteStream!);
+        }
       }
     } catch (e) {
       print('❌ Error initializing call: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to start call: $e')),
-        );
-        Navigator.pop(context);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            String errorMsg = e.toString().contains('permission')
+                ? 'Permissions are required for the call'
+                : 'Failed to start call: $e';
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(errorMsg)));
+            Navigator.pop(context);
+          }
+        });
+      }
+    }
+  }
+
+  void _handleRemoteStream(MediaStream stream) {
+    print('📹 Handling remote stream...');
+    if (mounted) {
+      setState(() {
+        _remoteRenderer.srcObject = stream;
+        _isCallConnected = true;
+        _callStatus = 'Connected';
+      });
+
+      // ✅ Start timer when connection is established
+      if (!_isTimerRunning()) {
+        _startCallTimer();
       }
     }
   }
@@ -174,12 +204,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       if (data['chatId'] == widget.chatId) {
         print('✅ Answer is for this chat, handling...');
         await _webRTCService?.handleAnswer(data['answer']);
-        
+
         setState(() {
           _callStatus = 'Connected';
           _isCallConnected = true;
         });
-        
+
         // ✅ Start timer when answer is received (for initiator)
         if (!_isTimerRunning()) {
           _startCallTimer();
@@ -207,24 +237,71 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       if (data['chatId'] == widget.chatId) {
         print('❌ Call was rejected');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Call was rejected')),
-          );
-          Navigator.pop(context);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'The receiver is currently busy or declined the call',
+                  ),
+                  duration: Duration(seconds: 3),
+                ),
+              );
+              Navigator.pop(context);
+            }
+          });
         }
       }
     });
-    
-    socket.on('call:accepted', (data) {
+
+    socket.on('call:accepted', (data) async {
       print('📥 Received call:accepted event');
       if (data['chatId'] == widget.chatId) {
         print('✅ Call was accepted by receiver');
         setState(() {
           _callStatus = 'Connecting...';
         });
+
+        // ✅ Initiator creates offer ONLY after receiver accepts
+        if (widget.isInitiator && _webRTCService != null) {
+          print('📤 Receiver is ready. Creating offer in 1 second...');
+          await Future.delayed(const Duration(milliseconds: 1000));
+          await _webRTCService!.createOffer(widget.otherUserId);
+        }
       }
     });
-    
+
+    socket.on('call:media_update', (data) {
+      print('📥 Received call:media_update: $data');
+      if (data['chatId'] == widget.chatId && data['videoEnabled'] != null) {
+        setState(() {
+          _remoteVideoEnabled = data['videoEnabled'];
+        });
+      }
+    });
+
+    socket.on('call:switch_request', (data) {
+      print('📥 Received call:switch_request: $data');
+      if (data['chatId'] == widget.chatId &&
+          data['type'] == 'video' &&
+          mounted) {
+        _showSwitchRequestDialog();
+      }
+    });
+
+    socket.on('call:switch_response', (data) {
+      print('📥 Received call:switch_response: $data');
+      if (data['chatId'] == widget.chatId && mounted) {
+        if (data['accepted'] == true) {
+          _performSwitchToVideo();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Switch to video request declined')),
+          );
+        }
+      }
+    });
+
     print('✅ All socket listeners set up');
   }
 
@@ -239,17 +316,23 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       print('⏱️ Timer already running');
       return;
     }
-    
+
     print('⏱️ Starting call timer');
     _callTimer?.cancel();
     _callDurationSeconds = 0; // Reset to 0
-    
+
     _callTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
           _callDurationSeconds++;
-          final minutes = (_callDurationSeconds ~/ 60).toString().padLeft(2, '0');
-          final seconds = (_callDurationSeconds % 60).toString().padLeft(2, '0');
+          final minutes = (_callDurationSeconds ~/ 60).toString().padLeft(
+            2,
+            '0',
+          );
+          final seconds = (_callDurationSeconds % 60).toString().padLeft(
+            2,
+            '0',
+          );
           _callDuration = '$minutes:$seconds';
         });
         print('⏱️ Call duration: $_callDuration');
@@ -257,7 +340,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         timer.cancel();
       }
     });
-    
+
     print('✅ Call timer started');
   }
 
@@ -270,19 +353,65 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   void _toggleVideo() {
-    setState(() {
-      _isVideoOff = !_isVideoOff;
-    });
-    _webRTCService?.toggleVideo();
-    print('📹 Video ${_isVideoOff ? "disabled" : "enabled"}');
+    if (_isVideoOff) {
+      // ✅ Request to turn on video
+      _webRTCService?.requestSwitchToVideo();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Requesting to turn on video...')),
+      );
+    } else {
+      // Immediate turn off
+      setState(() {
+        _isVideoOff = true;
+      });
+      _webRTCService?.toggleVideo();
+      print('📹 Video disabled');
+    }
+  }
+
+  void _showSwitchRequestDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Turn on Video?'),
+        content: Text('${widget.userName} wants you to turn on your video.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _webRTCService?.respondToSwitchRequest(false);
+            },
+            child: const Text('Decline', style: TextStyle(color: Colors.red)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _webRTCService?.respondToSwitchRequest(true);
+              _performSwitchToVideo();
+            },
+            child: const Text('Accept'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _performSwitchToVideo() {
+    if (mounted) {
+      setState(() {
+        _isVideoOff = false;
+      });
+      _webRTCService?.toggleVideo();
+    }
   }
 
   void _endCall() {
     print('📴 Ending call...');
-    
+
     _callTimer?.cancel();
     _callTimer = null;
-    
+
     SocketService.instance.emit('call:end', {
       'chatId': widget.chatId,
       'toUserId': widget.otherUserId,
@@ -292,9 +421,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _webRTCService?.dispose();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
-    
+
     print('✅ Call ended, navigating back');
-    
+
     if (mounted) {
       Navigator.pop(context);
     }
@@ -309,11 +438,46 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           children: [
             if (_isCallConnected)
               Positioned.fill(
-                child: RTCVideoView(
-                  _remoteRenderer,
-                  objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
-                  mirror: false,
-                ),
+                child: _remoteVideoEnabled
+                    ? RTCVideoView(
+                        _remoteRenderer,
+                        objectFit:
+                            RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                        mirror: false,
+                      )
+                    : Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircleAvatar(
+                              radius: 80,
+                              backgroundImage:
+                                  widget.userAvatar != null &&
+                                      widget.userAvatar!.isNotEmpty &&
+                                      widget.userAvatar != 'file:///' &&
+                                      (widget.userAvatar!.startsWith(
+                                            'http://',
+                                          ) ||
+                                          widget.userAvatar!.startsWith(
+                                            'https://',
+                                          ))
+                                  ? NetworkImage(widget.userAvatar!)
+                                  : const AssetImage(
+                                          'assets/images/doctor1.png',
+                                        )
+                                        as ImageProvider,
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Video Paused',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
               )
             else
               Container(
@@ -324,14 +488,15 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                     children: [
                       CircleAvatar(
                         radius: 60,
-                        backgroundImage: widget.userAvatar != null &&
+                        backgroundImage:
+                            widget.userAvatar != null &&
                                 widget.userAvatar!.isNotEmpty &&
                                 widget.userAvatar != 'file:///' &&
                                 (widget.userAvatar!.startsWith('http://') ||
                                     widget.userAvatar!.startsWith('https://'))
                             ? NetworkImage(widget.userAvatar!)
                             : const AssetImage('assets/images/doctor1.png')
-                                as ImageProvider,
+                                  as ImageProvider,
                       ),
                       const SizedBox(height: 20),
                       Text(
@@ -353,9 +518,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                       if (_isInitializing)
                         const Padding(
                           padding: EdgeInsets.only(top: 20),
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                          ),
+                          child: CircularProgressIndicator(color: Colors.white),
                         ),
                     ],
                   ),
@@ -377,7 +540,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                     borderRadius: BorderRadius.circular(10),
                     child: RTCVideoView(
                       _localRenderer,
-                      objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                      objectFit:
+                          RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
                       mirror: true,
                     ),
                   ),
@@ -394,24 +558,22 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.7),
-                      Colors.transparent,
-                    ],
+                    colors: [Colors.black.withOpacity(0.7), Colors.transparent],
                   ),
                 ),
                 child: Row(
                   children: [
                     CircleAvatar(
                       radius: 20,
-                      backgroundImage: widget.userAvatar != null &&
+                      backgroundImage:
+                          widget.userAvatar != null &&
                               widget.userAvatar!.isNotEmpty &&
                               widget.userAvatar != 'file:///' &&
                               (widget.userAvatar!.startsWith('http://') ||
                                   widget.userAvatar!.startsWith('https://'))
                           ? NetworkImage(widget.userAvatar!)
                           : const AssetImage('assets/images/doctor1.png')
-                              as ImageProvider,
+                                as ImageProvider,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -451,10 +613,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.8),
-                      Colors.transparent,
-                    ],
+                    colors: [Colors.black.withOpacity(0.8), Colors.transparent],
                   ),
                 ),
                 child: Row(
@@ -530,14 +689,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   @override
   void dispose() {
     print('🧹 Disposing VideoCallScreen');
-    
+
     _callTimer?.cancel();
     _callTimer = null;
-    
+
     _webRTCService?.dispose();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
-    
+
     final socket = SocketService.instance.socket;
     socket?.off('call:offer');
     socket?.off('call:answer');
@@ -545,9 +704,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     socket?.off('call:ended');
     socket?.off('call:rejected');
     socket?.off('call:accepted');
-    
+
     print('✅ VideoCallScreen disposed');
-    
+
     super.dispose();
   }
 }

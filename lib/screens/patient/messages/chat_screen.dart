@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:docmobi/services/api_service.dart';
 import 'package:docmobi/services/socket_service.dart';
 import 'package:docmobi/screens/common/calls/video_call_screen.dart';
+import 'package:docmobi/screens/common/calls/audio_call_screen.dart';
 import 'package:docmobi/screens/common/calls/incoming_call_screen.dart';
 import 'dart:io';
 import 'dart:async';
@@ -37,7 +38,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   String? _currentUserId;
   String? _otherUserId;
   String? _actualDoctorAvatar; // ✅ Real avatar from API
-  
+
   Timer? _refreshTimer;
   Set<String> _messageIds = {};
 
@@ -110,7 +111,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
       if (result['success'] == true && mounted) {
         final newMessages = result['data']?['items'] ?? [];
-        
+
         Set<String> newMessageIds = {};
         for (var msg in newMessages) {
           final msgId = msg['_id']?.toString();
@@ -119,13 +120,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           }
         }
 
-        if (newMessageIds.length != _messageIds.length || 
+        if (newMessageIds.length != _messageIds.length ||
             !newMessageIds.containsAll(_messageIds)) {
           setState(() {
             _messages = newMessages;
             _messageIds = newMessageIds;
           });
-          
+
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollController.hasClients) {
               _scrollController.animateTo(
@@ -169,7 +170,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
       if (result['success'] == true) {
         final messages = result['data']?['items'] ?? [];
-        
+
         Set<String> ids = {};
         for (var msg in messages) {
           final msgId = msg['_id']?.toString();
@@ -177,7 +178,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ids.add(msgId);
           }
         }
-        
+
         setState(() {
           _messages = messages;
           _messageIds = ids;
@@ -192,7 +193,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               setState(() {
                 _otherUserId = senderId;
                 // Get real avatar from message sender
-                _actualDoctorAvatar = msg['sender']?['avatar']?['url']?.toString();
+                _actualDoctorAvatar = msg['sender']?['avatar']?['url']
+                    ?.toString();
               });
               break;
             }
@@ -204,10 +206,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             _otherUserId = widget.doctorId;
           });
         }
-        
+
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+            _scrollController.jumpTo(
+              _scrollController.position.maxScrollExtent,
+            );
           }
         });
       } else {
@@ -225,7 +229,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   Future<void> _sendMessage() async {
     final content = _controller.text.trim();
-    
+
     if (content.isEmpty && _selectedFiles.isEmpty) return;
     if (_isSending) return;
 
@@ -246,7 +250,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         setState(() {
           _selectedFiles = [];
         });
-        
+
         await _loadMessages();
       } else {
         if (mounted) {
@@ -258,9 +262,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     } catch (e) {
       print('❌ Error sending message: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to send message')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to send message')));
       }
     } finally {
       setState(() {
@@ -288,37 +292,31 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     });
   }
 
-  // Video Call শুরু করতে
-void _startVideoCall() async {
-  SocketService.instance.emit('call:request', {
-    'fromUserId': _currentUserId,
-    'toUserId': _otherUserId,
-    'chatId': widget.chatId,
-    'isVideo': true,
-  });
-
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => VideoCallScreen(
-        chatId: widget.chatId,
-        userName: widget.doctorName,
-        userAvatar: widget.doctorAvatar,
-        otherUserId: _otherUserId!,
-        isInitiator: true,
-      ),
-    ),
-  );
-
+  // ✅ Unified method to initiate Call (Audio or Video)
+  void _initiateCall({required bool isVideo}) async {
+    if (_otherUserId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot initiate call: User info missing'),
+          ),
+        );
+      }
+      return;
+    }
 
     final socket = SocketService.instance.socket;
     if (socket == null || !socket.connected) {
       if (_currentUserId != null) {
-        await SocketService.instance.connect(_currentUserId!);
-        await Future.delayed(const Duration(seconds: 1));
+        try {
+          await SocketService.instance.connect(_currentUserId!);
+          await Future.delayed(const Duration(seconds: 1));
+        } catch (e) {
+          print('❌ Socket reconnection failed: $e');
+        }
       }
-      
-      if (SocketService.instance.socket == null || 
+
+      if (SocketService.instance.socket == null ||
           !SocketService.instance.socket!.connected) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -332,24 +330,33 @@ void _startVideoCall() async {
       }
     }
 
+    // ✅ Emit call:request event
     SocketService.instance.emit('call:request', {
       'fromUserId': _currentUserId,
       'toUserId': _otherUserId,
       'chatId': widget.chatId,
-      'isVideo': true,
+      'isVideo': isVideo,
     });
 
     if (mounted) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => VideoCallScreen(
-            chatId: widget.chatId,
-            userName: widget.doctorName,
-            userAvatar: _actualDoctorAvatar ?? widget.doctorAvatar,
-            otherUserId: _otherUserId!,
-            isInitiator: true,
-          ),
+          builder: (context) => isVideo
+              ? VideoCallScreen(
+                  chatId: widget.chatId,
+                  userName: widget.doctorName,
+                  userAvatar: _actualDoctorAvatar ?? widget.doctorAvatar,
+                  otherUserId: _otherUserId!,
+                  isInitiator: true,
+                )
+              : AudioCallScreen(
+                  chatId: widget.chatId,
+                  userName: widget.doctorName,
+                  userAvatar: _actualDoctorAvatar ?? widget.doctorAvatar,
+                  otherUserId: _otherUserId!,
+                  isInitiator: true,
+                ),
         ),
       );
     }
@@ -357,25 +364,26 @@ void _startVideoCall() async {
 
   Widget _getAvatarWidget(String? avatarUrl, {bool isDoctor = false}) {
     // ✅ Use actual avatar from API first, then fallback to widget avatar
-    final displayAvatar = isDoctor 
+    final displayAvatar = isDoctor
         ? (_actualDoctorAvatar ?? widget.doctorAvatar)
         : avatarUrl;
-    
-    if (displayAvatar != null && 
-        displayAvatar.isNotEmpty && 
+
+    if (displayAvatar != null &&
+        displayAvatar.isNotEmpty &&
         displayAvatar != 'file:///' &&
-        (displayAvatar.startsWith('http://') || displayAvatar.startsWith('https://'))) {
+        (displayAvatar.startsWith('http://') ||
+            displayAvatar.startsWith('https://'))) {
       return CircleAvatar(
         radius: 20,
         backgroundImage: NetworkImage(displayAvatar),
         onBackgroundImageError: (exception, stackTrace) {},
       );
     }
-    
+
     return CircleAvatar(
       radius: 20,
       backgroundImage: AssetImage(
-        isDoctor ? 'assets/images/doctor1.png' : 'assets/images/profile.png'
+        isDoctor ? 'assets/images/doctor1.png' : 'assets/images/profile.png',
       ),
     );
   }
@@ -420,10 +428,23 @@ void _startVideoCall() async {
           ],
         ),
         actions: [
-          // ✅ Only Video icon for Patient-Doctor chat
+          // Audio Call icon
           IconButton(
-            icon: const Icon(Icons.videocam_outlined, color: Colors.black, size: 28),
-            onPressed: _startVideoCall,
+            icon: const Icon(
+              Icons.phone_outlined,
+              color: Colors.black,
+              size: 26,
+            ),
+            onPressed: () => _initiateCall(isVideo: false),
+          ),
+          // Video icon
+          IconButton(
+            icon: const Icon(
+              Icons.videocam_outlined,
+              color: Colors.black,
+              size: 28,
+            ),
+            onPressed: () => _initiateCall(isVideo: true),
           ),
           const SizedBox(width: 10),
         ],
@@ -432,38 +453,51 @@ void _startVideoCall() async {
         children: [
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
-            child: Text("Today", style: TextStyle(color: Colors.grey, fontSize: 14)),
+            child: Text(
+              "Today",
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
           ),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _messages.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No messages yet',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Start a conversation with ${widget.doctorName}',
-                              style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Colors.grey[400],
                         ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          return _buildBubble(_messages[index]);
-                        },
-                      ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No messages yet',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Start a conversation with ${widget.doctorName}',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      return _buildBubble(_messages[index]);
+                    },
+                  ),
           ),
 
           if (_selectedFiles.isNotEmpty)
@@ -499,7 +533,11 @@ void _startVideoCall() async {
                               shape: BoxShape.circle,
                             ),
                             padding: const EdgeInsets.all(4),
-                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 16,
+                            ),
                           ),
                         ),
                       ),
@@ -522,7 +560,7 @@ void _startVideoCall() async {
                     color: Colors.black.withOpacity(0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
-                  )
+                  ),
                 ],
               ),
               child: Row(
@@ -540,7 +578,10 @@ void _startVideoCall() async {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.image_outlined, color: Colors.black87),
+                    icon: const Icon(
+                      Icons.image_outlined,
+                      color: Colors.black87,
+                    ),
                     onPressed: _pickImage,
                   ),
                   const SizedBox(width: 5),
@@ -567,19 +608,24 @@ void _startVideoCall() async {
   Widget _buildBubble(Map<String, dynamic> message) {
     final String text = message['content']?.toString() ?? '';
     final String senderId = message['sender']?['_id']?.toString() ?? '';
-    final String? senderAvatar = message['sender']?['avatar']?['url']?.toString();
-    
+    final String? senderAvatar = message['sender']?['avatar']?['url']
+        ?.toString();
+
     final bool isMe = message['sender']?['role'] == 'patient';
-    
+
     final List<dynamic> attachments = message['fileUrl'] ?? [];
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
-        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isMe
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: isMe
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               if (!isMe) _getAvatarWidget(senderAvatar, isDoctor: true),
@@ -588,14 +634,21 @@ void _startVideoCall() async {
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.of(context).size.width * 0.7,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: isMe ? const Color(0xFF6C5CE7) : Colors.white,
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(20),
                     topRight: const Radius.circular(20),
-                    bottomLeft: isMe ? const Radius.circular(20) : const Radius.circular(5),
-                    bottomRight: isMe ? const Radius.circular(5) : const Radius.circular(20),
+                    bottomLeft: isMe
+                        ? const Radius.circular(20)
+                        : const Radius.circular(5),
+                    bottomRight: isMe
+                        ? const Radius.circular(5)
+                        : const Radius.circular(20),
                   ),
                   boxShadow: [
                     if (!isMe)
@@ -612,8 +665,11 @@ void _startVideoCall() async {
                     if (attachments.isNotEmpty)
                       ...attachments.map((att) {
                         final String? url = att['url']?.toString();
-                        if (url != null && url.isNotEmpty && url != 'file:///' &&
-                            (url.startsWith('http://') || url.startsWith('https://'))) {
+                        if (url != null &&
+                            url.isNotEmpty &&
+                            url != 'file:///' &&
+                            (url.startsWith('http://') ||
+                                url.startsWith('https://'))) {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: ClipRRect(
@@ -623,17 +679,18 @@ void _startVideoCall() async {
                                 width: 200,
                                 height: 200,
                                 fit: BoxFit.cover,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Container(
-                                    width: 200,
-                                    height: 200,
-                                    color: Colors.grey[300],
-                                    child: const Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  );
-                                },
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        width: 200,
+                                        height: 200,
+                                        color: Colors.grey[300],
+                                        child: const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      );
+                                    },
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
                                     width: 200,
@@ -648,7 +705,7 @@ void _startVideoCall() async {
                         }
                         return const SizedBox.shrink();
                       }),
-                    
+
                     if (text.isNotEmpty)
                       Text(
                         text,
@@ -664,7 +721,7 @@ void _startVideoCall() async {
               if (isMe) _getAvatarWidget(null, isDoctor: false),
             ],
           ),
-          
+
           if (message['createdAt'] != null)
             Padding(
               padding: EdgeInsets.only(

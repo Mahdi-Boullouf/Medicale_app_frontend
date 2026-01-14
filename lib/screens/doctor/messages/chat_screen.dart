@@ -43,13 +43,9 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   String? _resolvedOtherUserId;
   String? _otherUserRole;
   String? _actualUserAvatar;
-  
+
   Timer? _refreshTimer;
   Set<String> _messageIds = {};
-
-  bool get _shouldShowAudioIcon {
-    return _currentUserRole == 'doctor' && _otherUserRole == 'doctor';
-  }
 
   @override
   void initState() {
@@ -123,7 +119,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
 
       if (result['success'] == true && mounted) {
         final newMessages = result['data']?['items'] ?? [];
-        
+
         Set<String> newMessageIds = {};
         for (var msg in newMessages) {
           final msgId = msg['_id']?.toString();
@@ -132,13 +128,13 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           }
         }
 
-        if (newMessageIds.length != _messageIds.length || 
+        if (newMessageIds.length != _messageIds.length ||
             !newMessageIds.containsAll(_messageIds)) {
           setState(() {
             _messages = newMessages;
             _messageIds = newMessageIds;
           });
-          
+
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollController.hasClients) {
               _scrollController.animateTo(
@@ -159,7 +155,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userDataString = prefs.getString('user_data');
-      
+
       final profileResult = await ApiService.getUserProfile();
       if (profileResult['success'] == true) {
         setState(() {
@@ -188,7 +184,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
 
       if (result['success'] == true) {
         final messages = result['data']?['items'] ?? [];
-        
+
         Set<String> ids = {};
         for (var msg in messages) {
           final msgId = msg['_id']?.toString();
@@ -196,7 +192,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
             ids.add(msgId);
           }
         }
-        
+
         setState(() {
           _messages = messages;
           _messageIds = ids;
@@ -212,20 +208,23 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                   _resolvedOtherUserId = senderId;
                 }
                 _otherUserRole = msg['sender']?['role']?.toString();
-                _actualUserAvatar = msg['sender']?['avatar']?['url']?.toString();
+                _actualUserAvatar = msg['sender']?['avatar']?['url']
+                    ?.toString();
               });
               break;
             }
           }
         }
-        
+
         print('✅ Loaded ${_messages.length} messages');
         print('✅ Other user ID: $_resolvedOtherUserId');
         print('✅ Other user role: $_otherUserRole');
-        
+
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+            _scrollController.jumpTo(
+              _scrollController.position.maxScrollExtent,
+            );
           }
         });
       } else {
@@ -244,7 +243,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
 
   Future<void> _sendMessage() async {
     final content = _controller.text.trim();
-    
+
     if (content.isEmpty && _selectedFiles.isEmpty) return;
     if (_isSending) return;
 
@@ -265,7 +264,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         setState(() {
           _selectedFiles = [];
         });
-        
+
         await _loadMessages();
       } else {
         if (mounted) {
@@ -277,9 +276,9 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     } catch (e) {
       print('❌ Error sending message: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to send message')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to send message')));
       }
     } finally {
       setState(() {
@@ -307,137 +306,50 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     });
   }
 
-  void _startAudioCall() async {
-    if (_resolvedOtherUserId == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cannot start call - user ID not found'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-
-    try {
-      print('🎤 Starting audio call...');
-      print('👤 Current user: $_currentUserId');
-      print('👤 Other user: $_resolvedOtherUserId');
-      print('💬 Chat ID: ${widget.chatId}');
-      
-      final socket = SocketService.instance.socket;
-      if (socket == null || !socket.connected) {
-        print('⚠️ Socket not connected, attempting to connect...');
-        
-        if (_currentUserId != null) {
-          await SocketService.instance.connect(_currentUserId!);
-          await Future.delayed(const Duration(seconds: 2));
-        }
-        
-        if (SocketService.instance.socket == null || 
-            !SocketService.instance.socket!.connected) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Cannot connect to server. Please try again.'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
-        }
-      }
-
-      print('✅ Socket connected, sending call request...');
-      
-      SocketService.instance.emit('call:request', {
-        'fromUserId': _currentUserId,
-        'toUserId': _resolvedOtherUserId,
-        'chatId': widget.chatId,
-        'isVideo': false,
-      });
-
-      print('📤 Call request sent');
-
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AudioCallScreen(
-              chatId: widget.chatId,
-              userName: widget.userName,
-              userAvatar: _actualUserAvatar ?? widget.userAvatar,
-              otherUserId: _resolvedOtherUserId!,
-              isInitiator: true,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      print('❌ Error starting audio call: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to start call: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  void _startVideoCall() async {
-    if (_resolvedOtherUserId == null && widget.otherUserId == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cannot start call - user ID not found'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-
+  void _initiateCall({required bool isVideo}) async {
     final targetUserId = _resolvedOtherUserId ?? widget.otherUserId;
-    
+
+    if (targetUserId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot start call - user ID not found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
     try {
-      print('📹 Starting video call...');
+      print(
+        '${isVideo ? "📹" : "🎤"} Starting ${isVideo ? "video" : "audio"} call...',
+      );
       print('👤 Current user: $_currentUserId');
       print('👤 Other user: $targetUserId');
       print('💬 Chat ID: ${widget.chatId}');
-      
-      final socket = SocketService.instance.socket;
-      if (socket == null || !socket.connected) {
+
+      final socketService = SocketService.instance;
+      if (!socketService.isConnected) {
         print('⚠️ Socket not connected, attempting to connect...');
-        
         if (_currentUserId != null) {
-          await SocketService.instance.connect(_currentUserId!);
-          await Future.delayed(const Duration(seconds: 2));
+          await socketService.connect(_currentUserId!);
+          // Wait a bit for connection to stabilize
+          await Future.delayed(const Duration(seconds: 1));
         }
-        
-        if (SocketService.instance.socket == null || 
-            !SocketService.instance.socket!.connected) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Cannot connect to server. Please try again.'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
+
+        if (!socketService.isConnected) {
+          throw Exception('Socket connection failed');
         }
       }
 
       print('✅ Socket connected, sending call request...');
-      
-      SocketService.instance.emit('call:request', {
+
+      socketService.emit('call:request', {
         'fromUserId': _currentUserId,
         'toUserId': targetUserId,
         'chatId': widget.chatId,
-        'isVideo': true,
+        'isVideo': isVideo,
       });
 
       print('📤 Call request sent');
@@ -446,18 +358,26 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => VideoCallScreen(
-              chatId: widget.chatId,
-              userName: widget.userName,
-              userAvatar: _actualUserAvatar ?? widget.userAvatar,
-              otherUserId: targetUserId!,
-              isInitiator: true,
-            ),
+            builder: (context) => isVideo
+                ? VideoCallScreen(
+                    chatId: widget.chatId,
+                    userName: widget.userName,
+                    userAvatar: _actualUserAvatar ?? widget.userAvatar,
+                    otherUserId: targetUserId,
+                    isInitiator: true,
+                  )
+                : AudioCallScreen(
+                    chatId: widget.chatId,
+                    userName: widget.userName,
+                    userAvatar: _actualUserAvatar ?? widget.userAvatar,
+                    otherUserId: targetUserId,
+                    isInitiator: true,
+                  ),
           ),
         );
       }
     } catch (e) {
-      print('❌ Error starting video call: $e');
+      print('❌ Error starting call: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -484,13 +404,19 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           children: [
             CircleAvatar(
               radius: 20,
-              backgroundImage: (_actualUserAvatar ?? widget.userAvatar) != null &&
+              backgroundImage:
+                  (_actualUserAvatar ?? widget.userAvatar) != null &&
                       (_actualUserAvatar ?? widget.userAvatar)!.isNotEmpty &&
                       (_actualUserAvatar ?? widget.userAvatar) != 'file:///' &&
-                      ((_actualUserAvatar ?? widget.userAvatar)!.startsWith('http://') ||
-                          (_actualUserAvatar ?? widget.userAvatar)!.startsWith('https://'))
+                      ((_actualUserAvatar ?? widget.userAvatar)!.startsWith(
+                            'http://',
+                          ) ||
+                          (_actualUserAvatar ?? widget.userAvatar)!.startsWith(
+                            'https://',
+                          ))
                   ? NetworkImage(_actualUserAvatar ?? widget.userAvatar!)
-                  : const AssetImage('assets/images/doctor.png') as ImageProvider,
+                  : const AssetImage('assets/images/doctor.png')
+                        as ImageProvider,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -509,10 +435,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                   ),
                   Text(
                     _otherUserRole == 'doctor' ? 'Doctor' : 'Patient',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],
               ),
@@ -520,14 +443,21 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           ],
         ),
         actions: [
-          if (_shouldShowAudioIcon)
-            IconButton(
-              icon: const Icon(Icons.phone_outlined, color: Colors.black, size: 24),
-              onPressed: _startAudioCall,
-            ),
           IconButton(
-            icon: const Icon(Icons.videocam_outlined, color: Colors.black, size: 28),
-            onPressed: _startVideoCall,
+            icon: const Icon(
+              Icons.phone_outlined,
+              color: Colors.black,
+              size: 24,
+            ),
+            onPressed: () => _initiateCall(isVideo: false),
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.videocam_outlined,
+              color: Colors.black,
+              size: 28,
+            ),
+            onPressed: () => _initiateCall(isVideo: true),
           ),
           const SizedBox(width: 10),
         ],
@@ -538,40 +468,46 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _messages.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.chat_bubble_outline,
-                                size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No messages yet',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Start a conversation with ${widget.userName}',
-                              style: TextStyle(
-                                color: Colors.grey[500],
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Colors.grey[400],
                         ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final message = _messages[index];
-                          return _buildMessageBubble(message);
-                        },
-                      ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No messages yet',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Start a conversation with ${widget.userName}',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final message = _messages[index];
+                      return _buildMessageBubble(message);
+                    },
+                  ),
           ),
 
           if (_selectedFiles.isNotEmpty)
@@ -634,7 +570,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     color: Colors.black.withOpacity(0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
-                  )
+                  ),
                 ],
               ),
               child: Row(
@@ -652,7 +588,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.image_outlined, color: Colors.black87),
+                    icon: const Icon(
+                      Icons.image_outlined,
+                      color: Colors.black87,
+                    ),
                     onPressed: _pickImage,
                   ),
                   IconButton(
@@ -677,11 +616,13 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   Widget _buildMessageBubble(Map<String, dynamic> message) {
     final String content = message['content']?.toString() ?? '';
     final String senderId = message['sender']?['_id']?.toString() ?? '';
-    final String senderName = message['sender']?['fullName']?.toString() ?? 'Unknown';
-    final String? senderAvatar = message['sender']?['avatar']?['url']?.toString();
-    
+    final String senderName =
+        message['sender']?['fullName']?.toString() ?? 'Unknown';
+    final String? senderAvatar = message['sender']?['avatar']?['url']
+        ?.toString();
+
     final bool isMe = _currentUserId != null && senderId == _currentUserId;
-    
+
     final DateTime? createdAt = message['createdAt'] != null
         ? DateTime.tryParse(message['createdAt'].toString())
         : null;
@@ -691,7 +632,9 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe)
@@ -699,42 +642,51 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
               padding: const EdgeInsets.only(right: 8),
               child: CircleAvatar(
                 radius: 16,
-                backgroundImage: senderAvatar != null &&
+                backgroundImage:
+                    senderAvatar != null &&
                         senderAvatar.isNotEmpty &&
                         senderAvatar != 'file:///' &&
                         (senderAvatar.startsWith('http://') ||
                             senderAvatar.startsWith('https://'))
                     ? NetworkImage(senderAvatar)
-                    : const AssetImage("assets/images/doctor.png") as ImageProvider,
+                    : const AssetImage("assets/images/doctor.png")
+                          as ImageProvider,
               ),
             ),
           Column(
-            crossAxisAlignment:
-                isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            crossAxisAlignment: isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
             children: [
               if (!isMe)
                 Padding(
                   padding: const EdgeInsets.only(left: 8, bottom: 4),
                   child: Text(
                     senderName,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ),
               Container(
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.of(context).size.width * 0.65,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
-                  color: isMe ? const Color(0xFF7C69FF) : const Color(0xFFF1F4F7),
+                  color: isMe
+                      ? const Color(0xFF7C69FF)
+                      : const Color(0xFFF1F4F7),
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(20),
                     topRight: const Radius.circular(20),
-                    bottomLeft: isMe ? const Radius.circular(20) : const Radius.circular(4),
-                    bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(20),
+                    bottomLeft: isMe
+                        ? const Radius.circular(20)
+                        : const Radius.circular(4),
+                    bottomRight: isMe
+                        ? const Radius.circular(4)
+                        : const Radius.circular(20),
                   ),
                 ),
                 child: Column(
@@ -743,10 +695,11 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     if (fileUrl.isNotEmpty)
                       ...fileUrl.map((file) {
                         final String? url = file['url']?.toString();
-                        if (url != null && 
+                        if (url != null &&
                             url.isNotEmpty &&
                             url != 'file:///' &&
-                            (url.startsWith('http://') || url.startsWith('https://'))) {
+                            (url.startsWith('http://') ||
+                                url.startsWith('https://'))) {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: ClipRRect(
@@ -756,17 +709,18 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                                 width: 200,
                                 height: 200,
                                 fit: BoxFit.cover,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Container(
-                                    width: 200,
-                                    height: 200,
-                                    color: Colors.grey[300],
-                                    child: const Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  );
-                                },
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        width: 200,
+                                        height: 200,
+                                        color: Colors.grey[300],
+                                        child: const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      );
+                                    },
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
                                     width: 200,
@@ -781,7 +735,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                         }
                         return const SizedBox.shrink();
                       }),
-                    
+
                     if (content.isNotEmpty && content.trim() != ' ')
                       Text(
                         content,
@@ -799,10 +753,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                   padding: const EdgeInsets.only(top: 4, left: 8, right: 8),
                   child: Text(
                     _formatMessageTime(createdAt),
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 11,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
                   ),
                 ),
             ],
@@ -811,7 +762,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
             const Padding(
               padding: EdgeInsets.only(left: 8),
               child: CircleAvatar(
-               radius: 16,
+                radius: 16,
                 backgroundImage: AssetImage("assets/images/profile.png"),
               ),
             ),

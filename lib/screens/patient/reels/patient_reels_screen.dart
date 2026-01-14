@@ -3,15 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:docmobi/services/api_service.dart';
 import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:docmobi/screens/patient/navigation/patient_main_navigation.dart';
 
-class DoctorReelsScreen extends StatefulWidget {
-  const DoctorReelsScreen({super.key});
+class PatientReelsScreen extends StatefulWidget {
+  const PatientReelsScreen({super.key});
 
   @override
-  State<DoctorReelsScreen> createState() => _DoctorReelsScreenState();
+  State<PatientReelsScreen> createState() => _PatientReelsScreenState();
 }
 
-class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
+class _PatientReelsScreenState extends State<PatientReelsScreen> {
   List<Map<String, dynamic>> reelsList = [];
   bool isLoading = true;
   bool hasError = false;
@@ -56,9 +57,12 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
         final pagination = response['data']['pagination'];
 
         setState(() {
-          reelsList = items.map((item) => item as Map<String, dynamic>).toList();
+          reelsList = items
+              .map((item) => item as Map<String, dynamic>)
+              .toList();
           currentPage = 1;
-          hasMore = (pagination['page'] * pagination['limit']) < pagination['total'];
+          hasMore =
+              (pagination['page'] * pagination['limit']) < pagination['total'];
           isLoading = false;
         });
         print('✅ Loaded ${reelsList.length} reels');
@@ -70,9 +74,9 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
         isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading reels: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading reels: $e')));
       }
     }
   }
@@ -85,16 +89,22 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
     });
 
     try {
-      final response = await ApiService.getAllReels(page: currentPage + 1, limit: 20);
+      final response = await ApiService.getAllReels(
+        page: currentPage + 1,
+        limit: 20,
+      );
 
       if (response['success'] == true) {
         final items = response['data']['items'] as List;
         final pagination = response['data']['pagination'];
 
         setState(() {
-          reelsList.addAll(items.map((item) => item as Map<String, dynamic>).toList());
+          reelsList.addAll(
+            items.map((item) => item as Map<String, dynamic>).toList(),
+          );
           currentPage++;
-          hasMore = (pagination['page'] * pagination['limit']) < pagination['total'];
+          hasMore =
+              (pagination['page'] * pagination['limit']) < pagination['total'];
           isLoading = false;
         });
       }
@@ -121,16 +131,23 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
           onPressed: () {
-            // ✅ FIXED: Go back to home screen (will show bottom nav)
-            Navigator.pop(context);
+            // ✅ REDIRECT: Go back to home screen (PatientMainNavigation)
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PatientMainNavigation(),
+              ),
+              (route) => false,
+            );
           },
         ),
         title: const Text(
           'Reels',
           style: TextStyle(
-              color: Color(0xFF1A1A1A),
-              fontWeight: FontWeight.w600,
-              fontSize: 18),
+            color: Color(0xFF1A1A1A),
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
+          ),
         ),
         centerTitle: false,
       ),
@@ -139,46 +156,45 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
         child: isLoading && reelsList.isEmpty
             ? const Center(child: CircularProgressIndicator())
             : hasError
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('Failed to load reels'),
-                        const SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: _loadReels,
-                          child: const Text('Retry'),
-                        ),
-                      ],
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('Failed to load reels'),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: _loadReels,
+                      child: const Text('Retry'),
                     ),
-                  )
-                : reelsList.isEmpty
-                    ? const Center(child: Text('No reels available'))
-                    : Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: GridView.builder(
-                          controller: _scrollController,
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.75,
-                          ),
-                          itemCount: reelsList.length + (hasMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == reelsList.length) {
-                              return const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(8.0),
-                                  child: CircularProgressIndicator(),
-                                ),
-                              );
-                            }
-                            return _buildReelThumbnail(reelsList[index], index);
-                          },
+                  ],
+                ),
+              )
+            : reelsList.isEmpty
+            ? const Center(child: Text('No reels available'))
+            : Padding(
+                padding: const EdgeInsets.all(16),
+                child: GridView.builder(
+                  controller: _scrollController,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.75,
+                  ),
+                  itemCount: reelsList.length + (hasMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == reelsList.length) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: CircularProgressIndicator(),
                         ),
-                      ),
+                      );
+                    }
+                    return _buildReelThumbnail(reelsList[index], index);
+                  },
+                ),
+              ),
       ),
     );
   }
@@ -196,13 +212,11 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ReelsViewerScreen(
-              reelsList: reelsList,
-              initialIndex: index,
-            ),
+            builder: (context) =>
+                ReelsViewerScreen(reelsList: reelsList, initialIndex: index),
           ),
         );
-        
+
         // ✅ Refresh if needed
         if (result == true) {
           _loadReels();
@@ -213,9 +227,10 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: ClipRRect(
@@ -249,13 +264,20 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
                 ),
               ),
               const Center(
-                  child: Icon(Icons.play_circle_outline,
-                      color: Colors.white, size: 50)),
+                child: Icon(
+                  Icons.play_circle_outline,
+                  color: Colors.white,
+                  size: 50,
+                ),
+              ),
               Positioned(
                 top: 8,
                 right: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.6),
                     borderRadius: BorderRadius.circular(12),
@@ -284,20 +306,27 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(doctorName,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                    Text(
+                      doctorName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     if (caption.isNotEmpty) ...[
                       const SizedBox(height: 2),
-                      Text(caption,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 11),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
+                      Text(
+                        caption,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
                   ],
                 ),
@@ -331,7 +360,8 @@ class ReelCommentsBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<ReelCommentsBottomSheet> createState() => _ReelCommentsBottomSheetState();
+  State<ReelCommentsBottomSheet> createState() =>
+      _ReelCommentsBottomSheetState();
 }
 
 class _ReelCommentsBottomSheetState extends State<ReelCommentsBottomSheet> {
@@ -416,19 +446,14 @@ class _ReelCommentsBottomSheetState extends State<ReelCommentsBottomSheet> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey[300]!),
-                ),
+                border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
                     'Comments',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -442,54 +467,53 @@ class _ReelCommentsBottomSheetState extends State<ReelCommentsBottomSheet> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _comments.isEmpty
-                      ? const Center(child: Text('No comments yet'))
-                      : ListView.builder(
-                          controller: scrollController,
-                          itemCount: _comments.length,
-                          itemBuilder: (context, index) {
-                            final comment = _comments[index];
-                            final author = comment['author'];
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage: author?['avatar']?['url'] != null
-                                    ? NetworkImage(author['avatar']['url'])
-                                    : const AssetImage(
-                                            'assets/images/doctor_booking.png')
-                                        as ImageProvider,
-                              ),
-                              title: Text(
-                                author?['fullName'] ?? 'Unknown',
+                  ? const Center(child: Text('No comments yet'))
+                  : ListView.builder(
+                      controller: scrollController,
+                      itemCount: _comments.length,
+                      itemBuilder: (context, index) {
+                        final comment = _comments[index];
+                        final author = comment['author'];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage: author?['avatar']?['url'] != null
+                                ? NetworkImage(author['avatar']['url'])
+                                : const AssetImage(
+                                        'assets/images/doctor_booking.png',
+                                      )
+                                      as ImageProvider,
+                          ),
+                          title: Text(
+                            author?['fullName'] ?? 'Unknown',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(comment['content'] ?? ''),
+                              const SizedBox(height: 4),
+                              Text(
+                                _formatTimeAgo(comment['createdAt']),
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontSize: 12,
+                                  color: Colors.grey,
                                 ),
                               ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(comment['content'] ?? ''),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _formatTimeAgo(comment['createdAt']),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
             ),
 
             Container(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
               decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border(
-                  top: BorderSide(color: Colors.grey[300]!),
-                ),
+                border: Border(top: BorderSide(color: Colors.grey[300]!)),
               ),
               child: SafeArea(
                 child: Row(
@@ -543,11 +567,11 @@ class _ReelCommentsBottomSheetState extends State<ReelCommentsBottomSheet> {
 
   String _formatTimeAgo(String? dateStr) {
     if (dateStr == null) return 'Just now';
-    
+
     try {
       final date = DateTime.parse(dateStr);
       final difference = DateTime.now().difference(date);
-      
+
       if (difference.inDays > 0) {
         return '${difference.inDays}d';
       } else if (difference.inHours > 0) {
@@ -567,8 +591,11 @@ class ReelsViewerScreen extends StatefulWidget {
   final List<Map<String, dynamic>> reelsList;
   final int initialIndex;
 
-  const ReelsViewerScreen(
-      {super.key, required this.reelsList, required this.initialIndex});
+  const ReelsViewerScreen({
+    super.key,
+    required this.reelsList,
+    required this.initialIndex,
+  });
 
   @override
   State<ReelsViewerScreen> createState() => _ReelsViewerScreenState();
@@ -593,11 +620,11 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
         statusBarIconBrightness: Brightness.light,
       ),
     );
-    
+
     currentPage = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
     _initializeVideoForPage(currentPage);
-    
+
     for (var reel in widget.reelsList) {
       final reelId = reel['_id'] ?? '';
       _likedReels[reelId] = reel['isLiked'] ?? false;
@@ -650,7 +677,7 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
 
     try {
       final result = await ApiService.likeReel(reelId);
-      
+
       if (result['success'] == true) {
         // ✅ Update with server response
         final data = result['data'];
@@ -662,7 +689,8 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
         // ✅ Revert on failure
         setState(() {
           _likedReels[reelId] = wasLiked;
-          _likeCounts[reelId] = (_likeCounts[reelId] ?? 0) + (wasLiked ? 1 : -1);
+          _likeCounts[reelId] =
+              (_likeCounts[reelId] ?? 0) + (wasLiked ? 1 : -1);
         });
       }
     } catch (e) {
@@ -672,7 +700,7 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
         _likedReels[reelId] = wasLiked;
         _likeCounts[reelId] = (_likeCounts[reelId] ?? 0) + (wasLiked ? 1 : -1);
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -691,20 +719,20 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
     final caption = reel['caption'] ?? '';
     final doctorName = author?['fullName'] ?? 'Unknown Doctor';
     final reelId = reel['_id'] ?? '';
-    
+
     String shareText = '$doctorName shared a reel\n\n';
     if (caption.isNotEmpty) {
       shareText += caption;
     }
-    
+
     try {
       await Share.share(shareText);
-      
+
       // ✅ Increment share count locally
       setState(() {
         _shareCounts[reelId] = (_shareCounts[reelId] ?? 0) + 1;
       });
-      
+
       // TODO: Call API to increment share count on backend
       // await ApiService.shareReel(reelId);
     } catch (e) {
@@ -741,7 +769,7 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
         statusBarIconBrightness: Brightness.dark,
       ),
     );
-    
+
     _pageController.dispose();
     _videoControllers.forEach((_, controller) {
       controller.dispose();
@@ -801,7 +829,7 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
                 )
               : const CircularProgressIndicator(color: Colors.white),
         ),
-        
+
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -810,12 +838,12 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
               colors: [
                 Colors.black.withOpacity(0.3),
                 Colors.transparent,
-                Colors.black.withOpacity(0.7)
+                Colors.black.withOpacity(0.7),
               ],
             ),
           ),
         ),
-        
+
         // ✅ Back button
         Positioned(
           top: 50,
@@ -826,14 +854,19 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3),
-                    shape: BoxShape.circle),
-                child: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+                  color: Colors.black.withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.arrow_back,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
             ),
           ),
         ),
-        
+
         // ✅ UPDATED: Action buttons with realtime counts
         Positioned(
           right: 12,
@@ -869,7 +902,9 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
                   border: Border.all(color: Colors.white, width: 2),
                   image: avatarUrl != null
                       ? DecorationImage(
-                          image: NetworkImage(avatarUrl), fit: BoxFit.cover)
+                          image: NetworkImage(avatarUrl),
+                          fit: BoxFit.cover,
+                        )
                       : null,
                 ),
                 child: avatarUrl == null
@@ -879,7 +914,7 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
             ],
           ),
         ),
-        
+
         Positioned(
           left: 16,
           right: 80,
@@ -897,11 +932,17 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
                       border: Border.all(color: Colors.white, width: 2),
                       image: avatarUrl != null
                           ? DecorationImage(
-                              image: NetworkImage(avatarUrl), fit: BoxFit.cover)
+                              image: NetworkImage(avatarUrl),
+                              fit: BoxFit.cover,
+                            )
                           : null,
                     ),
                     child: avatarUrl == null
-                        ? const Icon(Icons.person, color: Colors.white, size: 20)
+                        ? const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 20,
+                          )
                         : null,
                   ),
                   const SizedBox(width: 10),
@@ -909,15 +950,22 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(doctorName,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold)),
+                        Text(
+                          doctorName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         if (specialty.isNotEmpty)
-                          Text(specialty,
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 13)),
+                          Text(
+                            specialty,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -925,11 +973,16 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
               ),
               if (caption.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                Text(caption,
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 14, height: 1.4),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis),
+                Text(
+                  caption,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ],
           ),
@@ -939,22 +992,32 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
   }
 
   Widget _buildActionButton(
-      IconData icon, String label, Color color, VoidCallback onTap) {
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
           Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
-              child: Icon(icon, color: color, size: 26)),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 26),
+          ),
           const SizedBox(height: 4),
-          Text(label,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

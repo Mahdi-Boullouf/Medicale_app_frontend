@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:docmobi/screens/patient/home/patient_home_screen.dart';
 import 'package:docmobi/screens/patient/appointments/patient_appointments_screen.dart';
-import 'package:docmobi/screens/patient/reels/doctor_reels_screen.dart';
+import 'package:docmobi/screens/patient/reels/patient_reels_screen.dart';
 import 'package:docmobi/screens/patient/messages/messages_list_screen.dart';
 import 'package:docmobi/screens/patient/profile/patient_profile_screen.dart';
 import 'package:docmobi/providers/notification_provider.dart';
@@ -20,7 +20,7 @@ class _PatientMainNavigationState extends State<PatientMainNavigation> {
   final List<Widget> _screens = const [
     PatientHomeScreen(),
     PatientAppointmentsScreen(),
-    DoctorReelsScreen(),
+    PatientReelsScreen(),
     MessagesScreen(),
     PatientProfileScreen(),
   ];

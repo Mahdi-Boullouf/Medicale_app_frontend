@@ -1,18 +1,21 @@
-import 'dart:io';
-
 class ApiConfig {
   // ========== Base URL ==========
   static String get baseUrl {
-    if (Platform.isAndroid) {
-      // Android Emulator -> Mac localhost
-      return 'http://10.0.2.2:5000';
-    } else if (Platform.isIOS) {
-      // iOS Simulator -> Mac localhost
-      return 'http://localhost:5000';
+    // Default to Live Render Server
+    return 'https://thekingbackend.onrender.com';
+
+    /* 
+    // For Local Development (Debug Mode)
+    if (kReleaseMode) {
+      return 'https://thekingbackend.onrender.com';
     } else {
-      // Web / Desktop fallback
-      return 'http://localhost:5000';
+      if (Platform.isAndroid) {
+        return 'http://10.0.2.2:5005';
+      } else {
+        return 'http://localhost:5005';
+      }
     }
+    */
   }
 
   // ========== Auth Endpoints ==========
@@ -49,10 +52,8 @@ class ApiConfig {
   static const String doctorById = '/api/v1/user';
   static const String searchDoctors = '/api/v1/user/role/doctor';
   static const String nearbyDoctors = '/api/v1/user/role/doctor/nearby';
-  static const String doctorsBySpecialty =
-      '/api/v1/user/role/doctor/specialty';
-  static const String topRatedDoctors =
-      '/api/v1/user/role/doctor/top-rated';
+  static const String doctorsBySpecialty = '/api/v1/user/role/doctor/specialty';
+  static const String topRatedDoctors = '/api/v1/user/role/doctor/top-rated';
 
   // ========== Category Endpoints ==========
   static const String categories = '/api/v1/category';

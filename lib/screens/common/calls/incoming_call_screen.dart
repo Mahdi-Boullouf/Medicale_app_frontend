@@ -32,7 +32,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
   @override
   void initState() {
     super.initState();
-    
+
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -51,20 +51,28 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       socket.on('call:ended', (data) {
         print('📞 Call ended event received: $data');
         if (data['chatId'] == widget.chatId && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Call was cancelled')),
-          );
-          Navigator.pop(context);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Call was cancelled')),
+              );
+              Navigator.pop(context);
+            }
+          });
         }
       });
-      
+
       socket.on('call:failed', (data) {
         print('❌ Call failed event received: $data');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Call failed: ${data['message']}')),
-          );
-          Navigator.pop(context);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Call failed: ${data['message']}')),
+              );
+              Navigator.pop(context);
+            }
+          });
         }
       });
     }
@@ -75,23 +83,23 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       print('⚠️ Already accepting call');
       return;
     }
-    
+
     setState(() {
       _isAccepting = true;
     });
-    
+
     print('✅ Accepting call...');
     print('💬 Chat ID: ${widget.chatId}');
     print('👤 Caller ID: ${widget.callerId}');
     print('📹 Is Video: ${widget.isVideoCall}');
-    
+
     try {
       // ✅ Send accept event BEFORE navigating
       SocketService.instance.emit('call:accept', {
         'chatId': widget.chatId,
         'fromUserId': widget.callerId,
       });
-      
+
       print('📤 Call accept event sent');
 
       // ✅ Small delay to ensure event is sent
@@ -99,7 +107,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
 
       // ✅ Navigate to appropriate call screen
       if (!mounted) return;
-      
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -126,9 +134,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
         setState(() {
           _isAccepting = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to accept call: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to accept call: $e')));
       }
     }
   }
@@ -137,13 +145,13 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     print('❌ Rejecting call...');
     print('💬 Chat ID: ${widget.chatId}');
     print('👤 Caller ID: ${widget.callerId}');
-    
+
     try {
       SocketService.instance.emit('call:reject', {
         'chatId': widget.chatId,
         'toUserId': widget.callerId,
       });
-      
+
       print('📤 Call reject event sent');
 
       Navigator.pop(context);
@@ -188,9 +196,12 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
             Column(
               children: [
                 const SizedBox(height: 60),
-                
+
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(25),
@@ -236,14 +247,15 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                     ),
                     child: CircleAvatar(
                       radius: 80,
-                      backgroundImage: widget.callerAvatar != null &&
+                      backgroundImage:
+                          widget.callerAvatar != null &&
                               widget.callerAvatar!.isNotEmpty &&
                               widget.callerAvatar != 'file:///' &&
                               (widget.callerAvatar!.startsWith('http://') ||
                                   widget.callerAvatar!.startsWith('https://'))
                           ? NetworkImage(widget.callerAvatar!)
                           : const AssetImage('assets/images/doctor1.png')
-                              as ImageProvider,
+                                as ImageProvider,
                     ),
                   ),
                 ),
@@ -273,7 +285,10 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 const Spacer(),
 
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 50),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 50,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -327,7 +342,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                                   )
                                 : IconButton(
                                     icon: Icon(
-                                      widget.isVideoCall ? Icons.videocam : Icons.phone,
+                                      widget.isVideoCall
+                                          ? Icons.videocam
+                                          : Icons.phone,
                                       color: Colors.white,
                                       size: 32,
                                     ),
