@@ -20,29 +20,31 @@ class UserProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      print('📥 Fetching user profile...');
+      debugPrint('📥 Fetching user profile...');
       final response = await UserService.getUserProfile();
 
       if (response['success'] == true && response['data'] != null) {
         _user = UserModel.fromJson(response['data']);
-        print('✅ User profile loaded: ${_user?.fullName}');
-        print('✅ Profile image: ${_user?.profileImage}');
-        print('✅ Specialty: ${_user?.specialty}');
-        print('✅ Bio: ${_user?.bio}');
-        print('✅ Location: lat=${_user?.latitude}, lng=${_user?.longitude}');
+        debugPrint('✅ User profile loaded: ${_user?.fullName}');
+        debugPrint('✅ Profile image: ${_user?.profileImage}');
+        debugPrint('✅ Specialty: ${_user?.specialty}');
+        debugPrint('✅ Bio: ${_user?.bio}');
+        debugPrint(
+          '✅ Location: lat=${_user?.latitude}, lng=${_user?.longitude}',
+        );
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
         _error = response['message'] ?? 'Failed to fetch profile';
-        print('❌ Profile fetch failed: $_error');
+        debugPrint('❌ Profile fetch failed: $_error');
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
       _error = 'Error: $e';
-      print('❌ Exception: $e');
+      debugPrint('❌ Exception: $e');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -69,23 +71,23 @@ class UserProvider with ChangeNotifier {
     String? visitingHoursText,
     String? medicalLicenseNumber,
     File? profileImage,
-    double? latitude,      // ✅ NEW: Latitude parameter
-    double? longitude,     // ✅ NEW: Longitude parameter
+    double? latitude, // ✅ NEW: Latitude parameter
+    double? longitude, // ✅ NEW: Longitude parameter
   }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      print('📤 Updating profile...');
-      print('   - fullName: $fullName');
-      print('   - phone: $phone');
-      print('   - address: $address');
-      print('   - bio: $bio');
-      print('   - specialty: $specialty');
-      print('   - latitude: $latitude');
-      print('   - longitude: $longitude');
-      print('   - profileImage: ${profileImage != null ? "Yes" : "No"}');
+      debugPrint('📤 Updating profile...');
+      debugPrint('   - fullName: $fullName');
+      debugPrint('   - phone: $phone');
+      debugPrint('   - address: $address');
+      debugPrint('   - bio: $bio');
+      debugPrint('   - specialty: $specialty');
+      debugPrint('   - latitude: $latitude');
+      debugPrint('   - longitude: $longitude');
+      debugPrint('   - profileImage: ${profileImage != null ? "Yes" : "No"}');
 
       // ✅ Pass File and location directly to UserService
       final response = await UserService.updateUserProfile(
@@ -107,32 +109,34 @@ class UserProvider with ChangeNotifier {
         visitingHoursText: visitingHoursText,
         medicalLicenseNumber: medicalLicenseNumber,
         profileImage: profileImage,
-        latitude: latitude,        // ✅ Pass latitude
-        longitude: longitude,      // ✅ Pass longitude
+        latitude: latitude, // ✅ Pass latitude
+        longitude: longitude, // ✅ Pass longitude
       );
 
       if (response['success'] == true && response['data'] != null) {
         _user = UserModel.fromJson(response['data']);
-        print('✅ Profile updated successfully!');
-        print('   - Name: ${_user?.fullName}');
-        print('   - Specialty: ${_user?.specialty}');
-        print('   - Bio: ${_user?.bio}');
-        print('   - Address: ${_user?.address}');
-        print('   - Location: lat=${_user?.latitude}, lng=${_user?.longitude}');
-        print('   - New avatar: ${_user?.profileImage}');
+        debugPrint('✅ Profile updated successfully!');
+        debugPrint('   - Name: ${_user?.fullName}');
+        debugPrint('   - Specialty: ${_user?.specialty}');
+        debugPrint('   - Bio: ${_user?.bio}');
+        debugPrint('   - Address: ${_user?.address}');
+        debugPrint(
+          '   - Location: lat=${_user?.latitude}, lng=${_user?.longitude}',
+        );
+        debugPrint('   - New avatar: ${_user?.profileImage}');
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
         _error = response['message'] ?? 'Failed to update profile';
-        print('❌ Update failed: $_error');
+        debugPrint('❌ Update failed: $_error');
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
       _error = 'Error: $e';
-      print('❌ Exception during update: $e');
+      debugPrint('❌ Exception during update: $e');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -157,20 +161,20 @@ class UserProvider with ChangeNotifier {
       );
 
       if (response['success'] == true) {
-        print('✅ Password changed successfully');
+        debugPrint('✅ Password changed successfully');
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
         _error = response['message'] ?? 'Failed to change password';
-        print('❌ Password change failed: $_error');
+        debugPrint('❌ Password change failed: $_error');
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
       _error = 'Error: $e';
-      print('❌ Exception: $e');
+      debugPrint('❌ Exception: $e');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -181,7 +185,7 @@ class UserProvider with ChangeNotifier {
   void setUser(UserModel user) {
     _user = user;
     _error = null;
-    print('👤 User set: ${user.fullName}');
+    debugPrint('👤 User set: ${user.fullName}');
     notifyListeners();
   }
 
@@ -190,14 +194,14 @@ class UserProvider with ChangeNotifier {
     _user = null;
     _error = null;
     _isLoading = false;
-    print('🚪 User cleared (logged out)');
+    debugPrint('🚪 User cleared (logged out)');
     notifyListeners();
   }
 
   /// Update local user data without API call
   void updateLocalUser(UserModel updatedUser) {
     _user = updatedUser;
-    print('🔄 Local user updated: ${updatedUser.fullName}');
+    debugPrint('🔄 Local user updated: ${updatedUser.fullName}');
     notifyListeners();
   }
 

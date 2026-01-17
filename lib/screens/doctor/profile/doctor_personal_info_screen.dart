@@ -96,10 +96,10 @@ class _DoctorPersonalInfoScreenState extends State<DoctorPersonalInfoScreen> {
           _selectedImage = File(image.path);
           _hasChanges = true;
         });
-        print('📸 Image selected: ${image.path}');
+        debugPrint('📸 Image selected: ${image.path}');
       }
     } catch (e) {
-      print('❌ Error picking image: $e');
+      debugPrint('❌ Error picking image: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,

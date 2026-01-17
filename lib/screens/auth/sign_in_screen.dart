@@ -9,7 +9,8 @@ import 'package:docmobi/screens/auth/forgot_password_screen.dart';
 import 'package:docmobi/widgets/custom_button.dart';
 import 'package:docmobi/widgets/custom_text_field.dart';
 import 'package:docmobi/services/api_service.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // ✅ Changed from auth_service to api_service
+import 'package:docmobi/services/agora_chat_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -57,7 +58,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _isLoading = true);
 
     try {
-      print('🔄 Starting login process...');
+      debugPrint('🔄 Starting login process...');
 
       // ✅ Use ApiService.login() instead of AuthService.login()
       final result = await ApiService.login(
@@ -68,7 +69,7 @@ class _SignInScreenState extends State<SignInScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      print('📥 Login result: ${result['success']}');
+      debugPrint('📥 Login result: ${result['success']}');
 
       if (result['success'] == true) {
         // ✅ Get role from response
@@ -91,17 +92,26 @@ class _SignInScreenState extends State<SignInScreen> {
 
           // ✅ Connect socket
           await SocketService.instance.connect(userId);
-          print('✅ Socket connected after login');
+          debugPrint('✅ Socket connected after login');
 
           // ✅ Start notification polling
           if (_notificationProvider != null) {
             await _notificationProvider!.startPolling();
-            print('✅ Notification polling started after login');
+            debugPrint('✅ Notification polling started after login');
+          }
+
+          // ✅ Initialize and login to Agora Chat
+          try {
+            await AgoraChatService.instance.init();
+            await AgoraChatService.instance.login(userId);
+            debugPrint('✅ Agora Chat initialized after login');
+          } catch (e) {
+            debugPrint('❌ Agora Chat init error: $e');
           }
         }
 
-        print('✅ Login successful - Role: $userRole');
-        print('   Expected role: ${widget.userType.toLowerCase()}');
+        debugPrint('✅ Login successful - Role: $userRole');
+        debugPrint('   Expected role: ${widget.userType.toLowerCase()}');
 
         // ✅ Check if role matches expected type
         if (userRole == widget.userType.toLowerCase()) {
@@ -114,7 +124,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
           // ✅ Navigate based on actual role
           if (userRole == 'patient') {
-            print('🚀 Navigating to Patient screen');
+            debugPrint('🚀 Navigating to Patient screen');
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
@@ -123,7 +133,7 @@ class _SignInScreenState extends State<SignInScreen> {
               (route) => false,
             );
           } else if (userRole == 'doctor') {
-            print('🚀 Navigating to Doctor screen');
+            debugPrint('🚀 Navigating to Doctor screen');
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
@@ -133,13 +143,15 @@ class _SignInScreenState extends State<SignInScreen> {
             );
           } else {
             // Unknown role
-            print('⚠️ Unknown role: $userRole');
+            debugPrint('⚠️ Unknown role: $userRole');
             _showSnackBar('Invalid account type', isError: true);
             await ApiService.clearToken();
           }
         } else {
           // Wrong login type
-          print('⚠️ Role mismatch: Expected ${widget.userType}, Got $userRole');
+          debugPrint(
+            '⚠️ Role mismatch: Expected ${widget.userType}, Got $userRole',
+          );
           await ApiService.clearToken();
           _showSnackBar(
             'This account is registered as ${_capitalize(userRole ?? "user")}. '
@@ -149,14 +161,14 @@ class _SignInScreenState extends State<SignInScreen> {
         }
       } else {
         // Login failed
-        print('❌ Login failed: ${result['message']}');
+        debugPrint('❌ Login failed: ${result['message']}');
         _showSnackBar(
           result['message'] ?? 'Login failed. Please check your credentials.',
           isError: true,
         );
       }
     } catch (e) {
-      print('❌ Login error: $e');
+      debugPrint('❌ Login error: $e');
       if (!mounted) return;
       setState(() => _isLoading = false);
 

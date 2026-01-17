@@ -19,52 +19,52 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
   final List<Map<String, dynamic>> scheduleData = [
     {
       'day': 'Monday',
-      'enabled': false,  // ✅ Changed default to false
+      'enabled': false, // ✅ Changed default to false
       'slots': [
         {'start': '10:00 Am', 'end': '10:30 Am'},
-      ]
+      ],
     },
     {
       'day': 'Tuesday',
       'enabled': false,
       'slots': [
-        {'start': '09:00 Am', 'end': '09:30 Am'}
-      ]
+        {'start': '09:00 Am', 'end': '09:30 Am'},
+      ],
     },
     {
       'day': 'Wednesday',
       'enabled': false,
       'slots': [
-        {'start': '04:00 Pm', 'end': '04:30 Pm'}
-      ]
+        {'start': '04:00 Pm', 'end': '04:30 Pm'},
+      ],
     },
     {
       'day': 'Thursday',
       'enabled': false,
       'slots': [
-        {'start': '10:00 Am', 'end': '10:30 Am'}
-      ]
+        {'start': '10:00 Am', 'end': '10:30 Am'},
+      ],
     },
     {
       'day': 'Friday',
       'enabled': false,
       'slots': [
-        {'start': '10:00 Am', 'end': '10:30 Am'}
-      ]
+        {'start': '10:00 Am', 'end': '10:30 Am'},
+      ],
     },
     {
       'day': 'Saturday',
       'enabled': false,
       'slots': [
-        {'start': '10:00 Am', 'end': '10:30 Am'}
-      ]
+        {'start': '10:00 Am', 'end': '10:30 Am'},
+      ],
     },
     {
       'day': 'Sunday',
       'enabled': false,
       'slots': [
-        {'start': '10:00 Am', 'end': '10:30 Am'}
-      ]
+        {'start': '10:00 Am', 'end': '10:30 Am'},
+      ],
     },
   ];
 
@@ -96,7 +96,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
           setState(() {
             for (var i = 0; i < scheduleData.length; i++) {
               final dayName = scheduleData[i]['day'].toString().toLowerCase();
-              
+
               final backendDay = backendSchedule.firstWhere(
                 (day) => day['day'].toString().toLowerCase() == dayName,
                 orElse: () => null,
@@ -104,13 +104,15 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
 
               if (backendDay != null) {
                 scheduleData[i]['enabled'] = backendDay['isActive'] ?? false;
-                
+
                 if (backendDay['slots'] != null) {
                   scheduleData[i]['slots'] = (backendDay['slots'] as List)
-                      .map((slot) => {
-                            'start': _convert24To12Hour(slot['start']),
-                            'end': _convert24To12Hour(slot['end']),
-                          })
+                      .map(
+                        (slot) => {
+                          'start': _convert24To12Hour(slot['start']),
+                          'end': _convert24To12Hour(slot['end']),
+                        },
+                      )
                       .toList();
                 }
               }
@@ -138,17 +140,21 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
     setState(() => _isSaving = true);
 
     try {
-      print('📤 Saving doctor schedule...');
-      
+      debugPrint('📤 Saving doctor schedule...');
+
       // ✅ FIXED: Convert to lowercase day names for backend
-      final List<Map<String, dynamic>> formattedSchedule = scheduleData.map((dayData) {
+      final List<Map<String, dynamic>> formattedSchedule = scheduleData.map((
+        dayData,
+      ) {
         final dayName = (dayData['day'] as String).toLowerCase();
         final isActive = dayData['enabled'] as bool;
-        
-        print('   Day: $dayName, Enabled: $isActive, Slots: ${dayData['slots'].length}');
-        
+
+        debugPrint(
+          '   Day: $dayName, Enabled: $isActive, Slots: ${dayData['slots'].length}',
+        );
+
         return {
-          'day': dayName,  // ✅ Send lowercase to match backend enum
+          'day': dayName, // ✅ Send lowercase to match backend enum
           'isActive': isActive,
           'slots': (dayData['slots'] as List).map((slot) {
             return {
@@ -164,7 +170,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
         'currency': 'USD',
       };
 
-      print('   Formatted Schedule: $formattedSchedule');
+      debugPrint('   Formatted Schedule: $formattedSchedule');
 
       final response = await _scheduleService.saveWeeklySchedule(
         weeklySchedule: formattedSchedule,
@@ -173,7 +179,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
 
       if (mounted) {
         if (response['success'] == true) {
-          print('✅ Schedule saved successfully!');
+          debugPrint('✅ Schedule saved successfully!');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Schedule saved successfully! ✅'),
@@ -181,7 +187,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
             ),
           );
         } else {
-          print('❌ Save failed: ${response['message']}');
+          debugPrint('❌ Save failed: ${response['message']}');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(response['message'] ?? 'Failed to save'),
@@ -191,13 +197,10 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
         }
       }
     } catch (e) {
-      print('❌ Error saving schedule: $e');
+      debugPrint('❌ Error saving schedule: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -213,7 +216,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
       final parts = time12.split(' ');
       final time = parts[0];
       final period = parts[1].toLowerCase();
-      
+
       final timeParts = time.split(':');
       int hour = int.parse(timeParts[0]);
       final minute = timeParts[1];
@@ -271,7 +274,10 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
           children: [
             const Text(
               'Manage your Video and physical\nConsultations',
-              style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontSize: 14),
+              style: TextStyle(
+                color: Color.fromARGB(255, 0, 0, 0),
+                fontSize: 14,
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -367,11 +373,9 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
             const SizedBox(height: 15),
 
             // Schedule List
-            ...scheduleData
-                .asMap()
-                .entries
-                .map((entry) => _buildDayItem(entry.value, entry.key))
-                ,
+            ...scheduleData.asMap().entries.map(
+              (entry) => _buildDayItem(entry.value, entry.key),
+            ),
 
             const SizedBox(height: 20),
 
@@ -462,7 +466,10 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
               bool isSelected = selectedSlotKey == slotKey;
 
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 5,
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -475,10 +482,14 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFF1664CD) : Colors.white,
+                            color: isSelected
+                                ? const Color(0xFF1664CD)
+                                : Colors.white,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: isSelected ? const Color(0xFF1664CD) : const Color(0xFFE9F0FF),
+                              color: isSelected
+                                  ? const Color(0xFF1664CD)
+                                  : const Color(0xFFE9F0FF),
                             ),
                           ),
                           child: Row(
@@ -487,16 +498,22 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                               Text(
                                 slot['start'],
                                 style: TextStyle(
-                                  color: isSelected ? Colors.white : const Color(0xFF1B2C49),
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF1B2C49),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 15),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 15,
+                                ),
                                 child: Text(
                                   'To',
                                   style: TextStyle(
-                                    color: isSelected ? Colors.white70 : Colors.grey,
+                                    color: isSelected
+                                        ? Colors.white70
+                                        : Colors.grey,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -504,7 +521,9 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                               Text(
                                 slot['end'],
                                 style: TextStyle(
-                                  color: isSelected ? Colors.white : const Color(0xFF1B2C49),
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF1B2C49),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -515,7 +534,10 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                     ),
                     const SizedBox(width: 10),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.redAccent,
+                      ),
                       onPressed: () {
                         setState(() {
                           data['slots'].removeAt(slotIndex);

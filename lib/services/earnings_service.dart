@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../utils/api_config.dart';
 import 'api_service.dart';
 
@@ -8,7 +10,7 @@ class EarningService {
     String view = 'monthly',
   }) async {
     try {
-      print('📤 Fetching earnings overview: $view');
+      debugPrint('📤 Fetching earnings overview: $view');
 
       // ✅ FIXED: Correct endpoint path
       final response = await ApiService.get(
@@ -17,20 +19,21 @@ class EarningService {
       );
 
       if (response['success'] == true) {
-        print('✅ Earnings fetched successfully');
-        print('💰 Total Earnings: ${response['data']?['totalEarnings'] ?? 0}');
-        print('📊 Total Appointments: ${response['data']?['totalAppointments'] ?? 0}');
+        debugPrint('✅ Earnings fetched successfully');
+        debugPrint(
+          '💰 Total Earnings: ${response['data']?['totalEarnings'] ?? 0}',
+        );
+        debugPrint(
+          '📊 Total Appointments: ${response['data']?['totalAppointments'] ?? 0}',
+        );
       } else {
-        print('❌ Failed to fetch earnings: ${response['message']}');
+        debugPrint('❌ Failed to fetch earnings: ${response['message']}');
       }
 
       return response;
     } catch (e) {
-      print('❌ Get Earnings Error: $e');
-      return {
-        'success': false,
-        'message': 'Failed to fetch earnings: $e',
-      };
+      debugPrint('❌ Get Earnings Error: $e');
+      return {'success': false, 'message': 'Failed to fetch earnings: $e'};
     }
   }
 
@@ -40,7 +43,7 @@ class EarningService {
   }) async {
     try {
       final response = await getEarningsOverview(view: view);
-      
+
       if (response['success'] == true) {
         final data = response['data'];
         return {
@@ -54,10 +57,10 @@ class EarningService {
           'weeklyData': data['weeklyByWeekday'],
         };
       }
-      
+
       return response;
     } catch (e) {
-      print('❌ Get Earnings Breakdown Error: $e');
+      debugPrint('❌ Get Earnings Breakdown Error: $e');
       return {
         'success': false,
         'message': 'Failed to fetch earnings breakdown: $e',

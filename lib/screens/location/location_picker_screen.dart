@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../services/location_service.dart';
+import '../../utils/marker_factory.dart';
 
 class LocationPickerScreen extends StatefulWidget {
   final double? initialLatitude;
@@ -18,6 +19,9 @@ class LocationPickerScreen extends StatefulWidget {
 }
 
 class _LocationPickerScreenState extends State<LocationPickerScreen> {
+  final LocationService _locationService = LocationService();
+  final MarkerFactory _markerFactory = MarkerFactory();
+
   GoogleMapController? _mapController;
   LatLng? _selectedLocation;
   String _selectedAddress = 'Loading address...';
@@ -37,7 +41,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
 
   Future<void> _checkAndRequestPermission() async {
     // Check if location permission is already granted
-    LocationPermission permission = await Geolocator.checkPermission();
+    LocationPermission permission = await _locationService.checkPermission();
 
     if (permission == LocationPermission.always ||
         permission == LocationPermission.whileInUse) {
@@ -67,9 +71,9 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
 
     try {
       // Check permission
-      LocationPermission permission = await Geolocator.checkPermission();
+      LocationPermission permission = await _locationService.checkPermission();
       if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+        permission = await _locationService.requestPermission();
       }
 
       if (permission == LocationPermission.denied ||
@@ -84,9 +88,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       }
 
       // Get current position
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      Position position = await _locationService.getCurrentPosition();
 
       setState(() {
         _selectedLocation = LatLng(position.latitude, position.longitude);
@@ -96,7 +98,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       _getAddressFromLatLng(_selectedLocation!);
       _moveCamera(_selectedLocation!);
     } catch (e) {
-      print('❌ Error getting location: $e');
+      debugPrint('❌ Error getting location: $e');
       setState(() => _isLoadingLocation = false);
       if (mounted) {
         ScaffoldMessenger.of(
@@ -110,21 +112,14 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     setState(() => _isLoadingAddress = true);
 
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
+      String address = await _locationService.getAddressFromLatLng(position);
 
-      if (placemarks.isNotEmpty) {
-        Placemark place = placemarks[0];
-        setState(() {
-          _selectedAddress =
-              '${place.street}, ${place.subLocality}, ${place.locality}, ${place.administrativeArea} ${place.postalCode}';
-          _isLoadingAddress = false;
-        });
-      }
+      setState(() {
+        _selectedAddress = address;
+        _isLoadingAddress = false;
+      });
     } catch (e) {
-      print('❌ Error getting address: $e');
+      debugPrint('❌ Error getting address: $e');
       setState(() {
         _selectedAddress = 'Address not found';
         _isLoadingAddress = false;
@@ -174,13 +169,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                   myLocationButtonEnabled: false,
                   zoomControlsEnabled: false,
                   markers: {
-                    Marker(
-                      markerId: const MarkerId('selected'),
-                      position: _selectedLocation!,
-                      icon: BitmapDescriptor.defaultMarkerWithHue(
-                        BitmapDescriptor.hueBlue,
-                      ),
-                    ),
+                    _markerFactory.createSelectedMarker(_selectedLocation!),
                   },
                 ),
 
@@ -414,7 +403,8 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           );
         } else {
           // Request permission and proceed
-          LocationPermission permission = await Geolocator.requestPermission();
+          LocationPermission permission = await _locationService
+              .requestPermission();
 
           if (permission == LocationPermission.denied ||
               permission == LocationPermission.deniedForever) {

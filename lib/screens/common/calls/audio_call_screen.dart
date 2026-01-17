@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 import '../../../services/socket_service.dart';
 import '../../../services/agora_service.dart';
+import '../../../services/agora_chat_service.dart';
 
 class AudioCallScreen extends StatefulWidget {
   final String chatId;
@@ -87,7 +88,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
       _agoraService.onUserOffline = (uid, reason) {
         if (mounted) {
-          print('Remote user offline');
+          debugPrint('Remote user offline');
           _endCall();
         }
       };
@@ -127,9 +128,9 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
         isVideo: false,
         token: token,
       );
-      print('✅ Joined Agora channel (Audio Mode) with Token');
+      debugPrint('✅ Joined Agora channel (Audio Mode) with Token');
     } catch (e) {
-      print('❌ Failed to join: $e');
+      debugPrint('❌ Failed to join: $e');
       if (mounted) _showError('Failed to connect: $e');
     }
   }
@@ -190,6 +191,21 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
     _timer?.cancel();
 
+    // ✅ Log Call to Chat (Initiator Only to prevent duplicates)
+    try {
+      if (widget.otherUserId.isNotEmpty && widget.isInitiator) {
+        String status = _callConnected ? 'ended' : 'cancelled';
+        await AgoraChatService.instance.sendCallLog(
+          conversationId: widget.otherUserId,
+          callType: 'audio',
+          status: status,
+          duration: _callConnected ? _formatDuration(_callDuration) : '',
+        );
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to send call log: $e');
+    }
+
     SocketService.instance.emit('call:end', {
       'chatId': widget.chatId,
       'toUserId': widget.otherUserId,
@@ -219,7 +235,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
   @override
   void dispose() {
-    print('🧹 Disposing AudioCallScreen');
+    debugPrint('🧹 Disposing AudioCallScreen');
     WakelockPlus.disable();
     _timer?.cancel();
     _agoraService.leaveChannel();

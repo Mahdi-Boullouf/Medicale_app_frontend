@@ -50,7 +50,7 @@ class NotificationProvider extends ChangeNotifier {
       _notificationPoller.startPolling();
       startListening();
     } catch (e) {
-      print('❌ Failed to start notification polling: $e');
+      debugPrint('❌ Failed to start notification polling: $e');
       // Don't rethrow - allow app to continue without notifications
     }
   }
@@ -61,7 +61,7 @@ class NotificationProvider extends ChangeNotifier {
       _notificationPoller.stopPolling();
       stopListening();
     } catch (e) {
-      print('❌ Failed to stop notification polling: $e');
+      debugPrint('❌ Failed to stop notification polling: $e');
       // Don't rethrow - allow app to continue without notifications
     }
   }
@@ -96,7 +96,7 @@ class NotificationProvider extends ChangeNotifier {
       await _notificationPoller.markAsRead(notificationId);
       notifyListeners();
     } catch (e) {
-      print('❌ Failed to mark notification as read: $e');
+      debugPrint('❌ Failed to mark notification as read: $e');
     }
   }
 
@@ -106,7 +106,7 @@ class NotificationProvider extends ChangeNotifier {
       await _notificationPoller.markAllAsRead();
       notifyListeners();
     } catch (e) {
-      print('❌ Failed to mark all notifications as read: $e');
+      debugPrint('❌ Failed to mark all notifications as read: $e');
     }
   }
 
@@ -116,7 +116,7 @@ class NotificationProvider extends ChangeNotifier {
       await _notificationPoller.clearLastNotificationId();
       notifyListeners();
     } catch (e) {
-      print('❌ Failed to clear notifications: $e');
+      debugPrint('❌ Failed to clear notifications: $e');
     }
   }
 

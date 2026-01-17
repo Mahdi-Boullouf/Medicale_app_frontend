@@ -191,31 +191,31 @@ class ApiConfig {
   // ═══════════════════════════════════════════════════════════════
 
   /// Print current configuration
-  static void printConfig() {
-    print('');
-    print('╔═══════════════════════════════════════════════════════╗');
-    print('║              📡 API CONFIGURATION                     ║');
-    print('╚═══════════════════════════════════════════════════════╝');
-    print('');
-    print('🎯 Current Settings:');
-    print('   • Platform: ${Platform.operatingSystem}');
-    print('   • Mode: ${_currentMode.name.toUpperCase()}');
-    print('   • Base URL: $baseUrl');
-    print('   • Socket URL: $socketUrl');
-    print('   • Production: ${isProduction ? "YES ✅" : "NO ❌"}');
-    print('');
-    print('💡 Available URLs:');
-    print('   • Render (Prod): $prodUrl');
-    print('   • Localhost: $localhostUrl');
-    print('   • Android Emulator: $androidEmulatorUrl');
-    print('   • Local Network: $localNetworkUrl');
-    print('');
-    print('📝 To change environment:');
-    print('   Edit DevMode._currentMode in api_config.dart');
-    print('   Options: production, localhost, network');
-    print('');
-    print('╚═══════════════════════════════════════════════════════╝');
-    print('');
+  static void debugPrintConfig() {
+    debugPrint('');
+    debugPrint('╔═══════════════════════════════════════════════════════╗');
+    debugPrint('║              📡 API CONFIGURATION                     ║');
+    debugPrint('╚═══════════════════════════════════════════════════════╝');
+    debugPrint('');
+    debugPrint('🎯 Current Settings:');
+    debugPrint('   • Platform: ${Platform.operatingSystem}');
+    debugPrint('   • Mode: ${_currentMode.name.toUpperCase()}');
+    debugPrint('   • Base URL: $baseUrl');
+    debugPrint('   • Socket URL: $socketUrl');
+    debugPrint('   • Production: ${isProduction ? "YES ✅" : "NO ❌"}');
+    debugPrint('');
+    debugPrint('💡 Available URLs:');
+    debugPrint('   • Render (Prod): $prodUrl');
+    debugPrint('   • Localhost: $localhostUrl');
+    debugPrint('   • Android Emulator: $androidEmulatorUrl');
+    debugPrint('   • Local Network: $localNetworkUrl');
+    debugPrint('');
+    debugPrint('📝 To change environment:');
+    debugPrint('   Edit DevMode._currentMode in api_config.dart');
+    debugPrint('   Options: production, localhost, network');
+    debugPrint('');
+    debugPrint('╚═══════════════════════════════════════════════════════╝');
+    debugPrint('');
   }
 
   /// Check if using production

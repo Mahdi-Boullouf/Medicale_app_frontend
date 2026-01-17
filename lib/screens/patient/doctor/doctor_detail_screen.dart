@@ -11,7 +11,9 @@ class DoctorDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('DoctorDetailsScreen - ID: ${doctor.id} | Name: ${doctor.fullName}');
+    debugPrint(
+      'DoctorDetailsScreen - ID: ${doctor.id} | Name: ${doctor.fullName}',
+    );
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -260,13 +262,13 @@ class DoctorDetailsScreen extends StatelessWidget {
         return;
       }
 
-      print('🔍 Creating/Getting chat with doctor ID: $doctorId');
+      debugPrint('🔍 Creating/Getting chat with doctor ID: $doctorId');
 
       final result = await ApiService.createOrGetChat(userId: doctorId);
 
       Navigator.pop(context);
 
-      print('📥 Chat result: $result');
+      debugPrint('📥 Chat result: $result');
 
       if (result['success'] == true) {
         final chatData = result['data'];
@@ -282,7 +284,7 @@ class DoctorDetailsScreen extends StatelessWidget {
           return;
         }
 
-        print('✅ Chat ID: $chatId');
+        debugPrint('✅ Chat ID: $chatId');
 
         // Get doctor's info from participants
         final participants = chatData['participants'] as List?;
@@ -325,7 +327,7 @@ class DoctorDetailsScreen extends StatelessWidget {
       }
     } catch (e) {
       Navigator.pop(context);
-      print('❌ Error opening chat: $e');
+      debugPrint('❌ Error opening chat: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),

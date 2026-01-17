@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import 'api_service.dart';
 
 class DoctorScheduleService {
@@ -9,9 +11,10 @@ class DoctorScheduleService {
     try {
       // ✅ Data is already formatted correctly from screen
       // Screen sends: { day: 'monday', isActive: true, slots: [{ start: '10:00', end: '10:30' }] }
-      
+
       final body = {
-        'weeklySchedule': weeklySchedule,  // ✅ Use as-is, no transformation needed
+        'weeklySchedule':
+            weeklySchedule, // ✅ Use as-is, no transformation needed
         'fees': fees,
       };
 
@@ -24,11 +27,8 @@ class DoctorScheduleService {
 
       return response;
     } catch (e) {
-      print('❌ Save Schedule Error: $e');
-      return {
-        'success': false,
-        'message': 'Failed to save schedule: $e',
-      };
+      debugPrint('❌ Save Schedule Error: $e');
+      return {'success': false, 'message': 'Failed to save schedule: $e'};
     }
   }
 
@@ -43,11 +43,8 @@ class DoctorScheduleService {
 
       return response;
     } catch (e) {
-      print('❌ Get Schedule Error: $e');
-      return {
-        'success': false,
-        'message': 'Failed to fetch schedule: $e',
-      };
+      debugPrint('❌ Get Schedule Error: $e');
+      return {'success': false, 'message': 'Failed to fetch schedule: $e'};
     }
   }
 }

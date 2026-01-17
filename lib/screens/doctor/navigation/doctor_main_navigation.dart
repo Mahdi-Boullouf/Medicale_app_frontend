@@ -22,7 +22,7 @@ class _DoctorMainNavigationState extends State<DoctorMainNavigation> {
     super.initState();
     // ✅ Initialize CallManager when dashboard loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('👨‍⚕️ Doctor Dashboard Loaded - Initializing CallManager');
+      debugPrint('👨‍⚕️ Doctor Dashboard Loaded - Initializing CallManager');
       CallManager.instance.initialize(context);
     });
   }

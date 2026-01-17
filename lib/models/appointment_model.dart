@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class AppointmentModel {
   final String id;
   final String doctorId;
@@ -54,7 +56,7 @@ class AppointmentModel {
         doctorId = doctorData['_id'] ?? '';
         doctorName = doctorData['fullName'];
         specialty = doctorData['specialty'];
-        
+
         // Handle nested avatar object
         final avatar = doctorData['avatar'];
         if (avatar != null && avatar is Map<String, dynamic>) {
@@ -75,7 +77,7 @@ class AppointmentModel {
       if (patientData is Map<String, dynamic>) {
         patientId = patientData['_id'] ?? '';
         patientName = patientData['fullName'];
-        
+
         // Handle nested avatar object
         final avatar = patientData['avatar'];
         if (avatar != null && avatar is Map<String, dynamic>) {
@@ -90,11 +92,11 @@ class AppointmentModel {
     DateTime appointmentDate;
     try {
       appointmentDate = DateTime.parse(
-        json['appointmentDate'] ?? json['date'] ?? DateTime.now().toString()
+        json['appointmentDate'] ?? json['date'] ?? DateTime.now().toString(),
       );
     } catch (e) {
       appointmentDate = DateTime.now();
-      print('⚠️ Date parse error: $e');
+      debugPrint('⚠️ Date parse error: $e');
     }
 
     // ✅ Parse createdAt safely
@@ -104,74 +106,79 @@ class AppointmentModel {
         createdAt = DateTime.parse(json['createdAt']);
       }
     } catch (e) {
-      print('⚠️ CreatedAt parse error: $e');
+      debugPrint('⚠️ CreatedAt parse error: $e');
     }
 
     // ✅ FIXED: Parse medicalDocuments
     List<String>? medicalDocuments;
     if (json['medicalDocuments'] != null) {
-      print('🔍 Raw medicalDocuments: ${json['medicalDocuments']}'); // Debug
-      
+      debugPrint(
+        '🔍 Raw medicalDocuments: ${json['medicalDocuments']}',
+      ); // Debug
+
       if (json['medicalDocuments'] is List) {
         medicalDocuments = (json['medicalDocuments'] as List)
             .map((doc) {
               String docStr = doc.toString();
-              print('📄 Processing doc: $docStr'); // Debug
-              
+              debugPrint('📄 Processing doc: $docStr'); // Debug
+
               // ✅ Extract Cloudinary URL if present
               if (docStr.contains('https://res.cloudinary.com')) {
-                final match = RegExp(r'https://res\.cloudinary\.com[^\s,}]+')
-                    .firstMatch(docStr);
+                final match = RegExp(
+                  r'https://res\.cloudinary\.com[^\s,}]+',
+                ).firstMatch(docStr);
                 if (match != null) {
                   String url = match.group(0)!;
-                  print('☁️ Extracted Cloudinary URL: $url'); // Debug
+                  debugPrint('☁️ Extracted Cloudinary URL: $url'); // Debug
                   return url;
                 }
               }
-              
+
               // ✅ Extract public_id if present
               if (docStr.contains('public_id')) {
-                final match = RegExp(r'"public_id"\s*:\s*"([^"]+)"')
-                    .firstMatch(docStr);
+                final match = RegExp(
+                  r'"public_id"\s*:\s*"([^"]+)"',
+                ).firstMatch(docStr);
                 if (match != null) {
                   String publicId = match.group(1)!;
-                  print('📁 Extracted public_id: $publicId'); // Debug
+                  debugPrint('📁 Extracted public_id: $publicId'); // Debug
                   return publicId;
                 }
               }
-              
+
               return docStr;
             })
             .where((url) => url.isNotEmpty) // Remove empty strings
             .toList();
-        
-        print('✅ Final medicalDocuments: $medicalDocuments'); // Debug
+
+        debugPrint('✅ Final medicalDocuments: $medicalDocuments'); // Debug
       }
     } else {
-      print('⚠️ No medicalDocuments in JSON'); // Debug
+      debugPrint('⚠️ No medicalDocuments in JSON'); // Debug
     }
 
     // ✅ FIXED: Parse paymentScreenshot
     String? paymentScreenshot;
     if (json['paymentScreenshot'] != null) {
       String psStr = json['paymentScreenshot'].toString();
-      print('💳 Raw paymentScreenshot: $psStr'); // Debug
-      
+      debugPrint('💳 Raw paymentScreenshot: $psStr'); // Debug
+
       // ✅ Extract Cloudinary URL if present
       if (psStr.contains('https://res.cloudinary.com')) {
-        final match = RegExp(r'https://res\.cloudinary\.com[^\s,}]+')
-            .firstMatch(psStr);
+        final match = RegExp(
+          r'https://res\.cloudinary\.com[^\s,}]+',
+        ).firstMatch(psStr);
         if (match != null) {
           paymentScreenshot = match.group(0)!;
-          print('☁️ Extracted payment URL: $paymentScreenshot'); // Debug
+          debugPrint('☁️ Extracted payment URL: $paymentScreenshot'); // Debug
         }
       } else {
         paymentScreenshot = psStr;
       }
-      
-      print('✅ Final paymentScreenshot: $paymentScreenshot'); // Debug
+
+      debugPrint('✅ Final paymentScreenshot: $paymentScreenshot'); // Debug
     } else {
-      print('⚠️ No paymentScreenshot in JSON'); // Debug
+      debugPrint('⚠️ No paymentScreenshot in JSON'); // Debug
     }
 
     return AppointmentModel(
@@ -209,9 +216,9 @@ class AppointmentModel {
       if (notes != null && notes!.isNotEmpty) 'notes': notes,
       if (reason != null && reason!.isNotEmpty) 'reason': reason,
       if (bookedFor != null) 'bookedFor': bookedFor!.toJson(),
-      if (medicalDocuments != null && medicalDocuments!.isNotEmpty) 
+      if (medicalDocuments != null && medicalDocuments!.isNotEmpty)
         'medicalDocuments': medicalDocuments,
-      if (paymentScreenshot != null && paymentScreenshot!.isNotEmpty) 
+      if (paymentScreenshot != null && paymentScreenshot!.isNotEmpty)
         'paymentScreenshot': paymentScreenshot,
     };
   }
@@ -236,8 +243,18 @@ class AppointmentModel {
   // Helper method for formatted date
   String get formattedDate {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${appointmentDate.day} ${months[appointmentDate.month - 1]}, ${appointmentDate.year}';
   }
@@ -306,23 +323,23 @@ class BookedForInfo {
   String get bookingLabel {
     if (type == 'dependent') {
       // যদি name এবং relationship দুটোই থাকে: "John (Son)"
-      if (dependentName != null && 
-          dependentName!.isNotEmpty && 
-          relationship != null && 
+      if (dependentName != null &&
+          dependentName!.isNotEmpty &&
+          relationship != null &&
           relationship!.isNotEmpty) {
         return "$dependentName ($relationship)";
       }
-      
+
       // শুধু relationship থাকলে: "Son", "Father" etc
       if (relationship != null && relationship!.isNotEmpty) {
         return relationship!;
       }
-      
+
       // শুধু name থাকলে
       if (dependentName != null && dependentName!.isNotEmpty) {
         return dependentName!;
       }
-      
+
       // কিছুই না থাকলে
       return "Dependent";
     }

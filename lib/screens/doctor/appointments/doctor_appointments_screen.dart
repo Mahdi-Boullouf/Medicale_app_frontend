@@ -679,10 +679,10 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
   // ✅ NEW: Show Appointment Details Bottom Sheet
   void _showAppointmentDetails(AppointmentModel appointment) {
     // ✅ Debug logs
-    print('🔍 Showing details for appointment: ${appointment.id}');
-    print('📋 Appointment Type: ${appointment.appointmentType}');
-    print('📄 Medical Documents: ${appointment.medicalDocuments}');
-    print('💳 Payment Screenshot: ${appointment.paymentScreenshot}');
+    debugPrint('🔍 Showing details for appointment: ${appointment.id}');
+    debugPrint('📋 Appointment Type: ${appointment.appointmentType}');
+    debugPrint('📄 Medical Documents: ${appointment.medicalDocuments}');
+    debugPrint('💳 Payment Screenshot: ${appointment.paymentScreenshot}');
 
     showModalBottomSheet(
       context: context,
@@ -999,7 +999,7 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
       // ✅ FIXED: Clean and fix URL format
       String cleanUrl = url.trim();
 
-      print('📥 Original URL: $cleanUrl'); // Debug
+      debugPrint('📥 Original URL: $cleanUrl'); // Debug
 
       // ✅ NEW: Extract Cloudinary URL if it exists
       if (cleanUrl.contains('https://res.cloudinary.com')) {
@@ -1008,7 +1008,7 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
         ).firstMatch(cleanUrl);
         if (cloudinaryMatch != null) {
           cleanUrl = cloudinaryMatch.group(0)!;
-          print('☁️ Found Cloudinary URL: $cleanUrl');
+          debugPrint('☁️ Found Cloudinary URL: $cleanUrl');
         }
       }
       // If URL starts with {public_id:, extract the path
@@ -1019,7 +1019,7 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
           String publicId = match.group(1)!.trim();
           // Build proper server URL
           cleanUrl = '${ApiConfig.baseUrl}/uploads/$publicId';
-          print('📁 Built server URL: $cleanUrl');
+          debugPrint('📁 Built server URL: $cleanUrl');
         }
       }
       // If URL doesn't start with http, add base URL
@@ -1029,13 +1029,13 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
         } else {
           cleanUrl = '${ApiConfig.baseUrl}/$cleanUrl';
         }
-        print('🔧 Added base URL: $cleanUrl');
+        debugPrint('🔧 Added base URL: $cleanUrl');
       }
 
       // URL decode if needed
       cleanUrl = Uri.decodeFull(cleanUrl);
 
-      print('🔗 Final URL: $cleanUrl'); // Debug log
+      debugPrint('🔗 Final URL: $cleanUrl'); // Debug log
 
       // Check if it's an image or PDF
       final isImage =

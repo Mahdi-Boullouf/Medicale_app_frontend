@@ -35,10 +35,10 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _checkLoginStatus() async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('🔍 Checking app login status...');
-      print('═══════════════════════════════════════');
+      debugPrint('');
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('🔍 Checking app login status...');
+      debugPrint('═══════════════════════════════════════');
 
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
@@ -47,34 +47,34 @@ class _MyAppState extends State<MyApp> {
 
       final apiServiceLoggedIn = ApiService.isLoggedIn;
 
-      print('📦 SharedPreferences Check:');
-      print('   • Token: ${token != null ? "✅ Found" : "❌ Not found"}');
-      print('   • Role: ${role ?? "❌ Not found"}');
-      print('   • User ID: ${userId ?? "❌ Not found"}');
-      print('');
-      print('🔧 ApiService Check:');
-      print(
+      debugPrint('📦 SharedPreferences Check:');
+      debugPrint('   • Token: ${token != null ? "✅ Found" : "❌ Not found"}');
+      debugPrint('   • Role: ${role ?? "❌ Not found"}');
+      debugPrint('   • User ID: ${userId ?? "❌ Not found"}');
+      debugPrint('');
+      debugPrint('🔧 ApiService Check:');
+      debugPrint(
         '   • Status: ${apiServiceLoggedIn ? "✅ Logged In" : "❌ Not Logged In"}',
       );
-      print(
+      debugPrint(
         '   • Token in memory: ${ApiService.token != null ? "✅ Loaded" : "❌ Not loaded"}',
       );
-      print('');
+      debugPrint('');
 
       if (token != null && !apiServiceLoggedIn) {
-        print('⚠️ Token exists but ApiService not initialized properly');
-        print('🔄 Reinitializing ApiService...');
+        debugPrint('⚠️ Token exists but ApiService not initialized properly');
+        debugPrint('🔄 Reinitializing ApiService...');
         await ApiService.init();
-        print('✅ ApiService reinitialized');
+        debugPrint('✅ ApiService reinitialized');
       }
 
       // ✅ Initialize socket if logged in
       if (token != null && userId != null && userId.isNotEmpty) {
         if (!SocketService.instance.isConnected) {
-          print('🔌 Initializing Socket Service...');
+          debugPrint('🔌 Initializing Socket Service...');
           try {
             await SocketService.instance.connect(userId);
-            print('✅ Socket connected for user: $userId');
+            debugPrint('✅ Socket connected for user: $userId');
 
             // ✅ Initialize CallManager after socket connection
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -83,10 +83,10 @@ class _MyAppState extends State<MyApp> {
               }
             });
           } catch (e) {
-            print('⚠️ Socket connection failed: $e');
+            debugPrint('⚠️ Socket connection failed: $e');
           }
         } else {
-          print('✅ Socket already connected');
+          debugPrint('✅ Socket already connected');
         }
       }
 
@@ -97,19 +97,19 @@ class _MyAppState extends State<MyApp> {
       });
 
       if (_isLoggedIn) {
-        print('✅ User is logged in as: $_userRole');
-        print(
+        debugPrint('✅ User is logged in as: $_userRole');
+        debugPrint(
           '🚀 Will navigate to: ${_userRole == "doctor" ? "Doctor Dashboard" : "Patient Dashboard"}',
         );
       } else {
-        print('⚠️ User not logged in - Will show SplashScreen');
+        debugPrint('⚠️ User not logged in - Will show SplashScreen');
       }
 
-      print('═══════════════════════════════════════');
-      print('');
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('');
     } catch (e) {
-      print('❌ Error checking login status: $e');
-      print('Stack trace: ${StackTrace.current}');
+      debugPrint('❌ Error checking login status: $e');
+      debugPrint('Stack trace: ${StackTrace.current}');
 
       setState(() {
         _isLoading = false;
@@ -149,7 +149,7 @@ class _MyAppState extends State<MyApp> {
 
       // ✅ Route generator for dynamic routes
       onGenerateRoute: (settings) {
-        print('🔗 Navigating to: ${settings.name}');
+        debugPrint('🔗 Navigating to: ${settings.name}');
 
         if (settings.name == '/edit-dependent') {
           final args = settings.arguments as Map<String, dynamic>?;
@@ -164,7 +164,7 @@ class _MyAppState extends State<MyApp> {
 
       // ✅ Handle unknown routes
       onUnknownRoute: (settings) {
-        print('⚠️ Unknown route: ${settings.name}');
+        debugPrint('⚠️ Unknown route: ${settings.name}');
         return MaterialPageRoute(builder: (context) => const SplashScreen());
       },
     );
@@ -202,28 +202,28 @@ class _MyAppState extends State<MyApp> {
     }
 
     if (!_isLoggedIn) {
-      print('📱 Rendering: SplashScreen (Not logged in)');
+      debugPrint('📱 Rendering: SplashScreen (Not logged in)');
       return const SplashScreen();
     }
 
-    print('📱 Rendering: ${_userRole?.toUpperCase()} Dashboard');
+    debugPrint('📱 Rendering: ${_userRole?.toUpperCase()} Dashboard');
 
     switch (_userRole) {
       case 'doctor':
-        print('   → DoctorMainNavigation');
+        debugPrint('   → DoctorMainNavigation');
         return const DoctorMainNavigation();
 
       case 'patient':
-        print('   → PatientMainNavigation');
+        debugPrint('   → PatientMainNavigation');
         return const PatientMainNavigation();
 
       case 'admin':
-        print('   → AdminMainNavigation (Fallback to Patient)');
+        debugPrint('   → AdminMainNavigation (Fallback to Patient)');
         return const PatientMainNavigation();
 
       default:
-        print('⚠️ Unknown role detected: $_userRole');
-        print('🔄 Logging out and redirecting to splash...');
+        debugPrint('⚠️ Unknown role detected: $_userRole');
+        debugPrint('🔄 Logging out and redirecting to splash...');
 
         // Logout in background
         _logout();
@@ -286,7 +286,7 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _logout() async {
     try {
-      print('🔄 Logging out user...');
+      debugPrint('🔄 Logging out user...');
 
       // Stop notification polling
       final notificationProvider = Provider.of<NotificationProvider>(
@@ -295,14 +295,14 @@ class _MyAppState extends State<MyApp> {
       );
       notificationProvider.stopPolling();
       await notificationProvider.clearNotifications();
-      print('✅ Notification polling stopped');
+      debugPrint('✅ Notification polling stopped');
 
       // ✅ Dispose CallManager
       CallManager.instance.dispose();
 
       // ✅ Disconnect socket
       SocketService.instance.disconnect();
-      print('✅ Socket disconnected');
+      debugPrint('✅ Socket disconnected');
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
@@ -310,7 +310,7 @@ class _MyAppState extends State<MyApp> {
       // Clear ApiService token
       await ApiService.clearToken();
 
-      print('✅ Logout successful - All data cleared');
+      debugPrint('✅ Logout successful - All data cleared');
 
       // Update state to show splash screen
       if (mounted) {
@@ -320,7 +320,7 @@ class _MyAppState extends State<MyApp> {
         });
       }
     } catch (e) {
-      print('❌ Error during logout: $e');
+      debugPrint('❌ Error during logout: $e');
     }
   }
 }

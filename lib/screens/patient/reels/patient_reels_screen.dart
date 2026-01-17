@@ -49,7 +49,7 @@ class _PatientReelsScreenState extends State<PatientReelsScreen> {
     });
 
     try {
-      print('📤 Loading reels...');
+      debugPrint('📤 Loading reels...');
       final response = await ApiService.getAllReels(page: 1, limit: 20);
 
       if (response['success'] == true) {
@@ -65,10 +65,10 @@ class _PatientReelsScreenState extends State<PatientReelsScreen> {
               (pagination['page'] * pagination['limit']) < pagination['total'];
           isLoading = false;
         });
-        print('✅ Loaded ${reelsList.length} reels');
+        debugPrint('✅ Loaded ${reelsList.length} reels');
       }
     } catch (e) {
-      print('❌ Error loading reels: $e');
+      debugPrint('❌ Error loading reels: $e');
       setState(() {
         hasError = true;
         isLoading = false;
@@ -109,7 +109,7 @@ class _PatientReelsScreenState extends State<PatientReelsScreen> {
         });
       }
     } catch (e) {
-      print('❌ Error loading more reels: $e');
+      debugPrint('❌ Error loading more reels: $e');
       setState(() {
         isLoading = false;
       });
@@ -398,7 +398,7 @@ class _ReelCommentsBottomSheetState extends State<ReelCommentsBottomSheet> {
         });
       }
     } catch (e) {
-      print('❌ Error loading reel comments: $e');
+      debugPrint('❌ Error loading reel comments: $e');
       setState(() {
         _isLoading = false;
       });
@@ -425,7 +425,7 @@ class _ReelCommentsBottomSheetState extends State<ReelCommentsBottomSheet> {
         await _loadComments();
       }
     } catch (e) {
-      print('❌ Error submitting reel comment: $e');
+      debugPrint('❌ Error submitting reel comment: $e');
     } finally {
       setState(() {
         _isSubmitting = false;
@@ -654,7 +654,7 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
         setState(() {});
       }
     } catch (e) {
-      print('Error initializing video: $e');
+      debugPrint('Error initializing video: $e');
     }
   }
 
@@ -694,7 +694,7 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
         });
       }
     } catch (e) {
-      print('❌ Error liking reel: $e');
+      debugPrint('❌ Error liking reel: $e');
       // ✅ Revert on error
       setState(() {
         _likedReels[reelId] = wasLiked;
@@ -736,7 +736,7 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
       // TODO: Call API to increment share count on backend
       // await ApiService.shareReel(reelId);
     } catch (e) {
-      print('❌ Error sharing: $e');
+      debugPrint('❌ Error sharing: $e');
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:docmobi/screens/patient/home/dialog/location_permission_dialog.dart';
 import 'package:docmobi/screens/patient/home/upcoming_appointment_card.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:docmobi/models/doctor_model.dart';
 import 'package:docmobi/providers/doctor_provider.dart';
@@ -12,8 +13,8 @@ import 'package:docmobi/screens/patient/doctor/doctor_detail_screen.dart';
 import 'package:docmobi/screens/patient/doctor/book_appointment_screen.dart';
 import 'package:docmobi/screens/patient/notification/notification_screen.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
-import 'dart:math' as math;
+import '../../../services/location_service.dart';
+import '../../../utils/marker_factory.dart';
 import 'package:docmobi/screens/patient/profile/patient_profile_screen.dart';
 import '../../../widgets/custom_image.dart';
 import 'dart:async'; // For Timer
@@ -26,6 +27,8 @@ class PatientHomeScreen extends StatefulWidget {
 }
 
 class _PatientHomeScreenState extends State<PatientHomeScreen> {
+  final LocationService _locationService = LocationService();
+  final MarkerFactory _markerFactory = MarkerFactory();
   final TextEditingController _searchController = TextEditingController();
   GoogleMapController? _mapController;
   Timer? _socketCheckTimer; // Timer for checking connection status
@@ -39,9 +42,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   bool _locationPermissionGranted = false;
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
-
-  // Selected doctor for route display
-  String? _selectedDoctorId;
 
   @override
   void initState() {
@@ -93,40 +93,14 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
 
   Future<void> _getCurrentLocation() async {
     try {
-      // Check if location services are enabled
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        debugPrint('Location services are disabled.');
-        if (mounted) {
-          setState(() {
-            _isLoadingLocation = false;
-            _locationPermissionGranted = false;
-          });
-          // Show dialog to user
-          _showLocationServiceDialog();
-        }
-        return;
-      }
-
-      // Check location permission
-      LocationPermission permission = await Geolocator.checkPermission();
-
+      // Check permission
+      var permission = await _locationService.checkPermission();
       if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          debugPrint('Location permissions are denied');
-          if (mounted) {
-            setState(() {
-              _isLoadingLocation = false;
-              _locationPermissionGranted = false;
-            });
-          }
-          return;
-        }
+        permission = await _locationService.requestPermission();
       }
 
-      if (permission == LocationPermission.deniedForever) {
-        debugPrint('Location permissions are permanently denied');
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         if (mounted) {
           setState(() {
             _isLoadingLocation = false;
@@ -144,14 +118,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
         });
       }
 
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
-      );
-
-      debugPrint(
-        'Location obtained: ${position.latitude}, ${position.longitude}',
-      );
+      final position = await _locationService.getCurrentPosition();
 
       if (mounted) {
         setState(() {
@@ -172,47 +139,18 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
           _isLoadingLocation = false;
           _locationPermissionGranted = false;
         });
-
-        // Show error message to user
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Unable to get your location: ${e.toString()}'),
-            action: SnackBarAction(
-              label: 'Retry',
-              onPressed: _getCurrentLocation,
-            ),
-            duration: const Duration(seconds: 5),
           ),
         );
       }
     }
   }
 
-  void _showLocationServiceDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Location Service Disabled'),
-          content: const Text(
-            'Please enable location services in your device settings to see nearby doctors.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await Geolocator.openLocationSettings();
-              },
-              child: const Text('Open Settings'),
-            ),
-          ],
-        );
-      },
-    );
+  // Calculate distance wrapper
+  double _calculateDistanceInKm(LatLng from, LatLng to) {
+    return _locationService.calculateDistanceInKm(from, to);
   }
 
   void _showPermissionDeniedDialog() {
@@ -242,29 +180,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     );
   }
 
-  // Calculate distance between two coordinates in kilometers using Haversine formula
-  double _calculateDistanceInKm(LatLng from, LatLng to) {
-    const double earthRadius = 6371; // km
-
-    double lat1 = from.latitude * math.pi / 180;
-    double lat2 = to.latitude * math.pi / 180;
-    double lon1 = from.longitude * math.pi / 180;
-    double lon2 = to.longitude * math.pi / 180;
-
-    double dLat = lat2 - lat1;
-    double dLon = lon2 - lon1;
-
-    double a =
-        math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(lat1) *
-            math.cos(lat2) *
-            math.sin(dLon / 2) *
-            math.sin(dLon / 2);
-    double c = 2 * math.asin(math.sqrt(a));
-
-    return earthRadius * c;
-  }
-
   // Get color based on distance (Green for near, Red for far)
   Color _getRouteColor(double distanceKm) {
     if (distanceKm <= 5) {
@@ -281,27 +196,16 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   void _addDoctorMarkers() {
     try {
       final doctors = context.read<DoctorProvider>().nearbyDoctors;
-
       Set<Marker> markers = {};
       Set<Polyline> polylines = {};
 
       // Add user location marker
-      markers.add(
-        Marker(
-          markerId: const MarkerId('user_location'),
-          position: _currentPosition,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          infoWindow: const InfoWindow(
-            title: 'Your Location',
-            snippet: 'You are here',
-          ),
-        ),
-      );
+      markers.add(_markerFactory.createUserMarker(_currentPosition));
 
       for (int i = 0; i < doctors.length; i++) {
         final doctor = doctors[i];
-
         LatLng doctorLocation;
+
         if (doctor.latitude != null && doctor.longitude != null) {
           doctorLocation = LatLng(doctor.latitude!, doctor.longitude!);
         } else {
@@ -311,29 +215,19 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
           doctorLocation = LatLng(lat, lng);
         }
 
-        // Calculate distance
-        double distanceKm = _calculateDistanceInKm(
+        // Calculate distance via service
+        double distanceKm = _locationService.calculateDistanceInKm(
           _currentPosition,
           doctorLocation,
         );
 
         // Only show doctors within 20 km
         if (distanceKm <= 20) {
-          // Add marker
+          // Use MarkerFactory
           markers.add(
-            Marker(
-              markerId: MarkerId(doctor.id),
-              position: doctorLocation,
-              infoWindow: InfoWindow(
-                title: doctor.fullName,
-                snippet:
-                    '${doctor.specialty} - ${distanceKm.toStringAsFixed(1)} km away',
-              ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                doctor.isAvailable
-                    ? BitmapDescriptor.hueGreen
-                    : BitmapDescriptor.hueRed,
-              ),
+            _markerFactory.createDoctorMarker(
+              doctor: doctor,
+              distanceKm: distanceKm,
               onTap: () {
                 _showDoctorRoute(doctor.id, doctorLocation, distanceKm);
               },
@@ -376,10 +270,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     LatLng doctorLocation,
     double distance,
   ) {
-    setState(() {
-      _selectedDoctorId = doctorId;
-    });
-
     // Zoom to show both user and doctor location
     LatLngBounds bounds = LatLngBounds(
       southwest: LatLng(
@@ -424,17 +314,16 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   String _calculateDistance(Doctor doctor) {
     if (doctor.latitude != null && doctor.longitude != null) {
       try {
-        double distanceInMeters = Geolocator.distanceBetween(
-          _currentPosition.latitude,
-          _currentPosition.longitude,
-          doctor.latitude!,
-          doctor.longitude!,
+        final latLngDoctor = LatLng(doctor.latitude!, doctor.longitude!);
+        double distanceKm = _locationService.calculateDistanceInKm(
+          _currentPosition,
+          latLngDoctor,
         );
 
-        if (distanceInMeters < 1000) {
-          return '${distanceInMeters.round()} m';
+        if (distanceKm < 1) {
+          return '${(distanceKm * 1000).round()} m';
         } else {
-          return '${(distanceInMeters / 1000).toStringAsFixed(1)} km';
+          return '${distanceKm.toStringAsFixed(1)} km';
         }
       } catch (e) {
         debugPrint('Error calculating distance: $e');

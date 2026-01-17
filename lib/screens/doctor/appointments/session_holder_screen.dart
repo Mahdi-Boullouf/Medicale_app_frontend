@@ -16,7 +16,7 @@ class _SessionHolderScreenState extends State<SessionHolderScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
-  
+
   bool _isSubmitting = false;
 
   @override
@@ -42,10 +42,10 @@ class _SessionHolderScreenState extends State<SessionHolderScreen> {
       final patientName = _nameController.text.trim();
       final amount = double.parse(_amountController.text.trim());
 
-      print('📤 Completing appointment:');
-      print('   ID: ${widget.appointment.id}');
-      print('   Patient: $patientName');
-      print('   Amount: $amount DZD'); // ✅ Logged in DZD
+      debugPrint('📤 Completing appointment:');
+      debugPrint('   ID: ${widget.appointment.id}');
+      debugPrint('   Patient: $patientName');
+      debugPrint('   Amount: $amount DZD'); // ✅ Logged in DZD
 
       final provider = context.read<AppointmentProvider>();
       final success = await provider.completeAppointment(
@@ -80,9 +80,7 @@ class _SessionHolderScreenState extends State<SessionHolderScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                provider.error ?? 'Failed to complete session',
-              ),
+              content: Text(provider.error ?? 'Failed to complete session'),
               backgroundColor: Colors.red,
             ),
           );
@@ -92,10 +90,7 @@ class _SessionHolderScreenState extends State<SessionHolderScreen> {
       if (mounted) {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -114,10 +109,7 @@ class _SessionHolderScreenState extends State<SessionHolderScreen> {
         ),
         title: const Text(
           'Complete Session',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
       ),
       body: SingleChildScrollView(
@@ -135,10 +127,7 @@ class _SessionHolderScreenState extends State<SessionHolderScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF1664CD),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFF1664CD), width: 1),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,10 +174,7 @@ class _SessionHolderScreenState extends State<SessionHolderScreen> {
               Text(
                 "Enter the details to complete this session",
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
               const SizedBox(height: 30),
 
@@ -279,13 +265,7 @@ class _SessionHolderScreenState extends State<SessionHolderScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-          ),
-        ),
+        Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
         Text(
           value,
           style: const TextStyle(
@@ -339,24 +319,15 @@ class _SessionHolderScreenState extends State<SessionHolderScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: Color(0xFF0B3267),
-                width: 2,
-              ),
+              borderSide: const BorderSide(color: Color(0xFF0B3267), width: 2),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: Colors.red,
-                width: 1.2,
-              ),
+              borderSide: const BorderSide(color: Colors.red, width: 1.2),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: Colors.red,
-                width: 2,
-              ),
+              borderSide: const BorderSide(color: Colors.red, width: 2),
             ),
           ),
         ),

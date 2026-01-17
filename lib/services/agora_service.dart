@@ -1,4 +1,5 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../config/agora_config.dart';
 
@@ -38,12 +39,12 @@ class AgoraService {
       _engine!.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
-            print(
+            debugPrint(
               "✅ Local user ${connection.localUid} joined channel: ${connection.channelId}",
             );
           },
           onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
-            print("👋 Remote user $remoteUid joined");
+            debugPrint("👋 Remote user $remoteUid joined");
             onUserJoined?.call(remoteUid, elapsed);
           },
           onUserOffline:
@@ -52,21 +53,21 @@ class AgoraService {
                 int remoteUid,
                 UserOfflineReasonType reason,
               ) {
-                print("🏃 Remote user $remoteUid left channel: $reason");
+                debugPrint("🏃 Remote user $remoteUid left channel: $reason");
                 onUserOffline?.call(remoteUid, reason);
               },
           onLeaveChannel: (RtcConnection connection, RtcStats stats) {
-            print("👋 Left channel");
+            debugPrint("👋 Left channel");
             onLeaveChannel?.call(stats);
           },
           onUserMuteAudio:
               (RtcConnection connection, int remoteUid, bool muted) {
-                print("🔇 Remote user $remoteUid audio muted: $muted");
+                debugPrint("🔇 Remote user $remoteUid audio muted: $muted");
                 onUserMuteAudio?.call(remoteUid, muted);
               },
           onUserMuteVideo:
               (RtcConnection connection, int remoteUid, bool muted) {
-                print("📷 Remote user $remoteUid video muted: $muted");
+                debugPrint("📷 Remote user $remoteUid video muted: $muted");
                 onUserMuteVideo?.call(remoteUid, muted);
               },
         ),
@@ -77,9 +78,9 @@ class AgoraService {
       await _engine!.startPreview();
 
       _isInitialized = true;
-      print("✅ Agora Engine Initialized");
+      debugPrint("✅ Agora Engine Initialized");
     } catch (e) {
-      print("❌ Error initializing Agora: $e");
+      debugPrint("❌ Error initializing Agora: $e");
       rethrow;
     }
   }
@@ -107,9 +108,9 @@ class AgoraService {
           clientRoleType: ClientRoleType.clientRoleBroadcaster,
         ),
       );
-      print("⏳ Joining channel: $channelName as uid: $uid");
+      debugPrint("⏳ Joining channel: $channelName as uid: $uid");
     } catch (e) {
-      print("❌ Error joining channel: $e");
+      debugPrint("❌ Error joining channel: $e");
       rethrow;
     }
   }
@@ -125,7 +126,7 @@ class AgoraService {
       // but usually for a clean state in single call apps, we might want to release.
       // For now, just leaving channel.
     } catch (e) {
-      print("❌ Error leaving channel: $e");
+      debugPrint("❌ Error leaving channel: $e");
     }
   }
 
