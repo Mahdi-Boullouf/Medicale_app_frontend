@@ -1,6 +1,10 @@
-import 'package:docmobi/screens/doctor/messages/doctor_messages_list_screen.dart';
+// screens/patient/home/see_all_doctors_screen.dart
+// ✅ COMPLETE CODE with Real-time Availability & Video Badge & Visiting Hours
+
 import 'package:flutter/material.dart';
 import 'package:docmobi/services/api_service.dart';
+import 'package:docmobi/models/doctor_model.dart';
+import 'package:docmobi/screens/patient/doctor/doctor_detail_screen.dart';
 
 class SeeAllDoctorsScreen extends StatefulWidget {
   const SeeAllDoctorsScreen({super.key});
@@ -10,7 +14,7 @@ class SeeAllDoctorsScreen extends StatefulWidget {
 }
 
 class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
-  List<Map<String, dynamic>> _doctors = [];
+  List<Doctor> _doctors = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -27,7 +31,6 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
     });
 
     try {
-      // ✅ Use correct endpoint
       final result = await ApiService.get(
         '/api/v1/user/role/doctor',
         requiresAuth: true,
@@ -39,7 +42,14 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
         final doctorsData = result['data'] as List? ?? [];
 
         setState(() {
-          _doctors = List<Map<String, dynamic>>.from(doctorsData);
+          _doctors = doctorsData.map((json) {
+            // Debug log
+            print('🔍 Doctor: ${json['fullName']}');
+            print('   - isVideoCallAvailable: ${json['isVideoCallAvailable']}');
+            print('   - weeklySchedule: ${json['weeklySchedule']}');
+            
+            return Doctor.fromJson(json);
+          }).toList();
           _isLoading = false;
         });
 
@@ -59,13 +69,56 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
     }
   }
 
-  void _showDoctorInfo(Map<String, dynamic> doctor) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _DoctorInfoBottomSheet(doctor: doctor),
-    );
+  /// ✅ Check if doctor has schedule (is available)
+  bool _isDoctorAvailable(Doctor doctor) {
+    if (doctor.weeklySchedule == null || doctor.weeklySchedule!.isEmpty) {
+      print('❌ ${doctor.fullName}: No weeklySchedule');
+      return false;
+    }
+
+    // Check if at least one day is active with slots
+    for (var schedule in doctor.weeklySchedule!) {
+      print('📅 ${doctor.fullName} - ${schedule.day}: active=${schedule.isActive}, slots=${schedule.slots.length}');
+      
+      if (schedule.isActive && schedule.slots.isNotEmpty) {
+        print('✅ ${doctor.fullName}: Available on ${schedule.day}');
+        return true;
+      }
+    }
+
+    print('❌ ${doctor.fullName}: No active days with slots');
+    return false;
+  }
+
+  /// ✅ Get visiting hours from doctor's schedule
+  String _getVisitingHours(Doctor doctor) {
+    if (doctor.weeklySchedule == null || doctor.weeklySchedule!.isEmpty) {
+      return 'No schedule set';
+    }
+
+    List<String> activeDays = [];
+    for (var schedule in doctor.weeklySchedule!) {
+      if (schedule.isActive && schedule.slots.isNotEmpty) {
+        // Get first 3 characters of day name
+        String dayShort = schedule.day.length >= 3 
+          ? schedule.day.substring(0, 3) 
+          : schedule.day;
+        activeDays.add(dayShort);
+      }
+    }
+
+    if (activeDays.isEmpty) {
+      return 'No schedule set';
+    }
+
+    // Show first and last day
+    if (activeDays.length == 1) {
+      return activeDays[0];
+    } else if (activeDays.length <= 3) {
+      return activeDays.join(', ');
+    } else {
+      return '${activeDays.first}-${activeDays.last}';
+    }
   }
 
   @override
@@ -80,7 +133,7 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'All Doctors',
+          "All Doctor's",
           style: TextStyle(
             color: Color(0xFF1B2C49),
             fontSize: 20,
@@ -147,245 +200,296 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _doctors.length,
-      itemBuilder: (context, index) {
-        final doctor = _doctors[index];
-        return _buildDoctorCard(doctor);
-      },
-    );
-  }
-
-  Widget _buildDoctorCard(Map<String, dynamic> doctor) {
-    final String doctorName = doctor['fullName'] ?? 'Doctor';
-    final String? doctorImage = doctor['avatar']?['url'];
-    final String specialty = doctor['specialty'] ?? 'General Physician';
-    final int experienceYears = doctor['experienceYears'] ?? 0;
-    final String doctorId = doctor['_id'] ?? '';
-
-    return InkWell(
-      onTap: () => _showDoctorInfo(doctor),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+    return RefreshIndicator(
+      onRefresh: _loadDoctors,
+      child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundImage: doctorImage != null
-                  ? NetworkImage(doctorImage)
-                  : const AssetImage('assets/images/doctor.png')
-                        as ImageProvider,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    doctorName,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1B2C49),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    specialty,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                  if (experienceYears > 0) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      '$experienceYears years experience',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF1664CD),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            IconButton(
-              icon: const Icon(
-                Icons.message_outlined,
-                color: Color(0xFF1664CD),
-              ),
-              onPressed: () {
-                // Navigate to message
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        DoctorMessagesListScreen(initialDoctorId: doctorId),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+        itemCount: _doctors.length,
+        itemBuilder: (context, index) {
+          final doctor = _doctors[index];
+          return _buildDoctorCard(doctor);
+        },
       ),
     );
   }
-}
 
-class _DoctorInfoBottomSheet extends StatelessWidget {
-  final Map<String, dynamic> doctor;
+  Widget _buildDoctorCard(Doctor doctor) {
+  final bool isAvailable = _isDoctorAvailable(doctor);
+  final bool hasVideoCall = doctor.isVideoCallAvailable; // ✅ Read from model
+  final String visitingHours = _getVisitingHours(doctor);
 
-  const _DoctorInfoBottomSheet({required this.doctor});
+  // Debug
+  print('📋 See All: ${doctor.fullName}');
+  print('   - hasVideoCall: $hasVideoCall');
 
-  @override
-  Widget build(BuildContext context) {
-    final String doctorName = doctor['fullName'] ?? 'Doctor';
-    final String? doctorImage = doctor['avatar']?['url'];
-    final String doctorId = doctor['_id'] ?? '';
-    final String specialty = doctor['specialty'] ?? 'General Physician';
-    final String bio = doctor['bio'] ?? 'No bio available';
-    final int experienceYears = doctor['experienceYears'] ?? 0;
-    final List degrees = doctor['degrees'] ?? [];
-
-    return Container(
-      decoration: const BoxDecoration(
+  return GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DoctorDetailsScreen(doctor: doctor),
+        ),
+      );
+    },
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
-            ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          const SizedBox(height: 20),
-
-          CircleAvatar(
-            radius: 50,
-            backgroundImage: doctorImage != null
-                ? NetworkImage(doctorImage)
-                : const AssetImage('assets/images/doctor.png') as ImageProvider,
-          ),
-          const SizedBox(height: 16),
-
-          Text(
-            doctorName,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1B2C49),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-
-          Text(
-            specialty,
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 8),
-
-          if (experienceYears > 0)
-            Text(
-              '$experienceYears years of experience',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF1664CD),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          const SizedBox(height: 16),
-
-          if (bio != 'No bio available')
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F8FF),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                bio,
-                style: const TextStyle(fontSize: 14),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          const SizedBox(height: 16),
-
-          if (degrees.isNotEmpty)
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: degrees.map<Widget>((degree) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F1FF),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    degree['title'] ?? '',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF1664CD),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          const SizedBox(height: 24),
-
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        DoctorMessagesListScreen(initialDoctorId: doctorId),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.message_outlined),
-              label: const Text(
-                'Message',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1664CD),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
         ],
       ),
-    );
-  }
+      child: Column(
+        children: [
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: doctor.image.startsWith('http')
+                    ? Image.network(
+                        doctor.image,
+                        height: 70,
+                        width: 70,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          height: 70,
+                          width: 70,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.person, size: 40),
+                        ),
+                      )
+                    : Image.asset(
+                        doctor.image,
+                        height: 70,
+                        width: 70,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          height: 70,
+                          width: 70,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.person, size: 40),
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 16),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            doctor.fullName,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1B2C49),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isAvailable
+                                ? const Color(0xFFE8F5E9)
+                                : const Color(0xFFFFF3E0),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            isAvailable ? 'Available' : 'No Schedule',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isAvailable
+                                  ? Colors.green[700]
+                                  : Colors.orange[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+
+                    Text(
+                      doctor.specialty,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+
+                    // ✅ Video Consultation Badge
+                    if (hasVideoCall)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE3F2FD),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: const Color(0xFF2196F3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.videocam,
+                              size: 14,
+                              color: Color(0xFF1976D2),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'Video Consultation',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF1565C0),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    
+                    if (hasVideoCall) const SizedBox(height: 6),
+
+                    // Visiting Hours
+                    Row(
+                      children: [
+                        Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            visitingHours,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Rating & Distance
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star,
+                          size: 16,
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          doctor.rating.toString(),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Icon(
+                          Icons.location_on,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          doctor.distance,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: isAvailable
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DoctorDetailsScreen(doctor: doctor),
+                            ),
+                          );
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isAvailable
+                        ? const Color(0xFF0D47A1)
+                        : Colors.grey[300],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    isAvailable ? 'Book Now' : 'Not Available',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isAvailable ? Colors.white : Colors.grey[600],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE3F2FD),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.info_outline,
+                    color: Color(0xFF0D47A1),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DoctorDetailsScreen(doctor: doctor),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
 }

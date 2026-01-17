@@ -5,6 +5,7 @@ import 'package:docmobi/models/appointment_model.dart';
 import 'package:docmobi/providers/appointment_provider.dart';
 import 'package:docmobi/screens/patient/appointments/appointment_detail_screen.dart';
 import 'package:docmobi/screens/patient/navigation/patient_main_navigation.dart';
+import 'package:docmobi/services/api_service.dart';
 
 class PatientAppointmentsScreen extends StatefulWidget {
   const PatientAppointmentsScreen({super.key});
@@ -358,12 +359,17 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
                 children: [
                   _infoRow(Icons.calendar_month_outlined, appointment.formattedDate),
                   _infoRow(Icons.access_time, appointment.appointmentTime),
-                  _infoRow(Icons.apartment, 'Physical'),
+                  _infoRow(
+                    appointment.appointmentType == 'video' 
+                      ? Icons.videocam 
+                      : Icons.apartment,
+                    appointment.appointmentType == 'video' ? 'Video' : 'Physical',
+                  ),
                 ],
               ),
             ),
 
-            // ✅ NEW: Direct Cancel & Reschedule buttons
+            // ✅ Actions for upcoming appointments
             if (!isCompleted && !isCancelled) ...[
               const SizedBox(height: 15),
               Row(
@@ -392,19 +398,50 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
                 ],
               ),
             ],
+
+            // ✅ NEW: Review button for completed appointments
+            if (isCompleted) ...[
+              const SizedBox(height: 15),
+              InkWell(
+                onTap: () => _showReviewDialog(context, appointment),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0B3267), Color(0xFF1664CD)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.star_border, color: Colors.white, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Write Review',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  // ✅ NEW: Direct Cancel Handler
   void _handleCancel(
     BuildContext context,
     AppointmentModel appointment,
     AppointmentProvider provider,
   ) async {
-    // Show loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -414,14 +451,11 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
     );
 
     try {
-      // Call cancel API
       final success = await provider.cancelAppointment(appointment.id);
 
-      // Close loading
       if (mounted) Navigator.pop(context);
 
       if (success) {
-        // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -445,12 +479,9 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
               ),
             ),
           );
-
-          // Refresh appointments
           provider.fetchAppointments();
         }
       } else {
-        // Show error message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -477,10 +508,7 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
         }
       }
     } catch (e) {
-      // Close loading
       if (mounted) Navigator.pop(context);
-
-      // Show error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -492,9 +520,7 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
     }
   }
 
-  // ✅ NEW: Reschedule Handler
   void _handleReschedule(BuildContext context, AppointmentModel appointment) {
-    // Navigate to book appointment screen with reschedule mode
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -512,10 +538,246 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen> {
         ),
       ),
     ).then((_) {
-      // Refresh appointments when coming back
       context.read<AppointmentProvider>().fetchAppointments();
     });
   }
+
+  /// ✅ Show review dialog for completed appointments
+  // ✅ FIXED: Review loading & editing
+void _showReviewDialog(BuildContext context, AppointmentModel appointment) async {
+  int selectedRating = 0;
+  bool isLoadingExisting = true;
+  
+  // ✅ Fetch existing review if any
+  try {
+    final existingReview = await ApiService.get(
+      '/api/v1/doctor-review/me',
+    );
+    
+    if (existingReview['success'] == true) {
+      final reviews = existingReview['data'] as List;
+      
+      // Find review for this appointment or doctor
+      final thisReview = reviews.firstWhere(
+        (r) => r['appointment']?['_id'] == appointment.id || 
+               r['appointment'] == appointment.id ||
+               (r['doctor']?['_id'] == appointment.doctorId && r['appointment'] == null),
+        orElse: () => null,
+      );
+      
+      if (thisReview != null) {
+        selectedRating = thisReview['rating'] ?? 0;
+        print('✅ Found existing review with rating: $selectedRating');
+      }
+    }
+  } catch (e) {
+    print('⚠️ No existing review found: $e');
+  } finally {
+    isLoadingExisting = false;
+  }
+
+  if (!context.mounted) return;
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setDialogState) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  selectedRating > 0 ? 'Update Your Review' : 'Rate Your Experience',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1B2C49),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'with ${appointment.doctorName}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // ✅ Star Rating with existing review support
+                isLoadingExisting
+                  ? const CircularProgressIndicator()
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return GestureDetector(
+                          onTap: () {
+                            setDialogState(() {
+                              selectedRating = index + 1;
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Icon(
+                              index < selectedRating ? Icons.star : Icons.star_border,
+                              size: 40,
+                              color: index < selectedRating 
+                                ? Colors.amber 
+                                : Colors.grey[400],
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                
+                const SizedBox(height: 32),
+                
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: selectedRating > 0
+                          ? () async {
+                              // ✅ Close dialog immediately
+                              Navigator.pop(dialogContext);
+                              
+                              // ✅ Then submit review
+                              await _submitReview(
+                                context,
+                                appointment,
+                                selectedRating,
+                              );
+                            }
+                          : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1664CD),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          'Submit',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+
+/// ✅ FIXED: Submit review with proper dialog handling
+Future<void> _submitReview(
+  BuildContext context,
+  AppointmentModel appointment,
+  int rating,
+) async {
+  // ✅ Show loading overlay
+  final overlay = OverlayEntry(
+    builder: (context) => Container(
+      color: Colors.black54,
+      child: const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+    ),
+  );
+  
+  Overlay.of(context).insert(overlay);
+
+  try {
+    print('📤 Submitting review:');
+    print('   - Doctor ID: ${appointment.doctorId}');
+    print('   - Appointment ID: ${appointment.id}');
+    print('   - Rating: $rating');
+
+    final response = await ApiService.post(
+      '/api/v1/doctor-review',
+      {
+        'doctorId': appointment.doctorId,
+        'appointmentId': appointment.id,
+        'rating': rating,
+      },
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Request timeout'),
+    );
+
+    print('📥 Review Response: $response');
+
+    // ✅ Remove overlay
+    overlay.remove();
+
+    // ✅ Show result
+    if (context.mounted) {
+      if (response['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Review submitted successfully! ⭐'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Failed to submit review'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  } catch (e) {
+    print('❌ Review submission error: $e');
+    
+    // ✅ Remove overlay on error
+    overlay.remove();
+    
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString().replaceAll('Exception:', '').trim()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+}
 
   Widget _buildDoctorImage(String? imageUrl) {
     if (imageUrl != null &&

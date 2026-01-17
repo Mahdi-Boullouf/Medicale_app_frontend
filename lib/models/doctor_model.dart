@@ -1,3 +1,6 @@
+// models/doctor_model.dart
+// ✅ UPDATED with Video Call Support and Dynamic Bio
+
 class Doctor {
   final String id;
   final String name;
@@ -14,6 +17,11 @@ class Doctor {
   final String distance;
   final double? latitude;
   final double? longitude;
+  
+  // ✅ NEW: Dynamic fields from backend
+  final String? bio;
+  final bool isVideoCallAvailable;
+  final String? visitingHoursText;
 
   Doctor({
     required this.id,
@@ -31,6 +39,9 @@ class Doctor {
     this.distance = 'N/A',
     this.latitude,
     this.longitude,
+    this.bio, // ✅ NEW
+    this.isVideoCallAvailable = false, // ✅ NEW
+    this.visitingHoursText, // ✅ NEW
   });
 
   factory Doctor.fromJson(Map<String, dynamic> json) {
@@ -95,6 +106,11 @@ class Doctor {
       longitude: json['longitude'] != null 
           ? double.tryParse(json['longitude'].toString()) 
           : null,
+      
+      // ✅ NEW: Dynamic fields
+      bio: json['bio'],
+      isVideoCallAvailable: json['isVideoCallAvailable'] ?? false,
+      visitingHoursText: json['visitingHoursText'],
     );
   }
 
@@ -114,6 +130,9 @@ class Doctor {
       'distance': distance,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
+      if (bio != null) 'bio': bio,
+      'isVideoCallAvailable': isVideoCallAvailable,
+      if (visitingHoursText != null) 'visitingHoursText': visitingHoursText,
     };
   }
 }

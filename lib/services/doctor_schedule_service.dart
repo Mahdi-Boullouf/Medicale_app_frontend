@@ -1,21 +1,24 @@
 import 'api_service.dart';
 
 class DoctorScheduleService {
-  /// Save doctor's weekly schedule
+  /// Save doctor's weekly schedule with video call availability
   Future<Map<String, dynamic>> saveWeeklySchedule({
     required List<Map<String, dynamic>> weeklySchedule,
     required Map<String, dynamic> fees,
+    required bool isVideoCallAvailable, // ✅ Added parameter
   }) async {
     try {
-      // ✅ Data is already formatted correctly from screen
-      // Screen sends: { day: 'monday', isActive: true, slots: [{ start: '10:00', end: '10:30' }] }
-      
       final body = {
-        'weeklySchedule': weeklySchedule,  // ✅ Use as-is, no transformation needed
+        'weeklySchedule': weeklySchedule,
         'fees': fees,
+        'isVideoCallAvailable': isVideoCallAvailable, // ✅ Send to backend
       };
 
-      // ✅ Correct endpoint: PUT /api/v1/user/profile
+      print('📤 Sending to backend:');
+      print('   - weeklySchedule: ${weeklySchedule.length} days');
+      print('   - fees: $fees');
+      print('   - isVideoCallAvailable: $isVideoCallAvailable');
+
       final response = await ApiService.put(
         '/api/v1/user/profile',
         body,
@@ -35,7 +38,6 @@ class DoctorScheduleService {
   /// Get doctor's current schedule
   Future<Map<String, dynamic>> getMySchedule() async {
     try {
-      // ✅ Correct endpoint: GET /api/v1/user/profile
       final response = await ApiService.get(
         '/api/v1/user/profile',
         requiresAuth: true,

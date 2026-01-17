@@ -17,61 +17,66 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
   String selectedSlotKey = "";
 
   final List<Map<String, dynamic>> scheduleData = [
-    {
-      'day': 'Monday',
-      'enabled': false,  // ✅ Changed default to false
-      'slots': [
-        {'start': '10:00 Am', 'end': '10:30 Am'},
-      ]
-    },
-    {
-      'day': 'Tuesday',
-      'enabled': false,
-      'slots': [
-        {'start': '09:00 Am', 'end': '09:30 Am'}
-      ]
-    },
-    {
-      'day': 'Wednesday',
-      'enabled': false,
-      'slots': [
-        {'start': '04:00 Pm', 'end': '04:30 Pm'}
-      ]
-    },
-    {
-      'day': 'Thursday',
-      'enabled': false,
-      'slots': [
-        {'start': '10:00 Am', 'end': '10:30 Am'}
-      ]
-    },
-    {
-      'day': 'Friday',
-      'enabled': false,
-      'slots': [
-        {'start': '10:00 Am', 'end': '10:30 Am'}
-      ]
-    },
-    {
-      'day': 'Saturday',
-      'enabled': false,
-      'slots': [
-        {'start': '10:00 Am', 'end': '10:30 Am'}
-      ]
-    },
-    {
-      'day': 'Sunday',
-      'enabled': false,
-      'slots': [
-        {'start': '10:00 Am', 'end': '10:30 Am'}
-      ]
-    },
+    {'day': 'Monday', 'enabled': false, 'slots': []},
+    {'day': 'Tuesday', 'enabled': false, 'slots': []},
+    {'day': 'Wednesday', 'enabled': false, 'slots': []},
+    {'day': 'Thursday', 'enabled': false, 'slots': []},
+    {'day': 'Friday', 'enabled': false, 'slots': []},
+    {'day': 'Saturday', 'enabled': false, 'slots': []},
+    {'day': 'Sunday', 'enabled': false, 'slots': []},
   ];
 
   @override
   void initState() {
     super.initState();
     _loadExistingSchedule();
+  }
+
+  /// Generate next available time slot
+  Map<String, String> _generateNextSlot(List slots) {
+    if (slots.isEmpty) {
+      return {'start': '10:00 Am', 'end': '10:30 Am'};
+    }
+
+    // Get last slot's end time
+    final lastSlot = slots.last;
+    final lastEndTime = lastSlot['end'];
+
+    // Parse the time
+    final parts = lastEndTime.split(' ');
+    final time = parts[0];
+    final period = parts[1];
+
+    final timeParts = time.split(':');
+    int hour = int.parse(timeParts[0]);
+    int minute = int.parse(timeParts[1]);
+
+    // Add 1 minute to get next start time
+    minute += 1;
+    if (minute >= 60) {
+      minute = 0;
+      hour += 1;
+      if (hour > 12) {
+        hour = 1;
+      }
+    }
+
+    String nextStartTime = '$hour:${minute.toString().padLeft(2, '0')} $period';
+
+    // Calculate end time (30 minutes later)
+    int endMinute = minute + 29;
+    int endHour = hour;
+    if (endMinute >= 60) {
+      endMinute -= 60;
+      endHour += 1;
+      if (endHour > 12) {
+        endHour = 1;
+      }
+    }
+
+    String nextEndTime = '$endHour:${endMinute.toString().padLeft(2, '0')} $period';
+
+    return {'start': nextStartTime, 'end': nextEndTime};
   }
 
   /// Load doctor's existing schedule from backend
@@ -105,7 +110,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
               if (backendDay != null) {
                 scheduleData[i]['enabled'] = backendDay['isActive'] ?? false;
                 
-                if (backendDay['slots'] != null) {
+                if (backendDay['slots'] != null && (backendDay['slots'] as List).isNotEmpty) {
                   scheduleData[i]['slots'] = (backendDay['slots'] as List)
                       .map((slot) => {
                             'start': _convert24To12Hour(slot['start']),
@@ -124,97 +129,88 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
   }
 
   /// Save schedule to backend
-  Future<void> _saveSchedule() async {
-    if (_feesController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter consultation fees'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isSaving = true);
-
-    try {
-      print('📤 Saving doctor schedule...');
-      
-      // ✅ FIXED: Convert to lowercase day names for backend
-      final List<Map<String, dynamic>> formattedSchedule = scheduleData.map((dayData) {
-        final dayName = (dayData['day'] as String).toLowerCase();
-        final isActive = dayData['enabled'] as bool;
-        
-        print('   Day: $dayName, Enabled: $isActive, Slots: ${dayData['slots'].length}');
-        
-        return {
-          'day': dayName,  // ✅ Send lowercase to match backend enum
-          'isActive': isActive,
-          'slots': (dayData['slots'] as List).map((slot) {
-            return {
-              'start': _convertTo24Hour(slot['start']),
-              'end': _convertTo24Hour(slot['end']),
-            };
-          }).toList(),
-        };
-      }).toList();
-
-      final fees = {
-        'amount': double.tryParse(_feesController.text) ?? 0,
-        'currency': 'USD',
-      };
-
-      print('   Formatted Schedule: $formattedSchedule');
-
-      final response = await _scheduleService.saveWeeklySchedule(
-        weeklySchedule: formattedSchedule,
-        fees: fees,
-      );
-
-      if (mounted) {
-        if (response['success'] == true) {
-          print('✅ Schedule saved successfully!');
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Schedule saved successfully! ✅'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          print('❌ Save failed: ${response['message']}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response['message'] ?? 'Failed to save'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      print('❌ Error saving schedule: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
-    }
+Future<void> _saveSchedule() async {
+  if (_feesController.text.isEmpty) {
+    _showSnackBar('Please enter consultation fees', Colors.orange);
+    return;
   }
 
-  /// Convert 12-hour format to 24-hour format for backend
+  setState(() => _isSaving = true);
+
+  try {
+    print('📤 Saving doctor schedule...');
+    print('   - Video Call Available: $onlineAppointment'); // ✅ Log this
+    
+    final List<Map<String, dynamic>> formattedSchedule = scheduleData.map((dayData) {
+      final dayName = (dayData['day'] as String).toLowerCase();
+      final isActive = dayData['enabled'] as bool;
+      
+      return {
+        'day': dayName,  
+        'isActive': isActive,
+        'slots': (dayData['slots'] as List).map((slot) {
+          final start24 = _convertTo24Hour(slot['start']);
+          final end24 = _convertTo24Hour(slot['end']);
+          return {
+            'start': start24,
+            'end': end24,
+          };
+        }).toList(),
+      };
+    }).toList();
+
+    final fees = {
+      'amount': double.tryParse(_feesController.text) ?? 0,
+      'currency': 'USD',
+    };
+
+    // ✅ IMPORTANT: Pass isVideoCallAvailable
+    final response = await _scheduleService.saveWeeklySchedule(
+      weeklySchedule: formattedSchedule,
+      fees: fees,
+      isVideoCallAvailable: onlineAppointment, // ✅ This is the fix!
+    );
+
+    if (mounted) {
+      if (response['success'] == true) {
+        print('✅ Schedule saved successfully!');
+        print('   - isVideoCallAvailable saved as: $onlineAppointment');
+        _showSnackBar('Schedule saved successfully!', Colors.green);
+      } else {
+        print('❌ Save failed: ${response['message']}');
+        _showSnackBar(response['message'] ?? 'Failed to save', Colors.red);
+      }
+    }
+  } catch (e) {
+    print('❌ Error saving schedule: $e');
+    if (mounted) {
+      _showSnackBar('Error: $e', Colors.red);
+    }
+  } finally {
+    if (mounted) {
+      setState(() => _isSaving = false);
+    }
+  }
+}
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color),
+    );
+  }
+
+  /// Convert 12-hour format to 24-hour format
   String _convertTo24Hour(String time12) {
     try {
-      final parts = time12.split(' ');
+      final cleaned = time12.trim();
+      final parts = cleaned.split(' ');
+      if (parts.length != 2) return "00:00";
+      
       final time = parts[0];
       final period = parts[1].toLowerCase();
       
       final timeParts = time.split(':');
+      if (timeParts.length != 2) return "00:00";
+      
       int hour = int.parse(timeParts[0]);
       final minute = timeParts[1];
 
@@ -223,11 +219,12 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
 
       return "${hour.toString().padLeft(2, '0')}:$minute";
     } catch (e) {
+      print('Error converting to 24h: $time12 - $e');
       return "00:00";
     }
   }
 
-  /// Convert 24h to 12h format for UI
+  /// Convert 24-hour to 12-hour format
   String _convert24To12Hour(String time24) {
     try {
       final parts = time24.split(':');
@@ -370,8 +367,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
             ...scheduleData
                 .asMap()
                 .entries
-                .map((entry) => _buildDayItem(entry.value, entry.key))
-                ,
+                .map((entry) => _buildDayItem(entry.value, entry.key)),
 
             const SizedBox(height: 20),
 
@@ -530,7 +526,8 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
             TextButton.icon(
               onPressed: () {
                 setState(() {
-                  data['slots'].add({'start': '12:00 Pm', 'end': '12:30 Pm'});
+                  final nextSlot = _generateNextSlot(data['slots']);
+                  data['slots'].add(nextSlot);
                 });
               },
               icon: const Icon(

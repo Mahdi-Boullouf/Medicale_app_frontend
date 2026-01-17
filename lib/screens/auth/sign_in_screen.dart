@@ -209,7 +209,7 @@ class _SignInScreenState extends State<SignInScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: const Color.fromARGB(0, 255, 255, 255),
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Color(0xFF0B3267)),

@@ -1,3 +1,6 @@
+// screens/doctor/profile/doctor_profile_screen.dart
+// ✅ UPDATED with Video Call Save Functionality
+
 import 'package:flutter/material.dart';
 import 'package:docmobi/screens/doctor/profile/doctor_personal_info_screen.dart';
 import 'package:docmobi/screens/doctor/profile/doctor_my_schedule_screen.dart';
@@ -16,7 +19,7 @@ class DoctorProfileScreen extends StatefulWidget {
 }
 
 class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
-  bool isVoiceVideoCallActive = false;
+  bool _isSaving = false; // Track save state
 
   @override
   void initState() {
@@ -32,12 +35,91 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
     await context.read<UserProvider>().fetchUserProfile();
   }
 
+  /// ✅ Save video call availability to backend
+  Future<void> _toggleVideoCall(bool value) async {
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final userProvider = context.read<UserProvider>();
+      
+      print('🔄 Toggling video call to: $value');
+      
+      // ✅ FIXED: Pass the video call parameter
+      final success = await userProvider.updateUserProfile(
+        isVideoCallAvailable: value,
+      );
+
+      if (success) {
+        print('✅ Video call setting saved successfully');
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(
+                    value ? Icons.videocam : Icons.videocam_off,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    value
+                        ? 'Video calls enabled ✅'
+                        : 'Video calls disabled ❌',
+                  ),
+                ],
+              ),
+              duration: const Duration(seconds: 2),
+              backgroundColor: value ? Colors.green : Colors.orange,
+            ),
+          );
+        }
+      } else {
+        print('❌ Failed to save video call setting');
+        
+        // Revert to previous state on failure
+        await _refreshProfile();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to update: ${userProvider.error ?? "Unknown error"}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error updating video call setting: $e');
+      
+      // Revert to previous state on error
+      await _refreshProfile();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color.fromARGB(0, 255, 255, 255),
         elevation: 0,
         automaticallyImplyLeading: false,
         title: const Text(
@@ -62,6 +144,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
           final userName = user?.fullName ?? 'Doctor';
           final userRole = user?.role ?? 'doctor';
           final profileImageUrl = user?.profileImage;
+          final isVideoCallAvailable = user?.isVideoCallAvailable ?? false;
 
           return RefreshIndicator(
             onRefresh: _refreshProfile,
@@ -185,32 +268,9 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                       );
                     },
                   ),
-                  _buildProfileItem(
-                    icon: Icons.phone_outlined,
-                    title: 'Voice and Video call',
-                    trailing: Switch(
-                      value: isVoiceVideoCallActive,
-                      activeThumbColor: Colors.white,
-                      activeTrackColor: const Color(0xFF1664CD),
-                      inactiveThumbColor: Colors.white,
-                      inactiveTrackColor: Colors.grey[300],
-                      onChanged: (value) {
-                        setState(() {
-                          isVoiceVideoCallActive = value;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              value
-                                  ? 'Voice/Video calls enabled'
-                                  : 'Voice/Video calls disabled',
-                            ),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                  
+                
+                  
                   _buildProfileItem(
                     icon: Icons.attach_money_outlined,
                     title: 'My Earning',

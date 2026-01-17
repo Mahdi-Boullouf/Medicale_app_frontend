@@ -1,3 +1,6 @@
+// providers/user_provider.dart
+// ✅ UPDATED with Video Call Toggle Support
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
@@ -29,6 +32,7 @@ class UserProvider with ChangeNotifier {
         print('✅ Profile image: ${_user?.profileImage}');
         print('✅ Specialty: ${_user?.specialty}');
         print('✅ Bio: ${_user?.bio}');
+        print('✅ Video Call Available: ${_user?.isVideoCallAvailable}');
         print('✅ Location: lat=${_user?.latitude}, lng=${_user?.longitude}');
         _isLoading = false;
         notifyListeners();
@@ -36,6 +40,41 @@ class UserProvider with ChangeNotifier {
       } else {
         _error = response['message'] ?? 'Failed to fetch profile';
         print('❌ Profile fetch failed: $_error');
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _error = 'Error: $e';
+      print('❌ Exception: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// ✅ NEW: Update video call availability
+  Future<bool> updateVideoCallAvailability(bool isAvailable) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      print('📤 Updating video call availability: $isAvailable');
+
+      final response = await UserService.updateUserProfile(
+        isVideoCallAvailable: isAvailable,
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        _user = UserModel.fromJson(response['data']);
+        print('✅ Video call availability updated: ${_user?.isVideoCallAvailable}');
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _error = response['message'] ?? 'Failed to update video call setting';
+        print('❌ Update failed: $_error');
         _isLoading = false;
         notifyListeners();
         return false;
@@ -69,8 +108,9 @@ class UserProvider with ChangeNotifier {
     String? visitingHoursText,
     String? medicalLicenseNumber,
     File? profileImage,
-    double? latitude,      // ✅ NEW: Latitude parameter
-    double? longitude,     // ✅ NEW: Longitude parameter
+    double? latitude,
+    double? longitude,
+    bool? isVideoCallAvailable, // ✅ NEW
   }) async {
     _isLoading = true;
     _error = null;
@@ -85,9 +125,10 @@ class UserProvider with ChangeNotifier {
       print('   - specialty: $specialty');
       print('   - latitude: $latitude');
       print('   - longitude: $longitude');
+      print('   - isVideoCallAvailable: $isVideoCallAvailable'); // ✅ NEW
       print('   - profileImage: ${profileImage != null ? "Yes" : "No"}');
 
-      // ✅ Pass File and location directly to UserService
+      // ✅ Pass all fields including video call to UserService
       final response = await UserService.updateUserProfile(
         fullName: fullName,
         username: username,
@@ -107,8 +148,9 @@ class UserProvider with ChangeNotifier {
         visitingHoursText: visitingHoursText,
         medicalLicenseNumber: medicalLicenseNumber,
         profileImage: profileImage,
-        latitude: latitude,        // ✅ Pass latitude
-        longitude: longitude,      // ✅ Pass longitude
+        latitude: latitude,
+        longitude: longitude,
+        isVideoCallAvailable: isVideoCallAvailable, // ✅ NEW
       );
 
       if (response['success'] == true && response['data'] != null) {
@@ -119,6 +161,7 @@ class UserProvider with ChangeNotifier {
         print('   - Bio: ${_user?.bio}');
         print('   - Address: ${_user?.address}');
         print('   - Location: lat=${_user?.latitude}, lng=${_user?.longitude}');
+        print('   - Video Call: ${_user?.isVideoCallAvailable}'); // ✅ NEW
         print('   - New avatar: ${_user?.profileImage}');
         _isLoading = false;
         notifyListeners();

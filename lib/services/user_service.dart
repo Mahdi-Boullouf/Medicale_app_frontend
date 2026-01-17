@@ -30,7 +30,8 @@ class UserService {
     String? medicalLicenseNumber,
     File? profileImage,
     double? latitude,      // ✅ ADDED: Latitude parameter
-    double? longitude,     // ✅ ADDED: Longitude parameter
+    double? longitude,   
+    bool? isVideoCallAvailable,  // ✅ ADDED: Video call availability 
   }) async {
     try {
       print('📤 Updating user profile...');
@@ -57,6 +58,11 @@ class UserService {
       if (weeklySchedule != null) body['weeklySchedule'] = weeklySchedule;
       if (visitingHoursText != null) body['visitingHoursText'] = visitingHoursText;
       if (medicalLicenseNumber != null) body['medicalLicenseNumber'] = medicalLicenseNumber;
+
+      if (isVideoCallAvailable != null) {
+        body['isVideoCallAvailable'] = isVideoCallAvailable;
+        print('✅ Adding isVideoCallAvailable: $isVideoCallAvailable');
+      }
 
       // ✅ ADDED: Location fields
       if (latitude != null) {
