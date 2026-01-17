@@ -7,7 +7,6 @@ import 'package:docmobi/providers/notification_provider.dart';
 import 'package:docmobi/screens/doctor/appointments/session_holder_screen.dart';
 import 'package:docmobi/utils/api_config.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 class DoctorAppointmentsScreen extends StatefulWidget {
   const DoctorAppointmentsScreen({super.key});

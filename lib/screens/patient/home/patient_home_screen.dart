@@ -191,6 +191,33 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     return _locationService.calculateDistanceInKm(from, to);
   }
 
+  void _showLocationServiceDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Location Services Disabled'),
+          content: const Text(
+            'Location services are disabled. Please enable them to see nearby doctors.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await Geolocator.openLocationSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showPermissionDeniedDialog() {
     showDialog(
       context: context,
@@ -221,7 +248,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   /// 🔥 Console এ location print করবে
   Future<void> _printCurrentLocation() async {
     if (!_locationPermissionGranted) {
-      print('⚠️ Location permission নাই');
+      debugPrint('⚠️ Location permission নাই');
       return;
     }
 
@@ -237,44 +264,21 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
         'timestamp': DateTime.now().toIso8601String(),
       };
 
-      print('');
-      print('📍 ==========================================');
-      print('📍 CURRENT LOCATION (প্রতি 10 সেকেন্ডে update)');
-      print('📍 ==========================================');
-      print('Latitude : ${position.latitude}');
-      print('Longitude: ${position.longitude}');
-      print('Timestamp: ${DateTime.now().toIso8601String()}');
-      print('📍 ==========================================');
-      print('📍 JSON FORMAT (Backend Developer এর জন্য):');
-      print(json.encode(locationData));
-      print('📍 ==========================================');
-      print('');
+      debugPrint('');
+      debugPrint('📍 ==========================================');
+      debugPrint('📍 CURRENT LOCATION (প্রতি 10 সেকেন্ডে update)');
+      debugPrint('📍 ==========================================');
+      debugPrint('Latitude : ${position.latitude}');
+      debugPrint('Longitude: ${position.longitude}');
+      debugPrint('Timestamp: ${DateTime.now().toIso8601String()}');
+      debugPrint('📍 ==========================================');
+      debugPrint('📍 JSON FORMAT (Backend Developer এর জন্য):');
+      debugPrint(json.encode(locationData));
+      debugPrint('📍 ==========================================');
+      debugPrint('');
     } catch (e) {
-      print('❌ Location নিতে error: $e');
+      debugPrint('❌ Location নিতে error: $e');
     }
-  }
-
-  // Calculate distance between two coordinates in kilometers using Haversine formula
-  double _calculateDistanceInKm(LatLng from, LatLng to) {
-    const double earthRadius = 6371; // km
-
-    double lat1 = from.latitude * math.pi / 180;
-    double lat2 = to.latitude * math.pi / 180;
-    double lon1 = from.longitude * math.pi / 180;
-    double lon2 = to.longitude * math.pi / 180;
-
-    double dLat = lat2 - lat1;
-    double dLon = lon2 - lon1;
-
-    double a =
-        math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(lat1) *
-            math.cos(lat2) *
-            math.sin(dLon / 2) *
-            math.sin(dLon / 2);
-    double c = 2 * math.asin(math.sqrt(a));
-
-    return earthRadius * c;
   }
 
   // Get color based on distance (Green for near, Red for far)
@@ -618,7 +622,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -678,8 +682,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                                         borderRadius: BorderRadius.circular(8),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(
-                                              0.1,
+                                            color: Colors.black.withValues(
+                                              alpha: 0.1,
                                             ),
                                             blurRadius: 4,
                                           ),
@@ -724,8 +728,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                                             ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: Colors.black.withOpacity(
-                                                  0.1,
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.1,
                                                 ),
                                                 blurRadius: 4,
                                               ),
@@ -760,8 +764,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                                             ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: Colors.black.withOpacity(
-                                                  0.1,
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.1,
                                                 ),
                                                 blurRadius: 4,
                                               ),
@@ -802,8 +806,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                                           ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(
-                                                0.1,
+                                              color: Colors.black.withValues(
+                                                alpha: 0.1,
                                               ),
                                               blurRadius: 4,
                                             ),
@@ -1045,10 +1049,10 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.blue.withOpacity(0.1)),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

@@ -6,7 +6,6 @@ import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:async';
 import 'package:video_thumbnail/video_thumbnail.dart';
-import 'dart:typed_data';
 
 class DoctorReelsScreen extends StatefulWidget {
   const DoctorReelsScreen({super.key});
@@ -304,7 +303,10 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.7),
+                    ],
                   ),
                 ),
               ),
@@ -358,7 +360,7 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.black.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -440,7 +442,7 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
         return uint8list;
       }
     } catch (e) {
-      print('❌ Error generating thumbnail: $e');
+      debugPrint('❌ Error generating thumbnail: $e');
     }
     return null;
   }
@@ -845,7 +847,7 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
         _shareCounts[reelId] = (_shareCounts[reelId] ?? 0) + 1;
       });
 
-      // TODO: Call API to increment share count on backend
+      // Call API to increment share count on backend
       // await ApiService.shareReel(reelId);
     } catch (e) {
       debugPrint('❌ Error sharing: $e');
@@ -1447,7 +1449,7 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 26),
@@ -1473,5 +1475,12 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
       return '${(count / 1000).toStringAsFixed(1)}K';
     }
     return count.toString();
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$minutes:$seconds';
   }
 }
