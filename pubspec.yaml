@@ -30,10 +30,11 @@ dependencies:
   permission_handler: ^12.0.1
   wakelock_plus: ^1.2.8
   url_launcher: ^6.2.0
-  
+ 
   # Media Handling
   image_picker: ^1.2.1
   video_player: ^2.8.1
+  video_thumbnail: ^0.5.3
   
   # Google Maps
   google_maps_flutter: ^2.5.0

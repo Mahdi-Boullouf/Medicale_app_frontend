@@ -58,112 +58,176 @@ class _DoctorCreatePostScreenState extends State<DoctorCreatePostScreen> {
     }
   }
 
-  Future<void> _handlePost() async {
-    String text = _postController.text.trim();
+Future<void> _handlePost() async {
+  String text = _postController.text.trim();
 
-    if (text.isEmpty && _selectedMediaList.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add some text or media to post')),
-      );
-      return;
-    }
+  if (text.isEmpty && _selectedMediaList.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please add some text or media to post')),
+    );
+    return;
+  }
 
-    setState(() {
-      _isUploading = true;
-    });
+  setState(() {
+    _isUploading = true;
+  });
 
-    try {
-      Map<String, dynamic> result;
+  try {
+    Map<String, dynamic> result;
 
-      if (_postType == 'reels') {
-        if (_selectedMediaList.isEmpty) {
-          throw Exception('Please select a video for reels');
-        }
-
-        result = await ApiService.createReel(
-          videoFile: File(_selectedMediaList.first.path),
-          caption: text.isNotEmpty ? text : null,
-          visibility: _visibility,
-        );
-
-        if (!mounted) return;
-        setState(() {
-          _isUploading = false;
-        });
-
-        if (result['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✓ Reel uploaded successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const DoctorReelsScreen(),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Failed to upload reel'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } else {
-        List<File>? mediaFiles;
-        if (_selectedMediaList.isNotEmpty) {
-          mediaFiles = _selectedMediaList.map((xFile) => File(xFile.path)).toList();
-        }
-
-        result = await ApiService.createPost(
-          content: text,
-          mediaFiles: mediaFiles,
-          visibility: _visibility,
-        );
-
-        if (!mounted) return;
-
-        setState(() {
-          _isUploading = false;
-        });
-
-        if (result['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✓ Post shared successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          Navigator.pop(context, true);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Failed to create post'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+    // ✅ REELS UPLOAD
+    if (_postType == 'reels') {
+      if (_selectedMediaList.isEmpty) {
+        throw Exception('Please select a video for reels');
       }
-    } catch (e) {
+
+      // ✅ Show privacy confirmation for reels
+      if (!mounted) return;
+      
+      bool? confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Reel Privacy'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _visibility == 'private'
+                    ? '🔒 This reel will be visible to doctors only.'
+                    : '🌍 This reel will be visible to everyone (doctors and patients).',
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Current privacy: ${_visibility == 'private' ? 'Private (Doctors Only)' : 'Public (Everyone)'}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1664CD),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1664CD),
+              ),
+              child: const Text(
+                'Upload Reel',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) {
+        setState(() {
+          _isUploading = false;
+        });
+        return;
+      }
+
+      result = await ApiService.createReel(
+        videoFile: File(_selectedMediaList.first.path),
+        caption: text.isNotEmpty ? text : null,
+        visibility: _visibility,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _isUploading = false;
+      });
+
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _visibility == 'private'
+                  ? '✓ Private reel uploaded! (Doctors only)'
+                  : '✓ Public reel uploaded! (Everyone can see)',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const DoctorReelsScreen(),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to upload reel'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } 
+    // ✅ NORMAL POST/PHOTO/VIDEO UPLOAD
+    else {
+      List<File>? mediaFiles;
+      if (_selectedMediaList.isNotEmpty) {
+        mediaFiles = _selectedMediaList.map((xFile) => File(xFile.path)).toList();
+      }
+
+      result = await ApiService.createPost(
+        content: text,
+        mediaFiles: mediaFiles,
+        visibility: _visibility,
+      );
+
       if (!mounted) return;
 
       setState(() {
         _isUploading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✓ Post shared successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to create post'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
+  } catch (e) {
+    if (!mounted) return;
+
+    setState(() {
+      _isUploading = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
+
+
+
 
   void _removeMedia(int index) {
     setState(() {

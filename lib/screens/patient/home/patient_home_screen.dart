@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:docmobi/screens/patient/home/dialog/location_permission_dialog.dart';
 import 'package:docmobi/screens/patient/home/upcoming_appointment_card.dart';
 import 'package:flutter/material.dart';
@@ -91,102 +93,98 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     });
   }
 
-  Future<void> _getCurrentLocation() async {
-    try {
-      // Check if location services are enabled
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        debugPrint('Location services are disabled.');
-        if (mounted) {
-          setState(() {
-            _isLoadingLocation = false;
-            _locationPermissionGranted = false;
-          });
-          // Show dialog to user
-          _showLocationServiceDialog();
-        }
-        return;
-      }
-
-      // Check location permission
-      LocationPermission permission = await Geolocator.checkPermission();
-
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          debugPrint('Location permissions are denied');
-          if (mounted) {
-            setState(() {
-              _isLoadingLocation = false;
-              _locationPermissionGranted = false;
-            });
-          }
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        debugPrint('Location permissions are permanently denied');
-        if (mounted) {
-          setState(() {
-            _isLoadingLocation = false;
-            _locationPermissionGranted = false;
-          });
-          _showPermissionDeniedDialog();
-        }
-        return;
-      }
-
-      // Permission granted, get location
-      if (mounted) {
-        setState(() {
-          _locationPermissionGranted = true;
-        });
-      }
-
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
-      );
-
-      debugPrint(
-        'Location obtained: ${position.latitude}, ${position.longitude}',
-      );
-
-      if (mounted) {
-        setState(() {
-          _currentPosition = LatLng(position.latitude, position.longitude);
-          _isLoadingLocation = false;
-        });
-
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLngZoom(_currentPosition, 14),
-        );
-
-        _addDoctorMarkers();
-      }
-    } catch (e) {
-      debugPrint('Error getting location: $e');
+Future<void> _getCurrentLocation() async {
+  try {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      debugPrint('Location services are disabled.');
       if (mounted) {
         setState(() {
           _isLoadingLocation = false;
           _locationPermissionGranted = false;
         });
+        _showLocationServiceDialog();
+      }
+      return;
+    }
 
-        // Show error message to user
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Unable to get your location: ${e.toString()}'),
-            action: SnackBarAction(
-              label: 'Retry',
-              onPressed: _getCurrentLocation,
-            ),
-            duration: const Duration(seconds: 5),
-          ),
-        );
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        debugPrint('Location permissions are denied');
+        if (mounted) {
+          setState(() {
+            _isLoadingLocation = false;
+            _locationPermissionGranted = false;
+          });
+        }
+        return;
       }
     }
+
+    if (permission == LocationPermission.deniedForever) {
+      debugPrint('Location permissions are permanently denied');
+      if (mounted) {
+        setState(() {
+          _isLoadingLocation = false;
+          _locationPermissionGranted = false;
+        });
+        _showPermissionDeniedDialog();
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _locationPermissionGranted = true;
+      });
+    }
+
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+      timeLimit: const Duration(seconds: 10),
+    );
+
+    debugPrint(
+      'Location obtained: ${position.latitude}, ${position.longitude}',
+    );
+
+    if (mounted) {
+      setState(() {
+        _currentPosition = LatLng(position.latitude, position.longitude);
+        _isLoadingLocation = false;
+      });
+
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(_currentPosition, 14),
+      );
+      
+      _printCurrentLocation();
+      _addDoctorMarkers();
+    }
+  } catch (e) {
+    debugPrint('Error getting location: $e');
+    if (mounted) {
+      setState(() {
+        _isLoadingLocation = false;
+        _locationPermissionGranted = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to get your location: ${e.toString()}'),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: _getCurrentLocation,
+          ),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
   }
+} 
 
   void _showLocationServiceDialog() {
     showDialog(
@@ -241,6 +239,42 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
       },
     );
   }
+/// 🔥 Console এ location print করবে
+Future<void> _printCurrentLocation() async {
+  if (!_locationPermissionGranted) {
+    print('⚠️ Location permission নাই');
+    return;
+  }
+  
+  try {
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+      timeLimit: const Duration(seconds: 5),
+    );
+
+    final locationData = {
+      'latitude': position.latitude,
+      'longitude': position.longitude,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+    
+    print('');
+    print('📍 ==========================================');
+    print('📍 CURRENT LOCATION (প্রতি 10 সেকেন্ডে update)');
+    print('📍 ==========================================');
+    print('Latitude : ${position.latitude}');
+    print('Longitude: ${position.longitude}');
+    print('Timestamp: ${DateTime.now().toIso8601String()}');
+    print('📍 ==========================================');
+    print('📍 JSON FORMAT (Backend Developer এর জন্য):');
+    print(json.encode(locationData));
+    print('📍 ==========================================');
+    print('');
+    
+  } catch (e) {
+    print('❌ Location নিতে error: $e');
+  }
+}
 
   // Calculate distance between two coordinates in kilometers using Haversine formula
   double _calculateDistanceInKm(LatLng from, LatLng to) {

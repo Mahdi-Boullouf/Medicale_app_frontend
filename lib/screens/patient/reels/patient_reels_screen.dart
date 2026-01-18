@@ -4,6 +4,9 @@ import 'package:docmobi/services/api_service.dart';
 import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:docmobi/screens/patient/navigation/patient_main_navigation.dart';
+import 'dart:async';
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'dart:typed_data';
 
 class PatientReelsScreen extends StatefulWidget {
   const PatientReelsScreen({super.key});
@@ -19,19 +22,28 @@ class _PatientReelsScreenState extends State<PatientReelsScreen> {
   int currentPage = 1;
   bool hasMore = true;
   final ScrollController _scrollController = ScrollController();
+  Timer? _autoRefreshTimer;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadReels();
-    _scrollController.addListener(_onScroll);
-  }
+@override
+void initState() {
+  super.initState();
+  _loadReels();
+  _scrollController.addListener(_onScroll);
+  
+  // ✅ Auto refresh every 1 second
+// ✅ Auto refresh every 30 seconds (not 1 second!)
+// ✅ Auto refresh every 30 seconds with silent update
+_autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+  _loadReels();
+});
+}
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
+@override
+void dispose() {
+  _autoRefreshTimer?.cancel();  // ✅ এই লাইন add করো
+  _scrollController.dispose();
+  super.dispose();
+}
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
@@ -42,44 +54,45 @@ class _PatientReelsScreenState extends State<PatientReelsScreen> {
     }
   }
 
-  Future<void> _loadReels() async {
+Future<void> _loadReels() async {
+  // ✅ Don't show loading if already have data (prevents blink)
+  if (reelsList.isEmpty) {
     setState(() {
       isLoading = true;
       hasError = false;
     });
+  }
 
-    try {
-      print('📤 Loading reels...');
-      final response = await ApiService.getAllReels(page: 1, limit: 20);
+  try {
+    print('📤 Loading reels...');
+    final response = await ApiService.getAllReels(page: 1, limit: 20);
 
-      if (response['success'] == true) {
-        final items = response['data']['items'] as List;
-        final pagination = response['data']['pagination'];
+    if (response['success'] == true) {
+      final items = response['data']['items'] as List;
+      final pagination = response['data']['pagination'];
 
-        setState(() {
-          reelsList = items
-              .map((item) => item as Map<String, dynamic>)
-              .toList();
-          currentPage = 1;
-          hasMore =
-              (pagination['page'] * pagination['limit']) < pagination['total'];
-          isLoading = false;
-        });
-        print('✅ Loaded ${reelsList.length} reels');
-      }
-    } catch (e) {
-      print('❌ Error loading reels: $e');
+      setState(() {
+        reelsList = items
+            .map((item) => item as Map<String, dynamic>)
+            .toList();
+        currentPage = 1;
+        hasMore =
+            (pagination['page'] * pagination['limit']) < pagination['total'];
+        isLoading = false;
+      });
+      print('✅ Loaded ${reelsList.length} reels');
+    }
+  } catch (e) {
+    print('❌ Error loading reels: $e');
+    // ✅ Only show error if list is empty
+    if (reelsList.isEmpty) {
       setState(() {
         hasError = true;
         isLoading = false;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error loading reels: $e')));
-      }
     }
   }
+}
 
   Future<void> _loadMoreReels() async {
     if (isLoading || !hasMore) return;
@@ -235,34 +248,69 @@ class _PatientReelsScreenState extends State<PatientReelsScreen> {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // ✅ FIXED: Show thumbnail from video
-              thumbnailUrl != null
-                  ? Image.network(
-                      thumbnailUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.error, size: 50),
-                        );
-                      },
-                    )
-                  : Container(
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.videocam, size: 50),
-                    ),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
-                  ),
+
+
+child: Stack(
+  fit: StackFit.expand,
+  children: [
+    // ✅ Show thumbnail with loading indicator
+
+    
+// ✅ Load video first frame if no thumbnail
+    FutureBuilder<Uint8List?>(
+      future: _generateThumbnail(
+        thumbnailUrl,
+        reel['video']?['url'],
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            color: Colors.grey[200],
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+
+        // If we generated a thumbnail from video
+        if (snapshot.hasData && snapshot.data != null) {
+          return Image.memory(
+            snapshot.data!,
+            fit: BoxFit.cover,
+          );
+        }
+
+        // Fallback to network thumbnail if available
+        if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
+          return Image.network(
+            thumbnailUrl,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                color: Colors.grey[200],
+                child: const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: Colors.grey[300],
+                child: const Icon(Icons.videocam, size: 50, color: Colors.grey),
+              );
+            },
+          );
+        }
+
+        // No thumbnail at all
+        return Container(
+          color: Colors.grey[300],
+          child: const Icon(Icons.videocam, size: 50, color: Colors.grey),
+        );
+      },
+    ),
+              
               const Center(
                 child: Icon(
                   Icons.play_circle_outline,
@@ -337,6 +385,39 @@ class _PatientReelsScreenState extends State<PatientReelsScreen> {
       ),
     );
   }
+
+
+// ✅ Generate thumbnail from video
+  Future<Uint8List?> _generateThumbnail(
+    String? thumbnailUrl,
+    String? videoUrl,
+  ) async {
+    try {
+      // First try to load existing thumbnail
+      if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
+        return null; // Let Image.network handle it
+      }
+
+      // If no thumbnail, generate from video
+      if (videoUrl != null && videoUrl.isNotEmpty) {
+        final uint8list = await VideoThumbnail.thumbnailData(
+          video: videoUrl,
+          imageFormat: ImageFormat.JPEG,
+          maxWidth: 400,
+          quality: 75,
+        );
+        return uint8list;
+      }
+    } catch (e) {
+      print('❌ Error generating thumbnail: $e');
+    }
+    return null;
+  }
+
+
+
+
+
 
   String _formatCount(int count) {
     if (count >= 1000000) {
@@ -609,54 +690,66 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
   final Map<String, int> _likeCounts = {};
   final Map<String, int> _commentCounts = {};
   final Map<String, int> _shareCounts = {};
+  bool _showControls = false;
+  Timer? _controlsTimer;
+  Timer? _hideControlsTimer;
 
-  @override
-  void initState() {
-    super.initState();
-    // ✅ FIXED: White status bar
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-      ),
-    );
+@override
+void initState() {
+  super.initState();
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
 
-    currentPage = widget.initialIndex;
-    _pageController = PageController(initialPage: widget.initialIndex);
-    _initializeVideoForPage(currentPage);
+  currentPage = widget.initialIndex;
+  _pageController = PageController(initialPage: widget.initialIndex);
+  _initializeVideoForPage(currentPage);
 
-    for (var reel in widget.reelsList) {
-      final reelId = reel['_id'] ?? '';
-      _likedReels[reelId] = reel['isLiked'] ?? false;
-      _likeCounts[reelId] = reel['likesCount'] ?? 0;
-      _commentCounts[reelId] = reel['commentsCount'] ?? 0;
-      _shareCounts[reelId] = reel['sharesCount'] ?? 0;
-    }
+  for (var reel in widget.reelsList) {
+    final reelId = reel['_id'] ?? '';
+    _likedReels[reelId] = reel['isLiked'] ?? false;
+    _likeCounts[reelId] = reel['likesCount'] ?? 0;
+    _commentCounts[reelId] = reel['commentsCount'] ?? 0;
+    _shareCounts[reelId] = reel['sharesCount'] ?? 0;
+  }
+  
+  // ✅ Show controls initially for 3 seconds
+  _showControls = true;
+  _startHideControlsTimer();
+}
+
+Future<void> _initializeVideoForPage(int index) async {
+  if (_videoControllers.containsKey(index)) {
+    _videoControllers[index]!.play();
+    return;
   }
 
-  Future<void> _initializeVideoForPage(int index) async {
-    if (_videoControllers.containsKey(index)) {
-      _videoControllers[index]!.play();
-      return;
-    }
-
-    final videoUrl = widget.reelsList[index]['video']?['url'];
-    if (videoUrl == null) return;
-
-    final controller = VideoPlayerController.network(videoUrl);
-    _videoControllers[index] = controller;
-
-    try {
-      await controller.initialize();
-      controller.setLooping(true);
-      if (mounted && currentPage == index) {
-        controller.play();
-        setState(() {});
-      }
-    } catch (e) {
-      print('Error initializing video: $e');
-    }
+  final videoUrl = widget.reelsList[index]['video']?['url'];
+  if (videoUrl == null) {
+    print('❌ No video URL at index $index');
+    return;
   }
+
+  print('🎥 Loading video: $videoUrl');
+
+  final controller = VideoPlayerController.network(videoUrl);
+  _videoControllers[index] = controller;
+
+  try {
+    await controller.initialize();
+    controller.setLooping(true);
+    if (mounted && currentPage == index) {
+      controller.play();
+      setState(() {});
+    }
+    print('✅ Video loaded successfully at index $index');
+  } catch (e) {
+    print('❌ Error initializing video at index $index: $e');
+  }
+}
 
   void _pauseAllExcept(int index) {
     _videoControllers.forEach((key, controller) {
@@ -760,22 +853,106 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    // ✅ Reset status bar
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-      ),
-    );
 
-    _pageController.dispose();
-    _videoControllers.forEach((_, controller) {
-      controller.dispose();
-    });
-    super.dispose();
+
+// ✅ Show controls and start auto-hide timer
+void _startHideControlsTimer() {
+  _hideControlsTimer?.cancel();
+  _hideControlsTimer = Timer(const Duration(seconds: 3), () {
+    if (mounted) {
+      setState(() => _showControls = false);
+    }
+  });
+}
+
+// ✅ Toggle controls visibility
+void _toggleControls() {
+  setState(() => _showControls = !_showControls);
+  if (_showControls) {
+    _startHideControlsTimer();
+  } else {
+    _hideControlsTimer?.cancel();
   }
+}
+
+// ✅ Seek forward 5 seconds
+void _seekForward(VideoPlayerController controller) {
+  final currentPosition = controller.value.position;
+  final newPosition = currentPosition + const Duration(seconds: 5);
+  final maxDuration = controller.value.duration;
+  
+  if (newPosition < maxDuration) {
+    controller.seekTo(newPosition);
+  } else {
+    controller.seekTo(maxDuration);
+  }
+  
+  setState(() => _showControls = true);
+  _startHideControlsTimer();
+}
+
+// ✅ Seek backward 5 seconds
+void _seekBackward(VideoPlayerController controller) {
+  final currentPosition = controller.value.position;
+  final newPosition = currentPosition - const Duration(seconds: 5);
+  
+  if (newPosition > Duration.zero) {
+    controller.seekTo(newPosition);
+  } else {
+    controller.seekTo(Duration.zero);
+  }
+  
+  setState(() => _showControls = true);
+  _startHideControlsTimer();
+}
+
+// ✅ Toggle play/pause
+void _togglePlayPause(VideoPlayerController controller) {
+  setState(() {
+    if (controller.value.isPlaying) {
+      controller.pause();
+    } else {
+      controller.play();
+    }
+  });
+}
+
+// ✅ Set playback speed (2x on long press)
+void _setPlaybackSpeed(VideoPlayerController controller, double speed) {
+  controller.setPlaybackSpeed(speed);
+  if (speed > 1.0) {
+    setState(() {});
+  }
+}
+
+
+
+
+
+@override
+void dispose() {
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+
+  _controlsTimer?.cancel();
+  _hideControlsTimer?.cancel(); // ✅ ADD THIS LINE
+  _pageController.dispose();
+  _videoControllers.forEach((_, controller) {
+    controller.dispose();
+  });
+  super.dispose();
+}
+
+
+
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -812,23 +989,188 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
 
     return Stack(
       children: [
-        Center(
-          child: videoController != null && videoController.value.isInitialized
-              ? GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      videoController.value.isPlaying
-                          ? videoController.pause()
-                          : videoController.play();
-                    });
-                  },
-                  child: AspectRatio(
-                    aspectRatio: videoController.value.aspectRatio,
-                    child: VideoPlayer(videoController),
+// ✅ Enhanced video player with controls
+// ✅ Enhanced video player with FULL controls
+ Positioned.fill(
+  child: videoController != null && videoController.value.isInitialized
+      ? Stack(
+          fit: StackFit.expand,
+          children: [
+            // Video Player
+            Center(
+              child: AspectRatio(
+                aspectRatio: videoController.value.aspectRatio,
+                child: VideoPlayer(videoController),
+              ),
+            ),
+            
+            // ✅ Full screen tap detector
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _toggleControls(),
+              onLongPress: () => _setPlaybackSpeed(videoController, 2.0),
+              onLongPressEnd: (_) => _setPlaybackSpeed(videoController, 1.0),
+              child: Container(color: Colors.transparent),
+            ),
+            
+            // ✅ Control buttons (only show when _showControls is true)
+            if (_showControls) ...[
+              // LEFT - Rewind button
+              Positioned(
+                left: 60,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => _seekBackward(videoController),
+                    child: Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.replay, color: Colors.white, size: 28),
+                          SizedBox(height: 2),
+                          Text('5s', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
                   ),
-                )
-              : const CircularProgressIndicator(color: Colors.white),
-        ),
+                ),
+              ),
+              
+              // CENTER - Play/Pause button
+              Center(
+                child: GestureDetector(
+                  onTap: () => _togglePlayPause(videoController),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      videoController.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                      color: Colors.white,
+                      size: 45,
+                    ),
+                  ),
+                ),
+              ),
+              
+              // RIGHT - Forward button
+              Positioned(
+                right: 60,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => _seekForward(videoController),
+                    child: Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.forward_10, color: Colors.white, size: 28),
+                          SizedBox(height: 2),
+                          Text('5s', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            
+            // ✅ 2x Speed indicator
+            if (videoController.value.playbackSpeed > 1.0)
+              Positioned(
+                top: 100,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.fast_forward, color: Colors.white, size: 22),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${videoController.value.playbackSpeed}x Speed',
+                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            
+            // ✅ Bottom progress bar
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    VideoProgressIndicator(
+                      videoController,
+                      allowScrubbing: true,
+                      colors: const VideoProgressColors(
+                        playedColor: Colors.white,
+                        bufferedColor: Colors.white24,
+                        backgroundColor: Colors.white12,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ValueListenableBuilder(
+                          valueListenable: videoController,
+                          builder: (context, VideoPlayerValue value, child) {
+                            return Text(
+                              '${_formatDuration(value.position)} / ${_formatDuration(value.duration)}',
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        )
+      : const Center(child: CircularProgressIndicator(color: Colors.white)),
+),
+
+
+
 
         Container(
           decoration: BoxDecoration(
@@ -1031,4 +1373,15 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
     }
     return count.toString();
   }
+
+
+
+
+String _formatDuration(Duration duration) {
+  String twoDigits(int n) => n.toString().padLeft(2, '0');
+  final minutes = twoDigits(duration.inMinutes.remainder(60));
+  final seconds = twoDigits(duration.inSeconds.remainder(60));
+  return '$minutes:$seconds';
+}
+
 }

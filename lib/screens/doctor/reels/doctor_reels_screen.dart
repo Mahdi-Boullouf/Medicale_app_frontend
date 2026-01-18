@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:docmobi/services/api_service.dart';
 import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
+import 'dart:async';
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'dart:typed_data';
 
 class DoctorReelsScreen extends StatefulWidget {
   const DoctorReelsScreen({super.key});
@@ -183,93 +186,146 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
     );
   }
 
-  Widget _buildReelThumbnail(Map<String, dynamic> reel, int index) {
-    final thumbnailUrl = reel['thumbnail']?['url'];
-    final author = reel['author'];
-    final doctorName = author?['fullName'] ?? 'Unknown Doctor';
-    final caption = reel['caption'] ?? '';
-    final likesCount = reel['likesCount'] ?? 0;
 
-    return GestureDetector(
-      onTap: () async {
-        // ✅ Wait for result from viewer (to get updated data)
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ReelsViewerScreen(
-              reelsList: reelsList,
-              initialIndex: index,
-            ),
+
+
+
+
+
+// ✅ ADD THIS: Privacy indicator in reel thumbnail
+
+Widget _buildReelThumbnail(Map<String, dynamic> reel, int index) {
+  final thumbnailUrl = reel['thumbnail']?['url'];
+  final author = reel['author'];
+  final doctorName = author?['fullName'] ?? 'Unknown Doctor';
+  final caption = reel['caption'] ?? '';
+  final likesCount = reel['likesCount'] ?? 0;
+  final visibility = reel['visibility'] ?? 'public'; // ✅ Get visibility
+
+  return GestureDetector(
+    onTap: () async {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReelsViewerScreen(
+            reelsList: reelsList,
+            initialIndex: index,
           ),
-        );
-        
-        // ✅ Refresh if needed
-        if (result == true) {
-          _loadReels();
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
-          ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // ✅ FIXED: Show thumbnail from video
-              thumbnailUrl != null
-                  ? Image.network(
-                      thumbnailUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.error, size: 50),
-                        );
-                      },
-                    )
-                  : Container(
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.videocam, size: 50),
+      );
+      
+      if (result == true) {
+        _loadReels();
+      }
+    },
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+        // ✅ Load video first frame if no thumbnail
+            FutureBuilder<Uint8List?>(
+              future: _generateThumbnail(
+                thumbnailUrl,
+                reel['video']?['url'],
+              ),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Container(
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
-                  ),
+                  );
+                }
+
+                // If we generated a thumbnail from video
+                if (snapshot.hasData && snapshot.data != null) {
+                  return Image.memory(
+                    snapshot.data!,
+                    fit: BoxFit.cover,
+                  );
+                }
+
+                // Fallback to network thumbnail if available
+                if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
+                  return Image.network(
+                    thumbnailUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.videocam, size: 50, color: Colors.grey),
+                      );
+                    },
+                  );
+                }
+
+                // No thumbnail at all
+                return Container(
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.videocam, size: 50, color: Colors.grey),
+                );
+              },
+            ),
+
+
+
+
+
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
                 ),
               ),
-              const Center(
-                  child: Icon(Icons.play_circle_outline,
-                      color: Colors.white, size: 50)),
+            ),
+            const Center(
+                child: Icon(Icons.play_circle_outline,
+                    color: Colors.white, size: 50)),
+            
+            // ✅ Privacy indicator (top-left)
+            if (visibility == 'private')
               Positioned(
                 top: 8,
-                right: 8,
+                left: 8,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.orange.withOpacity(0.9),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.favorite, color: Colors.red, size: 14),
-                      const SizedBox(width: 4),
+                      Icon(Icons.lock, color: Colors.white, size: 12),
+                      SizedBox(width: 4),
                       Text(
-                        _formatCount(likesCount),
-                        style: const TextStyle(
+                        'Doctors Only',
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -277,37 +333,103 @@ class _DoctorReelsScreenState extends State<DoctorReelsScreen> {
                   ),
                 ),
               ),
-              Positioned(
-                left: 10,
-                right: 10,
-                bottom: 10,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            
+            // Likes count (top-right)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(doctorName,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    if (caption.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(caption,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 11),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                    ],
+                    const Icon(Icons.favorite, color: Colors.red, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatCount(likesCount),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+            
+            Positioned(
+              left: 10,
+              right: 10,
+              bottom: 10,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(doctorName,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  if (caption.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(caption,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 11),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-    );
+    ),
+  );
+}
+
+
+
+
+// ✅ Generate thumbnail from video
+  Future<Uint8List?> _generateThumbnail(
+    String? thumbnailUrl,
+    String? videoUrl,
+  ) async {
+    try {
+      // First try to load existing thumbnail
+      if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
+        return null; // Let Image.network handle it
+      }
+
+      // If no thumbnail, generate from video
+      if (videoUrl != null && videoUrl.isNotEmpty) {
+        final uint8list = await VideoThumbnail.thumbnailData(
+          video: videoUrl,
+          imageFormat: ImageFormat.JPEG,
+          maxWidth: 400,
+          quality: 75,
+        );
+        return uint8list;
+      }
+    } catch (e) {
+      print('❌ Error generating thumbnail: $e');
+    }
+    return null;
   }
+
+
+
+
+
+
+
 
   String _formatCount(int count) {
     if (count >= 1000000) {
@@ -582,6 +704,9 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
   final Map<String, int> _likeCounts = {};
   final Map<String, int> _commentCounts = {};
   final Map<String, int> _shareCounts = {};
+  bool _showControls = false;
+  Timer? _controlsTimer;
+  Timer? _hideControlsTimer;
 
   @override
   void initState() {
@@ -593,7 +718,9 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
         statusBarIconBrightness: Brightness.light,
       ),
     );
-    
+    // ✅ Show controls initially for 3 seconds
+    _showControls = true;
+    _startHideControlsTimer();
     currentPage = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
     _initializeVideoForPage(currentPage);
@@ -732,22 +859,96 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    // ✅ Reset status bar
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-      ),
-    );
-    
-    _pageController.dispose();
-    _videoControllers.forEach((_, controller) {
-      controller.dispose();
-    });
-    super.dispose();
+  // ✅ Show controls and start auto-hide timer
+void _startHideControlsTimer() {
+  _hideControlsTimer?.cancel();
+  _hideControlsTimer = Timer(const Duration(seconds: 3), () {
+    if (mounted) {
+      setState(() => _showControls = false);
+    }
+  });
+}
+
+// ✅ Toggle controls visibility
+void _toggleControls() {
+  setState(() => _showControls = !_showControls);
+  if (_showControls) {
+    _startHideControlsTimer();
+  } else {
+    _hideControlsTimer?.cancel();
   }
+}
+
+// ✅ Seek forward 5 seconds
+void _seekForward(VideoPlayerController controller) {
+  final currentPosition = controller.value.position;
+  final newPosition = currentPosition + const Duration(seconds: 5);
+  final maxDuration = controller.value.duration;
+  
+  if (newPosition < maxDuration) {
+    controller.seekTo(newPosition);
+  } else {
+    controller.seekTo(maxDuration);
+  }
+  
+  setState(() => _showControls = true);
+  _startHideControlsTimer();
+}
+
+// ✅ Seek backward 5 seconds
+void _seekBackward(VideoPlayerController controller) {
+  final currentPosition = controller.value.position;
+  final newPosition = currentPosition - const Duration(seconds: 5);
+  
+  if (newPosition > Duration.zero) {
+    controller.seekTo(newPosition);
+  } else {
+    controller.seekTo(Duration.zero);
+  }
+  
+  setState(() => _showControls = true);
+  _startHideControlsTimer();
+}
+
+// ✅ Toggle play/pause
+void _togglePlayPause(VideoPlayerController controller) {
+  setState(() {
+    if (controller.value.isPlaying) {
+      controller.pause();
+    } else {
+      controller.play();
+    }
+  });
+}
+
+// ✅ Set playback speed (2x on long press)
+void _setPlaybackSpeed(VideoPlayerController controller, double speed) {
+  controller.setPlaybackSpeed(speed);
+  if (speed > 1.0) {
+    setState(() {});
+  }
+}
+
+@override
+void dispose() {
+  // Cancel timers first
+  _controlsTimer?.cancel();
+  _hideControlsTimer?.cancel();
+  
+  // Reset status bar
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+  
+  _pageController.dispose();
+  _videoControllers.forEach((_, controller) {
+    controller.dispose();
+  });
+  super.dispose();
+}
 
   @override
   Widget build(BuildContext context) {
@@ -769,174 +970,394 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
     );
   }
 
-  Widget _buildReelPage(Map<String, dynamic> reel, int index) {
-    final author = reel['author'];
-    final doctorName = author?['fullName'] ?? 'Unknown Doctor';
-    final specialty = author?['specialty'] ?? '';
-    final caption = reel['caption'] ?? '';
-    final avatarUrl = author?['avatar']?['url'];
-    final videoController = _videoControllers[index];
-    final reelId = reel['_id'] ?? '';
-    final isLiked = _likedReels[reelId] ?? false;
-    final likesCount = _likeCounts[reelId] ?? 0;
-    final commentsCount = _commentCounts[reelId] ?? 0;
-    final sharesCount = _shareCounts[reelId] ?? 0;
 
-    return Stack(
-      children: [
-        Center(
-          child: videoController != null && videoController.value.isInitialized
-              ? GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      videoController.value.isPlaying
-                          ? videoController.pause()
-                          : videoController.play();
-                    });
-                  },
-                  child: AspectRatio(
-                    aspectRatio: videoController.value.aspectRatio,
-                    child: VideoPlayer(videoController),
+
+
+
+
+// ✅ ADD THIS: Privacy badge in viewer (add after back button in _buildReelPage)
+
+Widget _buildReelPage(Map<String, dynamic> reel, int index) {
+  final author = reel['author'];
+  final doctorName = author?['fullName'] ?? 'Unknown Doctor';
+  final specialty = author?['specialty'] ?? '';
+  final caption = reel['caption'] ?? '';
+  final avatarUrl = author?['avatar']?['url'];
+  final videoController = _videoControllers[index];
+  final reelId = reel['_id'] ?? '';
+  final isLiked = _likedReels[reelId] ?? false;
+  final likesCount = _likeCounts[reelId] ?? 0;
+  final commentsCount = _commentCounts[reelId] ?? 0;
+  final sharesCount = _shareCounts[reelId] ?? 0;
+  final visibility = reel['visibility'] ?? 'public'; // ✅ Get visibility
+
+  return Stack(
+    children: [
+Positioned.fill(
+  child: videoController != null && videoController.value.isInitialized
+      ? Stack(
+          fit: StackFit.expand,
+          children: [
+            // Video Player
+            Center(
+              child: AspectRatio(
+                aspectRatio: videoController.value.aspectRatio,
+                child: VideoPlayer(videoController),
+              ),
+            ),
+            
+            // ✅ Full screen tap detector
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _toggleControls(),
+              onLongPress: () => _setPlaybackSpeed(videoController, 2.0),
+              onLongPressEnd: (_) => _setPlaybackSpeed(videoController, 1.0),
+              child: Container(color: Colors.transparent),
+            ),
+            
+            // ✅ Control buttons (only show when _showControls is true)
+            if (_showControls) ...[
+              // LEFT - Rewind button
+              Positioned(
+                left: 60,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => _seekBackward(videoController),
+                    child: Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.replay, color: Colors.white, size: 28),
+                          SizedBox(height: 2),
+                          Text('5s', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
                   ),
-                )
-              : const CircularProgressIndicator(color: Colors.white),
-        ),
-        
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.black.withOpacity(0.3),
-                Colors.transparent,
-                Colors.black.withOpacity(0.7)
-              ],
-            ),
-          ),
-        ),
-        
-        // ✅ Back button
-        Positioned(
-          top: 50,
-          left: 16,
-          child: SafeArea(
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context, true),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3),
-                    shape: BoxShape.circle),
-                child: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
-              ),
-            ),
-          ),
-        ),
-        
-        // ✅ UPDATED: Action buttons with realtime counts
-        Positioned(
-          right: 12,
-          bottom: 120,
-          child: Column(
-            children: [
-              _buildActionButton(
-                isLiked ? Icons.favorite : Icons.favorite_border,
-                _formatCount(likesCount),
-                isLiked ? Colors.red : Colors.white,
-                () => _toggleLike(reelId),
-              ),
-              const SizedBox(height: 25),
-              _buildActionButton(
-                Icons.chat_bubble_outline,
-                _formatCount(commentsCount),
-                Colors.white,
-                () => _showComments(reelId),
-              ),
-              const SizedBox(height: 25),
-              _buildActionButton(
-                Icons.share_outlined,
-                _formatCount(sharesCount),
-                Colors.white,
-                () => _shareReel(reel),
-              ),
-              const SizedBox(height: 25),
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                  image: avatarUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(avatarUrl), fit: BoxFit.cover)
-                      : null,
                 ),
-                child: avatarUrl == null
-                    ? const Icon(Icons.person, color: Colors.white)
-                    : null,
+              ),
+              
+              // CENTER - Play/Pause button
+              Center(
+                child: GestureDetector(
+                  onTap: () => _togglePlayPause(videoController),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      videoController.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                      color: Colors.white,
+                      size: 45,
+                    ),
+                  ),
+                ),
+              ),
+              
+              // RIGHT - Forward button
+              Positioned(
+                right: 60,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => _seekForward(videoController),
+                    child: Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.forward_10, color: Colors.white, size: 28),
+                          SizedBox(height: 2),
+                          Text('5s', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ],
-          ),
-        ),
-        
-        Positioned(
-          left: 16,
-          right: 80,
-          bottom: 120,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
+            
+            // ✅ 2x Speed indicator
+            if (videoController.value.playbackSpeed > 1.0)
+              Positioned(
+                top: 100,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      image: avatarUrl != null
-                          ? DecorationImage(
-                              image: NetworkImage(avatarUrl), fit: BoxFit.cover)
-                          : null,
+                      color: Colors.orange.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(25),
                     ),
-                    child: avatarUrl == null
-                        ? const Icon(Icons.person, color: Colors.white, size: 20)
-                        : null,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(doctorName,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold)),
-                        if (specialty.isNotEmpty)
-                          Text(specialty,
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 13)),
+                        const Icon(Icons.fast_forward, color: Colors.white, size: 22),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${videoController.value.playbackSpeed}x Speed',
+                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
-              if (caption.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(caption,
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 14, height: 1.4),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis),
-              ],
+            
+            // ✅ Bottom progress bar
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    VideoProgressIndicator(
+                      videoController,
+                      allowScrubbing: true,
+                      colors: const VideoProgressColors(
+                        playedColor: Colors.white,
+                        bufferedColor: Colors.white24,
+                        backgroundColor: Colors.white12,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ValueListenableBuilder(
+                          valueListenable: videoController,
+                          builder: (context, VideoPlayerValue value, child) {
+                            return Text(
+                              '${_formatDuration(value.position)} / ${_formatDuration(value.duration)}',
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        )
+      : const Center(child: CircularProgressIndicator(color: Colors.white)),
+),
+      
+      Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withOpacity(0.3),
+              Colors.transparent,
+              Colors.black.withOpacity(0.7)
             ],
           ),
         ),
-      ],
-    );
-  }
+      ),
+      
+      // ✅ Back button
+      Positioned(
+        top: 50,
+        left: 16,
+        child: SafeArea(
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context, true),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  shape: BoxShape.circle),
+              child: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+            ),
+          ),
+        ),
+      ),
+      
+      // ✅ NEW: Privacy badge (top-center)
+      if (visibility == 'private')
+        Positioned(
+          top: 50,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock, color: Colors.white, size: 18),
+                    SizedBox(width: 6),
+                    Text(
+                      'Doctors Only',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      
+      // Action buttons (rest of the code remains the same)
+      Positioned(
+        right: 12,
+        bottom: 120,
+        child: Column(
+          children: [
+            _buildActionButton(
+              isLiked ? Icons.favorite : Icons.favorite_border,
+              _formatCount(likesCount),
+              isLiked ? Colors.red : Colors.white,
+              () => _toggleLike(reelId),
+            ),
+            const SizedBox(height: 25),
+            _buildActionButton(
+              Icons.chat_bubble_outline,
+              _formatCount(commentsCount),
+              Colors.white,
+              () => _showComments(reelId),
+            ),
+            const SizedBox(height: 25),
+            _buildActionButton(
+              Icons.share_outlined,
+              _formatCount(sharesCount),
+              Colors.white,
+              () => _shareReel(reel),
+            ),
+            const SizedBox(height: 25),
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+                image: avatarUrl != null
+                    ? DecorationImage(
+                        image: NetworkImage(avatarUrl), fit: BoxFit.cover)
+                    : null,
+              ),
+              child: avatarUrl == null
+                  ? const Icon(Icons.person, color: Colors.white)
+                  : null,
+            ),
+          ],
+        ),
+      ),
+      
+      // Caption and author info (rest remains same)
+      Positioned(
+        left: 16,
+        right: 80,
+        bottom: 120,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    image: avatarUrl != null
+                        ? DecorationImage(
+                            image: NetworkImage(avatarUrl), fit: BoxFit.cover)
+                        : null,
+                  ),
+                  child: avatarUrl == null
+                      ? const Icon(Icons.person, color: Colors.white, size: 20)
+                      : null,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(doctorName,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold)),
+                      if (specialty.isNotEmpty)
+                        Text(specialty,
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 13)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (caption.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(caption,
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 14, height: 1.4),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis),
+            ],
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
 
   Widget _buildActionButton(
       IconData icon, String label, Color color, VoidCallback onTap) {
@@ -968,4 +1389,11 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
     }
     return count.toString();
   }
+
+  String _formatDuration(Duration duration) {
+  String twoDigits(int n) => n.toString().padLeft(2, '0');
+  final minutes = twoDigits(duration.inMinutes.remainder(60));
+  final seconds = twoDigits(duration.inSeconds.remainder(60));
+  return '$minutes:$seconds';
+}
 }
