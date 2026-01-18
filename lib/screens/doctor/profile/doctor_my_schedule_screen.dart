@@ -101,7 +101,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
           setState(() {
             for (var i = 0; i < scheduleData.length; i++) {
               final dayName = scheduleData[i]['day'].toString().toLowerCase();
-              
+
               final backendDay = backendSchedule.firstWhere(
                 (day) => day['day'].toString().toLowerCase() == dayName,
                 orElse: () => null,
@@ -112,10 +112,12 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                 
                 if (backendDay['slots'] != null && (backendDay['slots'] as List).isNotEmpty) {
                   scheduleData[i]['slots'] = (backendDay['slots'] as List)
-                      .map((slot) => {
-                            'start': _convert24To12Hour(slot['start']),
-                            'end': _convert24To12Hour(slot['end']),
-                          })
+                      .map(
+                        (slot) => {
+                          'start': _convert24To12Hour(slot['start']),
+                          'end': _convert24To12Hour(slot['end']),
+                        },
+                      )
                       .toList();
                 }
               }
@@ -138,8 +140,8 @@ Future<void> _saveSchedule() async {
   setState(() => _isSaving = true);
 
   try {
-    print('📤 Saving doctor schedule...');
-    print('   - Video Call Available: $onlineAppointment'); // ✅ Log this
+    debugPrint('📤 Saving doctor schedule...');
+    debugPrint('   - Video Call Available: $onlineAppointment'); // ✅ Log this
     
     final List<Map<String, dynamic>> formattedSchedule = scheduleData.map((dayData) {
       final dayName = (dayData['day'] as String).toLowerCase();
@@ -173,16 +175,16 @@ Future<void> _saveSchedule() async {
 
     if (mounted) {
       if (response['success'] == true) {
-        print('✅ Schedule saved successfully!');
-        print('   - isVideoCallAvailable saved as: $onlineAppointment');
+        debugPrint('✅ Schedule saved successfully!');
+        debugPrint('   - isVideoCallAvailable saved as: $onlineAppointment');
         _showSnackBar('Schedule saved successfully!', Colors.green);
       } else {
-        print('❌ Save failed: ${response['message']}');
+        debugPrint('❌ Save failed: ${response['message']}');
         _showSnackBar(response['message'] ?? 'Failed to save', Colors.red);
       }
     }
   } catch (e) {
-    print('❌ Error saving schedule: $e');
+    debugPrint('❌ Error saving schedule: $e');
     if (mounted) {
       _showSnackBar('Error: $e', Colors.red);
     }
@@ -207,7 +209,7 @@ Future<void> _saveSchedule() async {
       
       final time = parts[0];
       final period = parts[1].toLowerCase();
-      
+
       final timeParts = time.split(':');
       if (timeParts.length != 2) return "00:00";
       
@@ -268,7 +270,10 @@ Future<void> _saveSchedule() async {
           children: [
             const Text(
               'Manage your Video and physical\nConsultations',
-              style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontSize: 14),
+              style: TextStyle(
+                color: Color.fromARGB(255, 0, 0, 0),
+                fontSize: 14,
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -458,7 +463,10 @@ Future<void> _saveSchedule() async {
               bool isSelected = selectedSlotKey == slotKey;
 
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 5,
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -471,10 +479,14 @@ Future<void> _saveSchedule() async {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFF1664CD) : Colors.white,
+                            color: isSelected
+                                ? const Color(0xFF1664CD)
+                                : Colors.white,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: isSelected ? const Color(0xFF1664CD) : const Color(0xFFE9F0FF),
+                              color: isSelected
+                                  ? const Color(0xFF1664CD)
+                                  : const Color(0xFFE9F0FF),
                             ),
                           ),
                           child: Row(
@@ -483,16 +495,22 @@ Future<void> _saveSchedule() async {
                               Text(
                                 slot['start'],
                                 style: TextStyle(
-                                  color: isSelected ? Colors.white : const Color(0xFF1B2C49),
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF1B2C49),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 15),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 15,
+                                ),
                                 child: Text(
                                   'To',
                                   style: TextStyle(
-                                    color: isSelected ? Colors.white70 : Colors.grey,
+                                    color: isSelected
+                                        ? Colors.white70
+                                        : Colors.grey,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -500,7 +518,9 @@ Future<void> _saveSchedule() async {
                               Text(
                                 slot['end'],
                                 style: TextStyle(
-                                  color: isSelected ? Colors.white : const Color(0xFF1B2C49),
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF1B2C49),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -511,7 +531,10 @@ Future<void> _saveSchedule() async {
                     ),
                     const SizedBox(width: 10),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.redAccent,
+                      ),
                       onPressed: () {
                         setState(() {
                           data['slots'].removeAt(slotIndex);

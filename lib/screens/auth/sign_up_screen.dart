@@ -13,12 +13,13 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   // Doctor Specific Controllers
   final TextEditingController _licenseController = TextEditingController();
@@ -30,12 +31,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isLoading = false;
 
   final List<String> _specialties = [
-    'Cardiologists', 
-    'Orthopedic', 
-    'Dermatologists', 
-    'Nephrologists', 
-    'General Medicine', 
-    'Nutrition & Dietetics', 
+    'Cardiologists',
+    'Orthopedic',
+    'Dermatologists',
+    'Nephrologists',
+    'General Medicine',
+    'Nutrition & Dietetics',
     'Psychiatry',
     'Pediatrics',
     'Gynecology',
@@ -77,12 +78,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         _showSnackBar('Medical license number is required', isError: true);
         return false;
       }
-      
+
       if (_selectedSpecialty == null || _selectedSpecialty!.isEmpty) {
         _showSnackBar('Please select a specialty', isError: true);
         return false;
       }
-      
+
       if (_experienceController.text.trim().isEmpty) {
         _showSnackBar('Years of experience is required', isError: true);
         return false;
@@ -96,58 +97,58 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void _handleSignUp() async {
     // Validate form
     if (!_validateForm()) return;
-    
+
     setState(() => _isLoading = true);
 
     try {
-      print('🔄 Starting registration...');
-      print('   User Type: ${widget.userType}');
-      print('   Name: ${_nameController.text.trim()}');
-      print('   Email: ${_emailController.text.trim()}');
-      
+      debugPrint('🔄 Starting registration...');
+      debugPrint('   User Type: ${widget.userType}');
+      debugPrint('   Name: ${_nameController.text.trim()}');
+      debugPrint('   Email: ${_emailController.text.trim()}');
+
       // ✅ Call ApiService.register with correct parameters
       final result = await ApiService.register(
         fullName: _nameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
         role: widget.userType.toLowerCase(), // 'doctor' or 'patient'
-        medicalLicenseNumber: widget.userType.toLowerCase() == 'doctor' 
-            ? _licenseController.text.trim() 
+        medicalLicenseNumber: widget.userType.toLowerCase() == 'doctor'
+            ? _licenseController.text.trim()
             : null,
-        specialty: widget.userType.toLowerCase() == 'doctor' 
-            ? _selectedSpecialty 
+        specialty: widget.userType.toLowerCase() == 'doctor'
+            ? _selectedSpecialty
             : null,
-        experienceYears: widget.userType.toLowerCase() == 'doctor' 
-            ? _experienceController.text.trim() 
+        experienceYears: widget.userType.toLowerCase() == 'doctor'
+            ? _experienceController.text.trim()
             : null,
       );
 
       if (!mounted) return;
-      
+
       setState(() => _isLoading = false);
 
-      print('📥 Registration result: ${result['success']}');
+      debugPrint('📥 Registration result: ${result['success']}');
 
       if (result['success'] == true) {
-        print('✅ Registration successful');
-        
+        debugPrint('✅ Registration successful');
+
         _showSnackBar(
-          result['message'] ?? 'Registration successful!', 
+          result['message'] ?? 'Registration successful!',
           isError: false,
         );
-        
+
         // Small delay for better UX
         await Future.delayed(const Duration(seconds: 1));
-        
+
         if (!mounted) return;
-        
+
         // Go back to login screen
         Navigator.pop(context);
       } else {
-        print('❌ Registration failed: ${result['message']}');
-        
+        debugPrint('❌ Registration failed: ${result['message']}');
+
         String errorMessage = result['message'] ?? 'Registration failed';
-        
+
         // Handle validation errors
         if (result['errors'] != null && result['errors'] is List) {
           final errors = result['errors'] as List;
@@ -155,24 +156,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
             errorMessage = errors.join(', ');
           }
         }
-        
+
         _showSnackBar(errorMessage, isError: true);
       }
     } catch (e) {
-      print('❌ Registration error: $e');
-      
+      debugPrint('❌ Registration error: $e');
+
       if (!mounted) return;
-      
+
       setState(() => _isLoading = false);
-      
+
       String errorMessage = 'Connection error. ';
-      if (e.toString().contains('SocketException') || 
+      if (e.toString().contains('SocketException') ||
           e.toString().contains('Connection')) {
         errorMessage += 'Please check if the server is running';
       } else {
         errorMessage += e.toString();
       }
-      
+
       _showSnackBar(errorMessage, isError: true);
     }
   }
@@ -180,7 +181,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   /// ✅ Show snackbar
   void _showSnackBar(String msg, {bool isError = false}) {
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
@@ -220,17 +221,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     height: 150,
                     width: 150,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(
-                          Icons.medical_services,
-                          size: 80,
-                          color: Color(0xFF1664CD),
-                        ),
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.medical_services,
+                      size: 80,
+                      color: Color(0xFF1664CD),
+                    ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 // Title
                 Center(
                   child: Column(
@@ -251,7 +251,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 30),
 
                 // Full Name
@@ -311,7 +311,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 // Doctor-specific fields
                 if (isDoctor) ...[
                   const SizedBox(height: 15),
-                  
+
                   // Medical License
                   const Text(
                     "Medical License Number *",
@@ -331,7 +331,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
 
                   const SizedBox(height: 15),
-                  
+
                   // Specialty
                   const Text(
                     "Medical Specialty *",
@@ -352,13 +352,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         isExpanded: true,
                         value: _selectedSpecialty,
                         hint: const Text("Select your specialty"),
-                        icon: const Icon(Icons.arrow_drop_down, 
-                          color: Color(0xFF1664CD)),
+                        icon: const Icon(
+                          Icons.arrow_drop_down,
+                          color: Color(0xFF1664CD),
+                        ),
                         items: _specialties
-                            .map((specialty) => DropdownMenuItem(
-                                  value: specialty,
-                                  child: Text(specialty),
-                                ))
+                            .map(
+                              (specialty) => DropdownMenuItem(
+                                value: specialty,
+                                child: Text(specialty),
+                              ),
+                            )
                             .toList(),
                         onChanged: (value) {
                           setState(() {
@@ -370,7 +374,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
 
                   const SizedBox(height: 15),
-                  
+
                   // Experience
                   const Text(
                     "Years of Experience *",
@@ -511,7 +515,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 30),
               ],
             ),

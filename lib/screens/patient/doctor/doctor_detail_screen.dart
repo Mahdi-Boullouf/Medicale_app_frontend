@@ -67,7 +67,9 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
 Widget build(BuildContext context) {
   final bool hasVideoCall = widget.doctor.isVideoCallAvailable; // ✅ Read from model
 
-  print('📄 Details Screen: ${widget.doctor.fullName}');
+  debugPrint(
+      '📄 Details Screen: ${widget.doctor.fullName}',
+    );
   print('   - isVideoCallAvailable: $hasVideoCall');
 
   return Scaffold(
@@ -422,13 +424,13 @@ Widget build(BuildContext context) {
         return;
       }
 
-      print('🔍 Creating/Getting chat with doctor ID: $doctorId');
+      debugPrint('🔍 Creating/Getting chat with doctor ID: $doctorId');
 
       final result = await ApiService.createOrGetChat(userId: doctorId);
 
       Navigator.pop(context);
 
-      print('📥 Chat result: $result');
+      debugPrint('📥 Chat result: $result');
 
       if (result['success'] == true) {
         final chatData = result['data'];
@@ -444,7 +446,7 @@ Widget build(BuildContext context) {
           return;
         }
 
-        print('✅ Chat ID: $chatId');
+        debugPrint('✅ Chat ID: $chatId');
 
         final participants = chatData['participants'] as List?;
         String? doctorAvatar;
@@ -485,7 +487,7 @@ Widget build(BuildContext context) {
       }
     } catch (e) {
       Navigator.pop(context);
-      print('❌ Error opening chat: $e');
+      debugPrint('❌ Error opening chat: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),

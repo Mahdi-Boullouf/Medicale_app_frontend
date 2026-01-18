@@ -10,7 +10,7 @@ class EarningOverviewScreen extends StatefulWidget {
 
 class _EarningOverviewScreenState extends State<EarningOverviewScreen> {
   final EarningService _earningService = EarningService();
-  
+
   String selectedPeriod = 'weekly';
   bool isLoading = false;
   String? error;
@@ -46,7 +46,7 @@ class _EarningOverviewScreenState extends State<EarningOverviewScreen> {
       );
 
       // কনসোলে চেক করার জন্য প্রিন্ট (প্রয়োজনে রিমুভ করতে পারেন)
-      print('📥 Raw Response: $response');
+      debugPrint('📥 Raw Response: $response');
 
       if (response['success'] == true && response['data'] != null) {
         if (mounted) {
@@ -146,21 +146,34 @@ class _EarningOverviewScreenState extends State<EarningOverviewScreen> {
                 Center(
                   child: Column(
                     children: [
-                      const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                      const Icon(
+                        Icons.error_outline,
+                        size: 60,
+                        color: Colors.red,
+                      ),
                       const SizedBox(height: 16),
-                      Text(error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+                      Text(
+                        error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.red),
+                      ),
                       const SizedBox(height: 16),
                       ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D5AF0)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2D5AF0),
+                        ),
                         onPressed: _fetchEarnings,
-                        child: const Text('Retry', style: TextStyle(color: Colors.white)),
+                        child: const Text(
+                          'Retry',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
                 )
               else
                 _buildEarningsContent(),
-              
+
               const SizedBox(height: 50), // নীচ থেকে একটু স্পেস রাখা
             ],
           ),
@@ -171,7 +184,7 @@ class _EarningOverviewScreenState extends State<EarningOverviewScreen> {
 
   Widget _buildEarningsContent() {
     // num টাইপ ব্যবহার করা হয়েছে যাতে int বা double দুইটাই হ্যান্ডেল করা যায়
-    final total = (earningsData['totalEarnings'] ?? 0); 
+    final total = (earningsData['totalEarnings'] ?? 0);
     final physicalEarnings = (earningsData['physical']?['earnings'] ?? 0);
     final physicalCount = (earningsData['physical']?['count'] ?? 0);
     final videoEarnings = (earningsData['video']?['earnings'] ?? 0);
@@ -187,22 +200,24 @@ class _EarningOverviewScreenState extends State<EarningOverviewScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+            ],
             border: Border.all(color: Colors.green.shade200, width: 1),
           ),
           child: Row(
             children: [
-             CircleAvatar(
-  backgroundColor: const Color(0xFF2D5AF0),
-  radius: 25,
-  child: Image.asset(
-    'assets/images/algerian.png',
-    width: 30,
-    height: 30,
-    color: Colors.white,
-    fit: BoxFit.contain,
-  ),
-),
+              CircleAvatar(
+                backgroundColor: const Color(0xFF2D5AF0),
+                radius: 25,
+                child: Image.asset(
+                  'assets/images/algerian.png',
+                  width: 30,
+                  height: 30,
+                  color: Colors.white,
+                  fit: BoxFit.contain,
+                ),
+              ),
               const SizedBox(width: 15),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -221,7 +236,11 @@ class _EarningOverviewScreenState extends State<EarningOverviewScreen> {
                   ),
                   Text(
                     '$totalAppts appointments',
-                    style: TextStyle(color: Colors.green.shade600, fontSize: 13, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: Colors.green.shade600,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -252,7 +271,7 @@ class _EarningOverviewScreenState extends State<EarningOverviewScreen> {
             ),
           ],
         ),
-        
+
         const SizedBox(height: 25),
 
         // Bar Chart (for weekly)
@@ -262,19 +281,32 @@ class _EarningOverviewScreenState extends State<EarningOverviewScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15)],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 15,
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Weekly Performance',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1B2C49)),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1B2C49),
+                  ),
                 ),
                 const SizedBox(height: 25),
                 CustomBarChart(
-                  chartData: List<num>.from(weeklyData['values'] ?? [0, 0, 0, 0, 0, 0, 0]),
-                  labels: List<String>.from(weeklyData['labels'] ?? ['S', 'M', 'T', 'W', 'T', 'F', 'S']),
+                  chartData: List<num>.from(
+                    weeklyData['values'] ?? [0, 0, 0, 0, 0, 0, 0],
+                  ),
+                  labels: List<String>.from(
+                    weeklyData['labels'] ?? ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
+                  ),
                 ),
               ],
             ),
@@ -306,13 +338,20 @@ class _EarningOverviewScreenState extends State<EarningOverviewScreen> {
     );
   }
 
-  Widget _buildSmallCard(String title, String amount, String subtitle, IconData icon) {
+  Widget _buildSmallCard(
+    String title,
+    String amount,
+    String subtitle,
+    IconData icon,
+  ) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,9 +364,15 @@ class _EarningOverviewScreenState extends State<EarningOverviewScreen> {
           const SizedBox(height: 12),
           Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
           const SizedBox(height: 4),
-          Text(amount, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(
+            amount,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 4),
-          Text(subtitle, style: const TextStyle(color: Colors.green, fontSize: 11)),
+          Text(
+            subtitle,
+            style: const TextStyle(color: Colors.green, fontSize: 11),
+          ),
         ],
       ),
     );
@@ -338,22 +383,32 @@ class CustomBarChart extends StatelessWidget {
   final List<num> chartData;
   final List<String> labels;
 
-  const CustomBarChart({super.key, required this.chartData, required this.labels});
+  const CustomBarChart({
+    super.key,
+    required this.chartData,
+    required this.labels,
+  });
 
   @override
   Widget build(BuildContext context) {
     // সর্বোচ্চ ভ্যালু বের করা যাতে চার্ট হাইট ঠিক থাকে
-    num maxVal = chartData.isEmpty ? 1 : chartData.reduce((a, b) => a > b ? a : b);
+    num maxVal = chartData.isEmpty
+        ? 1
+        : chartData.reduce((a, b) => a > b ? a : b);
     if (maxVal == 0) maxVal = 1;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: List.generate(chartData.length, (index) {
-        double barHeight = (chartData[index] / maxVal) * 100; // ১০০ পিক্সেল স্কেলে
+        double barHeight =
+            (chartData[index] / maxVal) * 100; // ১০০ পিক্সেল স্কেলে
         return Column(
           children: [
-            Text('${chartData[index].toInt()}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+            Text(
+              '${chartData[index].toInt()}',
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+            ),
             const SizedBox(height: 8),
             AnimatedContainer(
               duration: const Duration(milliseconds: 500),
@@ -369,7 +424,10 @@ class CustomBarChart extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Text(labels[index], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+            Text(
+              labels[index],
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+            ),
           ],
         );
       }),

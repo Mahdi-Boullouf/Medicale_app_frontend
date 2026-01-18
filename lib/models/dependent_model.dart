@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class DependentModel {
   final String id;
   final String fullName;
@@ -25,7 +27,7 @@ class DependentModel {
       try {
         parsedDob = DateTime.parse(json['dob']);
       } catch (e) {
-        print('Error parsing dob: $e');
+        debugPrint('Error parsing dob: $e');
       }
     }
 
@@ -57,20 +59,20 @@ class DependentModel {
   // ✅ Calculate age from DOB
   String? get age {
     if (dob == null) return null;
-    
+
     final now = DateTime.now();
     int years = now.year - dob!.year;
-    
-    if (now.month < dob!.month || 
+
+    if (now.month < dob!.month ||
         (now.month == dob!.month && now.day < dob!.day)) {
       years--;
     }
-    
+
     if (years == 0) {
       final months = now.month - dob!.month + (12 * (now.year - dob!.year));
       return months == 1 ? '1 month' : '$months months';
     }
-    
+
     return years == 1 ? '1 year' : '$years years';
   }
 

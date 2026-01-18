@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:docmobi/screens/patient/home/dialog/location_permission_dialog.dart';
 import 'package:docmobi/screens/patient/home/upcoming_appointment_card.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:docmobi/models/doctor_model.dart';
 import 'package:docmobi/providers/doctor_provider.dart';
@@ -12,8 +15,8 @@ import 'package:docmobi/screens/patient/doctor/doctor_detail_screen.dart';
 import 'package:docmobi/screens/patient/doctor/book_appointment_screen.dart';
 import 'package:docmobi/screens/patient/notification/notification_screen.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
-import 'dart:math' as math;
+import '../../../services/location_service.dart';
+import '../../../utils/marker_factory.dart';
 import 'package:docmobi/screens/patient/profile/patient_profile_screen.dart';
 import '../../../widgets/custom_image.dart';
 import 'dart:async'; // For Timer
@@ -26,6 +29,8 @@ class PatientHomeScreen extends StatefulWidget {
 }
 
 class _PatientHomeScreenState extends State<PatientHomeScreen> {
+  final LocationService _locationService = LocationService();
+  final MarkerFactory _markerFactory = MarkerFactory();
   final TextEditingController _searchController = TextEditingController();
   GoogleMapController? _mapController;
   Timer? _socketCheckTimer; // Timer for checking connection status
@@ -39,9 +44,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   bool _locationPermissionGranted = false;
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
-
-  // Selected doctor for route display
-  String? _selectedDoctorId;
 
   @override
   void initState() {
@@ -93,7 +95,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
 
   Future<void> _getCurrentLocation() async {
     try {
-      // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         debugPrint('Location services are disabled.');
@@ -102,13 +103,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
             _isLoadingLocation = false;
             _locationPermissionGranted = false;
           });
-          // Show dialog to user
           _showLocationServiceDialog();
         }
         return;
       }
 
-      // Check location permission
       LocationPermission permission = await Geolocator.checkPermission();
 
       if (permission == LocationPermission.denied) {
@@ -137,7 +136,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
         return;
       }
 
-      // Permission granted, get location
       if (mounted) {
         setState(() {
           _locationPermissionGranted = true;
@@ -163,6 +161,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
           CameraUpdate.newLatLngZoom(_currentPosition, 14),
         );
 
+        _printCurrentLocation();
         _addDoctorMarkers();
       }
     } catch (e) {
@@ -173,7 +172,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
           _locationPermissionGranted = false;
         });
 
-        // Show error message to user
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Unable to get your location: ${e.toString()}'),
@@ -188,14 +186,19 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     }
   }
 
+  // Calculate distance wrapper
+  double _calculateDistanceInKm(LatLng from, LatLng to) {
+    return _locationService.calculateDistanceInKm(from, to);
+  }
+
   void _showLocationServiceDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Location Service Disabled'),
+          title: const Text('Location Services Disabled'),
           content: const Text(
-            'Please enable location services in your device settings to see nearby doctors.',
+            'Location services are disabled. Please enable them to see nearby doctors.',
           ),
           actions: [
             TextButton(
@@ -242,27 +245,40 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     );
   }
 
-  // Calculate distance between two coordinates in kilometers using Haversine formula
-  double _calculateDistanceInKm(LatLng from, LatLng to) {
-    const double earthRadius = 6371; // km
+  /// 🔥 Console এ location print করবে
+  Future<void> _printCurrentLocation() async {
+    if (!_locationPermissionGranted) {
+      debugPrint('⚠️ Location permission নাই');
+      return;
+    }
 
-    double lat1 = from.latitude * math.pi / 180;
-    double lat2 = to.latitude * math.pi / 180;
-    double lon1 = from.longitude * math.pi / 180;
-    double lon2 = to.longitude * math.pi / 180;
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 5),
+      );
 
-    double dLat = lat2 - lat1;
-    double dLon = lon2 - lon1;
+      final locationData = {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
 
-    double a =
-        math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(lat1) *
-            math.cos(lat2) *
-            math.sin(dLon / 2) *
-            math.sin(dLon / 2);
-    double c = 2 * math.asin(math.sqrt(a));
-
-    return earthRadius * c;
+      debugPrint('');
+      debugPrint('📍 ==========================================');
+      debugPrint('📍 CURRENT LOCATION (প্রতি 10 সেকেন্ডে update)');
+      debugPrint('📍 ==========================================');
+      debugPrint('Latitude : ${position.latitude}');
+      debugPrint('Longitude: ${position.longitude}');
+      debugPrint('Timestamp: ${DateTime.now().toIso8601String()}');
+      debugPrint('📍 ==========================================');
+      debugPrint('📍 JSON FORMAT (Backend Developer এর জন্য):');
+      debugPrint(json.encode(locationData));
+      debugPrint('📍 ==========================================');
+      debugPrint('');
+    } catch (e) {
+      debugPrint('❌ Location নিতে error: $e');
+    }
   }
 
   // Get color based on distance (Green for near, Red for far)
@@ -281,27 +297,16 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   void _addDoctorMarkers() {
     try {
       final doctors = context.read<DoctorProvider>().nearbyDoctors;
-
       Set<Marker> markers = {};
       Set<Polyline> polylines = {};
 
       // Add user location marker
-      markers.add(
-        Marker(
-          markerId: const MarkerId('user_location'),
-          position: _currentPosition,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          infoWindow: const InfoWindow(
-            title: 'Your Location',
-            snippet: 'You are here',
-          ),
-        ),
-      );
+      markers.add(_markerFactory.createUserMarker(_currentPosition));
 
       for (int i = 0; i < doctors.length; i++) {
         final doctor = doctors[i];
-
         LatLng doctorLocation;
+
         if (doctor.latitude != null && doctor.longitude != null) {
           doctorLocation = LatLng(doctor.latitude!, doctor.longitude!);
         } else {
@@ -311,29 +316,19 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
           doctorLocation = LatLng(lat, lng);
         }
 
-        // Calculate distance
-        double distanceKm = _calculateDistanceInKm(
+        // Calculate distance via service
+        double distanceKm = _locationService.calculateDistanceInKm(
           _currentPosition,
           doctorLocation,
         );
 
         // Only show doctors within 20 km
         if (distanceKm <= 20) {
-          // Add marker
+          // Use MarkerFactory
           markers.add(
-            Marker(
-              markerId: MarkerId(doctor.id),
-              position: doctorLocation,
-              infoWindow: InfoWindow(
-                title: doctor.fullName,
-                snippet:
-                    '${doctor.specialty} - ${distanceKm.toStringAsFixed(1)} km away',
-              ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                doctor.isAvailable
-                    ? BitmapDescriptor.hueGreen
-                    : BitmapDescriptor.hueRed,
-              ),
+            _markerFactory.createDoctorMarker(
+              doctor: doctor,
+              distanceKm: distanceKm,
               onTap: () {
                 _showDoctorRoute(doctor.id, doctorLocation, distanceKm);
               },
@@ -376,10 +371,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     LatLng doctorLocation,
     double distance,
   ) {
-    setState(() {
-      _selectedDoctorId = doctorId;
-    });
-
     // Zoom to show both user and doctor location
     LatLngBounds bounds = LatLngBounds(
       southwest: LatLng(
@@ -424,17 +415,16 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   String _calculateDistance(Doctor doctor) {
     if (doctor.latitude != null && doctor.longitude != null) {
       try {
-        double distanceInMeters = Geolocator.distanceBetween(
-          _currentPosition.latitude,
-          _currentPosition.longitude,
-          doctor.latitude!,
-          doctor.longitude!,
+        final latLngDoctor = LatLng(doctor.latitude!, doctor.longitude!);
+        double distanceKm = _locationService.calculateDistanceInKm(
+          _currentPosition,
+          latLngDoctor,
         );
 
-        if (distanceInMeters < 1000) {
-          return '${distanceInMeters.round()} m';
+        if (distanceKm < 1) {
+          return '${(distanceKm * 1000).round()} m';
         } else {
-          return '${(distanceInMeters / 1000).toStringAsFixed(1)} km';
+          return '${distanceKm.toStringAsFixed(1)} km';
         }
       } catch (e) {
         debugPrint('Error calculating distance: $e');
@@ -632,7 +622,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -692,8 +682,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                                         borderRadius: BorderRadius.circular(8),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(
-                                              0.1,
+                                            color: Colors.black.withValues(
+                                              alpha: 0.1,
                                             ),
                                             blurRadius: 4,
                                           ),
@@ -738,8 +728,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                                             ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: Colors.black.withOpacity(
-                                                  0.1,
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.1,
                                                 ),
                                                 blurRadius: 4,
                                               ),
@@ -774,8 +764,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                                             ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: Colors.black.withOpacity(
-                                                  0.1,
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.1,
                                                 ),
                                                 blurRadius: 4,
                                               ),
@@ -816,8 +806,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                                           ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(
-                                                0.1,
+                                              color: Colors.black.withValues(
+                                                alpha: 0.1,
                                               ),
                                               blurRadius: 4,
                                             ),

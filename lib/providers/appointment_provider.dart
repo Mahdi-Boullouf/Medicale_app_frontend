@@ -61,7 +61,7 @@ class AppointmentProvider with ChangeNotifier {
                     json as Map<String, dynamic>,
                   );
                 } catch (e) {
-                  print('Error parsing appointment: $e');
+                  debugPrint('Error parsing appointment: $e');
                   return null;
                 }
               })
@@ -86,7 +86,7 @@ class AppointmentProvider with ChangeNotifier {
         return false;
       }
     } catch (e) {
-      print('Fetch Appointments Error: $e');
+      debugPrint('Fetch Appointments Error: $e');
       _error = 'Error: $e';
       _isLoading = false;
       notifyListeners();
@@ -127,7 +127,7 @@ class AppointmentProvider with ChangeNotifier {
         return false;
       }
     } catch (e) {
-      print('Create Appointment Error: $e');
+      debugPrint('Create Appointment Error: $e');
       _error = 'Error: $e';
       _isLoading = false;
       notifyListeners();
@@ -138,7 +138,7 @@ class AppointmentProvider with ChangeNotifier {
   /// Accept appointment (Doctor)
   Future<bool> acceptAppointment(String appointmentId) async {
     try {
-      print('Accepting appointment: $appointmentId');
+      debugPrint('Accepting appointment: $appointmentId');
 
       final response = await _appointmentService.updateAppointmentStatus(
         appointmentId: appointmentId,
@@ -166,7 +166,7 @@ class AppointmentProvider with ChangeNotifier {
         return false;
       }
     } catch (e) {
-      print('Accept Appointment Error: $e');
+      debugPrint('Accept Appointment Error: $e');
       _error = 'Error: $e';
       notifyListeners();
       return false;
@@ -176,7 +176,7 @@ class AppointmentProvider with ChangeNotifier {
   /// Cancel appointment (Doctor/Patient)
   Future<bool> cancelAppointment(String appointmentId) async {
     try {
-      print('Cancelling appointment: $appointmentId');
+      debugPrint('Cancelling appointment: $appointmentId');
 
       final response = await _appointmentService.updateAppointmentStatus(
         appointmentId: appointmentId,
@@ -200,7 +200,7 @@ class AppointmentProvider with ChangeNotifier {
         return false;
       }
     } catch (e) {
-      print('Cancel Appointment Error: $e');
+      debugPrint('Cancel Appointment Error: $e');
       _error = 'Error: $e';
       notifyListeners();
       return false;
@@ -215,8 +215,8 @@ class AppointmentProvider with ChangeNotifier {
     required double price,
   }) async {
     try {
-      print('Completing appointment: $appointmentId');
-      print('   Patient: $patientName, Price: $price');
+      debugPrint('Completing appointment: $appointmentId');
+      debugPrint('   Patient: $patientName, Price: $price');
 
       // গুরুত্বপূর্ণ ফিক্স: backend এর expected key গুলো পাঠানো হচ্ছে
       final response = await _appointmentService.updateAppointmentStatus(
@@ -246,7 +246,7 @@ class AppointmentProvider with ChangeNotifier {
         return false;
       }
     } catch (e) {
-      print('Complete Appointment Error: $e');
+      debugPrint('Complete Appointment Error: $e');
       _error = 'Error: $e';
       notifyListeners();
       return false;
@@ -258,9 +258,9 @@ class AppointmentProvider with ChangeNotifier {
     AppointmentModel appointment,
   ) async {
     try {
-      print('✅ Appointment confirmed for appointment ${appointment.id}');
+      debugPrint('✅ Appointment confirmed for appointment ${appointment.id}');
     } catch (e) {
-      print('❌ Error sending appointment confirmation notification: $e');
+      debugPrint('❌ Error sending appointment confirmation notification: $e');
     }
   }
 

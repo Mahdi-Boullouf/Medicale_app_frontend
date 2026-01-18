@@ -16,29 +16,29 @@ class CallManager {
     _context = context;
 
     if (_isListening) {
-      print('⚠️ CallManager already listening - reinitializing');
+      debugPrint('⚠️ CallManager already listening - reinitializing');
       _cleanup();
     }
 
     _setupCallListeners();
     _isListening = true;
 
-    print('');
-    print('╔═══════════════════════════════════════════╗');
-    print('║     📞 CALL MANAGER INITIALIZED           ║');
-    print('╚═══════════════════════════════════════════╝');
-    print('✅ Context: ${_context != null ? "Available" : "NULL"}');
-    print(
+    debugPrint('');
+    debugPrint('╔═══════════════════════════════════════════╗');
+    debugPrint('║     📞 CALL MANAGER INITIALIZED           ║');
+    debugPrint('╚═══════════════════════════════════════════╝');
+    debugPrint('✅ Context: ${_context != null ? "Available" : "NULL"}');
+    debugPrint(
       '✅ Socket: ${SocketService.instance.isConnected ? "Connected" : "Disconnected"}',
     );
-    print('✅ Listening for incoming calls');
-    print('');
+    debugPrint('✅ Listening for incoming calls');
+    debugPrint('');
   }
 
   void _setupCallListeners() {
     final socket = SocketService.instance.socket;
     if (socket == null) {
-      print('⚠️ Socket not available for CallManager');
+      debugPrint('⚠️ Socket not available for CallManager');
       return;
     }
 
@@ -47,12 +47,18 @@ class CallManager {
     socket.off('call:rejected');
 
     socket.on('call:incoming', (data) {
-      print('');
-      print('╔═══════════════════════════════════════════════════════════╗');
-      print('║              📞 INCOMING CALL RECEIVED                    ║');
-      print('╚═══════════════════════════════════════════════════════════╝');
-      print('   • Raw data: $data');
-      print('   • Data type: ${data.runtimeType}');
+      debugPrint('');
+      debugPrint(
+        '╔═══════════════════════════════════════════════════════════╗',
+      );
+      debugPrint(
+        '║              📞 INCOMING CALL RECEIVED                    ║',
+      );
+      debugPrint(
+        '╚═══════════════════════════════════════════════════════════╝',
+      );
+      debugPrint('   • Raw data: $data');
+      debugPrint('   • Data type: ${data.runtimeType}');
 
       Map<String, dynamic> callData;
       if (data is Map<String, dynamic>) {
@@ -60,39 +66,39 @@ class CallManager {
       } else if (data is Map) {
         callData = Map<String, dynamic>.from(data);
       } else {
-        print('❌ Invalid data format: ${data.runtimeType}');
+        debugPrint('❌ Invalid data format: ${data.runtimeType}');
         return;
       }
 
-      print('   • From: ${callData['fromUserId']}');
-      print('   • Chat: ${callData['chatId']}');
-      print('   • Type: ${callData['isVideo'] ? "VIDEO 📹" : "AUDIO 📞"}');
-      print('   • Context: ${_context != null ? "Available" : "NULL"}');
-      print('   • Mounted: ${_context?.mounted}');
-      print('');
+      debugPrint('   • From: ${callData['fromUserId']}');
+      debugPrint('   • Chat: ${callData['chatId']}');
+      debugPrint('   • Type: ${callData['isVideo'] ? "VIDEO 📹" : "AUDIO 📞"}');
+      debugPrint('   • Context: ${_context != null ? "Available" : "NULL"}');
+      debugPrint('   • Mounted: ${_context?.mounted}');
+      debugPrint('');
 
       if (_context != null && _context!.mounted) {
         _handleIncomingCall(callData);
       } else {
-        print('❌ Context not available or not mounted');
+        debugPrint('❌ Context not available or not mounted');
       }
     });
 
     socket.on('call:accepted', (data) {
-      print('✅ Call accepted by other user');
+      debugPrint('✅ Call accepted by other user');
     });
 
     socket.on('call:rejected', (data) {
-      print('❌ Call rejected by other user');
+      debugPrint('❌ Call rejected by other user');
       _showSnackbar('Call rejected');
     });
 
-    print('👂 Listening: call:incoming, call:accepted, call:rejected');
+    debugPrint('👂 Listening: call:incoming, call:accepted, call:rejected');
   }
 
   void _handleIncomingCall(Map<String, dynamic> data) {
     if (_context == null || !_context!.mounted) {
-      print('⚠️ Context not available');
+      debugPrint('⚠️ Context not available');
       return;
     }
 
@@ -103,21 +109,21 @@ class CallManager {
     final callerName = data['callerName']?.toString() ?? 'Unknown User';
     final callerAvatar = data['callerAvatar']?.toString();
 
-    print('📋 Extracted:');
-    print('   • fromUserId: $fromUserId');
-    print('   • chatId: $chatId');
-    print('   • isVideo: $isVideo');
-    print('   • callerName: $callerName');
+    debugPrint('📋 Extracted:');
+    debugPrint('   • fromUserId: $fromUserId');
+    debugPrint('   • chatId: $chatId');
+    debugPrint('   • isVideo: $isVideo');
+    debugPrint('   • callerName: $callerName');
 
     if (fromUserId == null ||
         fromUserId.isEmpty ||
         chatId == null ||
         chatId.isEmpty) {
-      print('❌ Missing required fields');
+      debugPrint('❌ Missing required fields');
       return;
     }
 
-    print('📱 Showing incoming call dialog');
+    debugPrint('📱 Showing incoming call dialog');
 
     try {
       showDialog(
@@ -131,9 +137,9 @@ class CallManager {
           callerAvatar: callerAvatar,
         ),
       );
-      print('✅ Dialog shown successfully');
+      debugPrint('✅ Dialog shown successfully');
     } catch (e) {
-      print('❌ Error showing dialog: $e');
+      debugPrint('❌ Error showing dialog: $e');
     }
   }
 
@@ -160,7 +166,7 @@ class CallManager {
   void dispose() {
     _cleanup();
     _context = null;
-    print('🧹 CallManager disposed');
+    debugPrint('🧹 CallManager disposed');
   }
 }
 
@@ -191,14 +197,14 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
   void initState() {
     super.initState();
 
-    print('🎬 IncomingCallDialog initialized');
-    print('   • From: ${widget.fromUserId}');
-    print('   • Chat: ${widget.chatId}');
-    print('   • Type: ${widget.isVideo ? "VIDEO" : "AUDIO"}');
+    debugPrint('🎬 IncomingCallDialog initialized');
+    debugPrint('   • From: ${widget.fromUserId}');
+    debugPrint('   • Chat: ${widget.chatId}');
+    debugPrint('   • Type: ${widget.isVideo ? "VIDEO" : "AUDIO"}');
 
     Future.delayed(const Duration(seconds: 60), () {
       if (mounted && !_isProcessing) {
-        print('⏱️ Call timeout - Auto rejecting');
+        debugPrint('⏱️ Call timeout - Auto rejecting');
         _rejectCall();
       }
     });
@@ -212,7 +218,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
       socket.on('call:end', (data) {
         final endChatId = data is Map ? data['chatId']?.toString() : null;
         if (endChatId == widget.chatId && mounted && !_isProcessing) {
-          print('📞 Call ended by caller');
+          debugPrint('📞 Call ended by caller');
           Navigator.of(context).pop();
         }
       });
@@ -395,10 +401,10 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
 
     setState(() => _isProcessing = true);
 
-    print('');
-    print('✅ ACCEPTING CALL');
-    print('   • From: ${widget.fromUserId}');
-    print('   • Chat: ${widget.chatId}');
+    debugPrint('');
+    debugPrint('✅ ACCEPTING CALL');
+    debugPrint('   • From: ${widget.fromUserId}');
+    debugPrint('   • Chat: ${widget.chatId}');
 
     try {
       await SocketService.instance.emit('call:accept', {
@@ -408,7 +414,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
         'isVideo': widget.isVideo,
       });
 
-      print('   ✅ Accept event sent');
+      debugPrint('   ✅ Accept event sent');
 
       await Future.delayed(const Duration(milliseconds: 500));
 
@@ -437,7 +443,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
         ),
       );
     } catch (e) {
-      print('❌ Error accepting call: $e');
+      debugPrint('❌ Error accepting call: $e');
 
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -456,7 +462,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
 
     setState(() => _isProcessing = true);
 
-    print('❌ REJECTING CALL');
+    debugPrint('❌ REJECTING CALL');
 
     try {
       SocketService.instance.emit('call:reject', {
@@ -473,7 +479,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      print('❌ Error rejecting call: $e');
+      debugPrint('❌ Error rejecting call: $e');
       if (mounted) {
         Navigator.of(context).pop();
       }

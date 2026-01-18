@@ -168,7 +168,14 @@ class NotificationPoller {
       final response = await ApiService.get(ApiConfig.notifications);
 
       if (response['success'] == true && response['data'] != null) {
-        final List<dynamic> notificationsData = response['data'];
+        // Handle case where data is { items: [...] } or just [...]
+        List<dynamic> notificationsData = [];
+        if (response['data'] is Map && response['data']['items'] is List) {
+          notificationsData = response['data']['items'];
+        } else if (response['data'] is List) {
+          notificationsData = response['data'];
+        }
+
         final notifications = notificationsData
             .map((json) => NotificationModel.fromJson(json))
             .toList();

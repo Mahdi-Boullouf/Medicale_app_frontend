@@ -16,7 +16,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
-  
+
   final ImagePicker _picker = ImagePicker();
   File? _selectedImage;
   bool _isUpdating = false;
@@ -30,7 +30,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   void _loadUserData() {
     final userProvider = context.read<UserProvider>();
     final user = userProvider.user;
-    
+
     if (user != null) {
       _nameController.text = user.fullName;
       _emailController.text = user.email;
@@ -47,26 +47,26 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         maxHeight: 1024,
         imageQuality: 85,
       );
-      
+
       if (image != null) {
         setState(() {
           _selectedImage = File(image.path);
         });
-        print('📸 Image selected: ${image.path}');
+        debugPrint('📸 Image selected: ${image.path}');
       }
     } catch (e) {
-      print('❌ Error picking image: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking image: $e')),
-      );
+      debugPrint('❌ Error picking image: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
     }
   }
 
   Future<void> _updateProfile() async {
     if (_nameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name cannot be empty')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Name cannot be empty')));
       return;
     }
 
@@ -76,17 +76,18 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
     try {
       final userProvider = context.read<UserProvider>();
-      
+
       // ✅ FIXED: Use updateUserProfile instead of updateProfile
       final success = await userProvider.updateUserProfile(
         fullName: _nameController.text.trim(),
-        phone: _phoneController.text.trim().isEmpty 
-            ? null 
+        phone: _phoneController.text.trim().isEmpty
+            ? null
             : _phoneController.text.trim(),
-        address: _addressController.text.trim().isEmpty 
-            ? null 
+        address: _addressController.text.trim().isEmpty
+            ? null
             : _addressController.text.trim(),
-        profileImage: _selectedImage, // ✅ Pass File directly, provider will convert
+        profileImage:
+            _selectedImage, // ✅ Pass File directly, provider will convert
       );
 
       if (success) {
@@ -96,11 +97,11 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        
+
         setState(() {
           _selectedImage = null;
         });
-        
+
         // ✅ Refresh the data
         _loadUserData();
       } else {
@@ -112,10 +113,10 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         );
       }
     } catch (e) {
-      print('❌ Update error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      debugPrint('❌ Update error: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() {
         _isUpdating = false;
@@ -151,7 +152,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         child: Column(
           children: [
             const SizedBox(height: 20),
-            
+
             GestureDetector(
               onTap: _pickImage,
               child: Stack(
@@ -160,11 +161,11 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     radius: 60,
                     backgroundImage: _selectedImage != null
                         ? FileImage(_selectedImage!)
-                        : (user?.profileImage != null && 
-                           user!.profileImage!.isNotEmpty)
-                            ? NetworkImage(user.profileImage!)
-                            : const AssetImage('assets/images/profile.png')
-                                as ImageProvider,
+                        : (user?.profileImage != null &&
+                              user!.profileImage!.isNotEmpty)
+                        ? NetworkImage(user.profileImage!)
+                        : const AssetImage('assets/images/profile.png')
+                              as ImageProvider,
                   ),
                   Positioned(
                     bottom: 0,
@@ -178,8 +179,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.camera_alt, 
-                        color: Colors.white, 
+                        Icons.camera_alt,
+                        color: Colors.white,
                         size: 20,
                       ),
                     ),
@@ -291,8 +292,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               ),
             ),
           ),
-          if (enabled)
-            const Icon(Icons.edit, size: 20, color: Colors.grey),
+          if (enabled) const Icon(Icons.edit, size: 20, color: Colors.grey),
         ],
       ),
     );

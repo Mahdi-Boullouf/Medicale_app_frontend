@@ -36,7 +36,7 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
         requiresAuth: true,
       );
 
-      print('📥 Doctors API Response: $result');
+      debugPrint('📥 Doctors API Response: $result');
 
       if (result['success'] == true) {
         final doctorsData = result['data'] as List? ?? [];
@@ -53,7 +53,7 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
           _isLoading = false;
         });
 
-        print('✅ Loaded ${_doctors.length} doctors');
+        debugPrint('✅ Loaded ${_doctors.length} doctors');
       } else {
         setState(() {
           _errorMessage = result['message'] ?? 'Failed to load doctors';
@@ -61,7 +61,7 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
         });
       }
     } catch (e) {
-      print('❌ Error loading doctors: $e');
+      debugPrint('❌ Error loading doctors: $e');
       setState(() {
         _errorMessage = 'Failed to load doctors: $e';
         _isLoading = false;

@@ -112,10 +112,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       _fetchAvailableSlots(selectedDate!);
     }
 
-    print('📝 Pre-filled data for reschedule:');
-    print('   Type: $selectedType');
-    print('   Date: $selectedDate');
-    print('   Symptoms: ${_symptomsController.text}');
+    debugPrint('📝 Pre-filled data for reschedule:');
+    debugPrint('   Type: $selectedType');
+    debugPrint('   Date: $selectedDate');
+    debugPrint('   Symptoms: ${_symptomsController.text}');
   }
 
   @override
@@ -199,7 +199,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         return json.decode(response.body);
       }
     } catch (e) {
-      print('Backend exception: $e');
+      debugPrint('Backend exception: $e');
     }
     return null;
   }

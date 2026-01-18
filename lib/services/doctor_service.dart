@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../utils/api_config.dart';
 import 'api_service.dart';
 
@@ -10,11 +12,8 @@ class DoctorService {
       );
       return response;
     } catch (e) {
-      print('❌ Get Nearby Doctors Error: $e');
-      return {
-        'success': false,
-        'message': 'Failed to fetch doctors: $e',
-      };
+      debugPrint('❌ Get Nearby Doctors Error: $e');
+      return {'success': false, 'message': 'Failed to fetch doctors: $e'};
     }
   }
 
@@ -26,11 +25,8 @@ class DoctorService {
       );
       return response;
     } catch (e) {
-      print('❌ Get Doctor By ID Error: $e');
-      return {
-        'success': false,
-        'message': 'Failed to fetch doctor: $e',
-      };
+      debugPrint('❌ Get Doctor By ID Error: $e');
+      return {'success': false, 'message': 'Failed to fetch doctor: $e'};
     }
   }
 
@@ -42,11 +38,8 @@ class DoctorService {
       );
       return response;
     } catch (e) {
-      print('❌ Search Doctors Error: $e');
-      return {
-        'success': false,
-        'message': 'Failed to search doctors: $e',
-      };
+      debugPrint('❌ Search Doctors Error: $e');
+      return {'success': false, 'message': 'Failed to search doctors: $e'};
     }
   }
 }

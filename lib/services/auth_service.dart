@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://localhost:5000'; // ⚠️ Change this to your API URL
+  static const String baseUrl =
+      'http://localhost:5000'; // ⚠️ Change this to your API URL
   static String? _cachedToken;
   static String? _cachedRole;
 
@@ -13,12 +15,12 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       _cachedToken = prefs.getString('auth_token');
       _cachedRole = prefs.getString('user_role');
-      
-      print('✅ AuthService initialized');
-      print('   Token: ${_cachedToken != null ? "Found" : "Not found"}');
-      print('   Role: $_cachedRole');
+
+      debugPrint('✅ AuthService initialized');
+      debugPrint('   Token: ${_cachedToken != null ? "Found" : "Not found"}');
+      debugPrint('   Role: $_cachedRole');
     } catch (e) {
-      print('❌ Error initializing AuthService: $e');
+      debugPrint('❌ Error initializing AuthService: $e');
     }
   }
 
@@ -27,13 +29,13 @@ class AuthService {
     if (_cachedToken != null) {
       return _cachedToken;
     }
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       _cachedToken = prefs.getString('auth_token');
       return _cachedToken;
     } catch (e) {
-      print('❌ Error getting token: $e');
+      debugPrint('❌ Error getting token: $e');
       return null;
     }
   }
@@ -44,9 +46,9 @@ class AuthService {
       _cachedToken = token;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', token);
-      print('✅ Token saved: ${token.substring(0, 20)}...');
+      debugPrint('✅ Token saved: ${token.substring(0, 20)}...');
     } catch (e) {
-      print('❌ Error saving token: $e');
+      debugPrint('❌ Error saving token: $e');
     }
   }
 
@@ -56,16 +58,16 @@ class AuthService {
       _cachedRole = role;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_role', role);
-      print('✅ User role saved: $role');
+      debugPrint('✅ User role saved: $role');
     } catch (e) {
-      print('❌ Error saving role: $e');
+      debugPrint('❌ Error saving role: $e');
     }
   }
 
   /// ✅ Get headers
   Future<Map<String, String>> _getHeaders() async {
     final token = await getToken();
-    
+
     final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -73,7 +75,7 @@ class AuthService {
 
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
-      print('🔐 Token added to headers');
+      debugPrint('🔐 Token added to headers');
     }
 
     return headers;
@@ -85,45 +87,46 @@ class AuthService {
     required String password,
   }) async {
     try {
-      print('📤 POST: $baseUrl/api/v1/auth/login');
-      print('📦 Email: $email');
+      debugPrint('📤 POST: $baseUrl/api/v1/auth/login');
+      debugPrint('📦 Email: $email');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/v1/auth/login'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: json.encode({
-          'email': email,
-          'password': password,
-        }),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/v1/auth/login'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: json.encode({'email': email, 'password': password}),
+          )
+          .timeout(const Duration(seconds: 15));
 
-      print('📥 Status: ${response.statusCode}');
-      print('📥 Response: ${response.body}');
+      debugPrint('📥 Status: ${response.statusCode}');
+      debugPrint('📥 Response: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        
-        final token = data['data']?['token'] ?? 
-                     data['token'] ?? 
-                     data['data']?['accessToken'] ??
-                     data['accessToken'];
-        
-        final userRole = data['data']?['user']?['role'] ?? 
-                        data['user']?['role'] ??
-                        data['data']?['role'] ??
-                        data['role'];
+
+        final token =
+            data['data']?['token'] ??
+            data['token'] ??
+            data['data']?['accessToken'] ??
+            data['accessToken'];
+
+        final userRole =
+            data['data']?['user']?['role'] ??
+            data['user']?['role'] ??
+            data['data']?['role'] ??
+            data['role'];
 
         if (token != null) {
           await saveToken(token);
-          
+
           if (userRole != null) {
             await saveUserRole(userRole.toString().toLowerCase());
           }
-          
-          print('✅ Login successful - Token and role saved');
+
+          debugPrint('✅ Login successful - Token and role saved');
         }
 
         return {
@@ -139,11 +142,8 @@ class AuthService {
         };
       }
     } catch (e) {
-      print('❌ Login error: $e');
-      return {
-        'success': false,
-        'message': 'Connection error: ${e.toString()}',
-      };
+      debugPrint('❌ Login error: $e');
+      return {'success': false, 'message': 'Connection error: ${e.toString()}'};
     }
   }
 
@@ -159,8 +159,8 @@ class AuthService {
     String? experienceYears,
   }) async {
     try {
-      print('📤 POST: $baseUrl/api/v1/auth/register');
-      
+      debugPrint('📤 POST: $baseUrl/api/v1/auth/register');
+
       // ✅ Build request body matching your backend
       final Map<String, dynamic> body = {
         'fullName': name, // Your backend expects 'fullName'
@@ -183,32 +183,35 @@ class AuthService {
         }
       }
 
-      print('📦 Body: $body');
+      debugPrint('📦 Body: $body');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/v1/auth/register'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: json.encode(body),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/v1/auth/register'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: json.encode(body),
+          )
+          .timeout(const Duration(seconds: 15));
 
-      print('📥 Status: ${response.statusCode}');
-      print('📥 Response: ${response.body}');
+      debugPrint('📥 Status: ${response.statusCode}');
+      debugPrint('📥 Response: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        
+
         // ✅ Some APIs return token on registration
-        final token = data['data']?['token'] ?? 
-                     data['token'] ?? 
-                     data['data']?['accessToken'];
-        
+        final token =
+            data['data']?['token'] ??
+            data['token'] ??
+            data['data']?['accessToken'];
+
         if (token != null) {
           await saveToken(token);
           await saveUserRole(userType.toLowerCase());
-          print('✅ Registration successful - Token saved');
+          debugPrint('✅ Registration successful - Token saved');
         }
 
         return {
@@ -225,11 +228,8 @@ class AuthService {
         };
       }
     } catch (e) {
-      print('❌ Registration error: $e');
-      return {
-        'success': false,
-        'message': 'Connection error: ${e.toString()}',
-      };
+      debugPrint('❌ Registration error: $e');
+      return {'success': false, 'message': 'Connection error: ${e.toString()}'};
     }
   }
 
@@ -237,36 +237,28 @@ class AuthService {
   Future<Map<String, dynamic>> logout() async {
     try {
       final headers = await _getHeaders();
-      
-      await http.post(
-        Uri.parse('$baseUrl/api/v1/auth/logout'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 10));
-      
+
+      await http
+          .post(Uri.parse('$baseUrl/api/v1/auth/logout'), headers: headers)
+          .timeout(const Duration(seconds: 10));
     } catch (e) {
-      print('⚠️ Logout request failed: $e');
+      debugPrint('⚠️ Logout request failed: $e');
     }
 
     try {
       _cachedToken = null;
       _cachedRole = null;
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('auth_token');
       await prefs.remove('user_role');
-      
-      print('✅ Logout successful - Token cleared');
-      
-      return {
-        'success': true,
-        'message': 'Logged out successfully',
-      };
+
+      debugPrint('✅ Logout successful - Token cleared');
+
+      return {'success': true, 'message': 'Logged out successfully'};
     } catch (e) {
-      print('❌ Error clearing token: $e');
-      return {
-        'success': false,
-        'message': 'Error logging out',
-      };
+      debugPrint('❌ Error clearing token: $e');
+      return {'success': false, 'message': 'Error logging out'};
     }
   }
 
@@ -281,13 +273,13 @@ class AuthService {
     if (_cachedRole != null) {
       return _cachedRole;
     }
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       _cachedRole = prefs.getString('user_role');
       return _cachedRole;
     } catch (e) {
-      print('❌ Error getting role: $e');
+      debugPrint('❌ Error getting role: $e');
       return null;
     }
   }
@@ -296,17 +288,13 @@ class AuthService {
   Future<Map<String, dynamic>> verifyToken() async {
     try {
       final headers = await _getHeaders();
-      
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/v1/auth/verify'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 10));
+
+      final response = await http
+          .get(Uri.parse('$baseUrl/api/v1/auth/verify'), headers: headers)
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'message': 'Token is valid',
-        };
+        return {'success': true, 'message': 'Token is valid'};
       } else {
         await logout();
         return {
@@ -316,11 +304,8 @@ class AuthService {
         };
       }
     } catch (e) {
-      print('❌ Token verification error: $e');
-      return {
-        'success': false,
-        'message': 'Could not verify token',
-      };
+      debugPrint('❌ Token verification error: $e');
+      return {'success': false, 'message': 'Could not verify token'};
     }
   }
 }

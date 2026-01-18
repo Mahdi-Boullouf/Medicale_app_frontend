@@ -8,7 +8,7 @@ import 'package:docmobi/screens/patient/navigation/patient_main_navigation.dart'
 import 'package:provider/provider.dart';
 import '../../../providers/user_provider.dart';
 import '../../../services/auth_service.dart';
-import '../../../screens/auth/sign_in_screen.dart'; 
+import '../../../screens/auth/sign_in_screen.dart';
 
 class PatientProfileScreen extends StatefulWidget {
   const PatientProfileScreen({super.key});
@@ -23,7 +23,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
   @override
   void initState() {
     super.initState();
-  
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<UserProvider>().fetchUserProfile();
     });
@@ -44,7 +44,9 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
             } else {
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => const PatientMainNavigation()),
+                MaterialPageRoute(
+                  builder: (context) => const PatientMainNavigation(),
+                ),
                 (route) => false,
               );
             }
@@ -66,7 +68,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
           final userName = user?.fullName ?? 'The king';
           // final userLocation = 'Keim - Germany'; // Static for now
           final userLocation = user?.address ?? 'Location not set';
-          
+
           return SingleChildScrollView(
             child: Column(
               children: [
@@ -79,7 +81,8 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                       radius: 50,
                       backgroundImage: user?.profileImage != null
                           ? NetworkImage(user!.profileImage!)
-                          : const AssetImage('assets/images/doctor1.png') as ImageProvider,
+                          : const AssetImage('assets/images/doctor1.png')
+                                as ImageProvider,
                     ),
                     // Loading indicator overlay
                     if (userProvider.isLoading)
@@ -92,7 +95,9 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                           child: const Center(
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -132,7 +137,9 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const PersonalInfoScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const PersonalInfoScreen(),
+                      ),
                     );
                   },
                 ),
@@ -143,7 +150,9 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => PatientAppointmentsScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => PatientAppointmentsScreen(),
+                      ),
                     );
                   },
                 ),
@@ -158,14 +167,15 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 //     );
                 //   },
                 // ),
-
-                  _buildMenuItem(
+                _buildMenuItem(
                   icon: Icons.group_add_outlined,
                   title: 'My Dependents',
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const DependentsListScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const DependentsListScreen(),
+                      ),
                     );
                   },
                 ),
@@ -180,63 +190,70 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 //     );
                 //   },
                 // ),
-
                 _buildMenuItem(
                   icon: Icons.lock_outline,
                   title: 'Change Password',
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const ChangePasswordScreen(),
+                      ),
                     );
                   },
                 ),
 
-                // /// Language Selector
-                // Padding(
-                //   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                //   child: Container(
-                //     padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                //     decoration: BoxDecoration(
-                //       border: Border.all(color: Colors.grey[300]!),
-                //       borderRadius: BorderRadius.circular(10),
-                //     ),
-                //     child: Row(
-                //       children: [
-                //         const Icon(Icons.language, color: Color(0xFF1664CD)),
-                //         const SizedBox(width: 15),
-                //         const Expanded(
-                //           child: Text(
-                //             'Language',
-                //             style: TextStyle(
-                //               fontSize: 16,
-                //               color: Color(0xFF0B3267),
-                //               fontWeight: FontWeight.w500,
-                //             ),
-                //           ),
-                //         ),
-                //         DropdownButton<String>(
-                //           value: selectedLanguage,
-                //           underline: const SizedBox(),
-                //           icon: const Icon(Icons.keyboard_arrow_down),
-                //           items: ['English', 'French', 'Arabic']
-                //               .map(
-                //                 (value) => DropdownMenuItem(
-                //                   value: value,
-                //                   child: Text(value),
-                //                 ),
-                //               )
-                //               .toList(),
-                //           onChanged: (value) {
-                //             setState(() {
-                //               selectedLanguage = value!;
-                //             });
-                //           },
-                //         ),
-                //       ],
-                //     ),
-                //   ),
-                // ),
+                /// Language Selector
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.language, color: Color(0xFF1664CD)),
+                        const SizedBox(width: 15),
+                        const Expanded(
+                          child: Text(
+                            'Language',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF0B3267),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        DropdownButton<String>(
+                          value: selectedLanguage,
+                          underline: const SizedBox(),
+                          icon: const Icon(Icons.keyboard_arrow_down),
+                          items: ['English', 'Arabic']
+                              .map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(value),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              selectedLanguage = value!;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
                 // _buildMenuItem(
                 //   icon: Icons.help_outline,
@@ -244,12 +261,13 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 //   onTap: () {
                 //     Navigator.push(
                 //       context,
-                //       MaterialPageRoute(builder: (context) => const HelpSupportScreen()),
+                //       MaterialPageRoute(
+                //         builder: (context) => const HelpSupportScreen(),
+                //       ),
                 //     );
                 //   },
                 // ),
-
-                // const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 /// Logout Button with API Integration
                 Padding(
@@ -295,47 +313,48 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
   // Logout Dialog with API Integration
   // Logout Dialog with API Integration
-void _showLogoutConfirmationDialog(BuildContext context) {   // নতুন নাম
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      title: const Text('Logout'),
-      content: const Text('Are you sure you want to log out?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-        ),
-        TextButton(
-          onPressed: () async {
-            Navigator.pop(context);
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => const Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-
-            await AuthService().logout();
-            context.read<UserProvider>().clearUser();
-
-            if (mounted) {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                 builder: (context) => const SignInScreen(userType: 'patient'),
-                ),
-                (route) => false,
+  void _showLogoutConfirmationDialog(BuildContext context) {
+    // নতুন নাম
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) =>
+                    const Center(child: CircularProgressIndicator()),
               );
-            }
-          },
-          child: const Text('Log Out', style: TextStyle(color: Colors.red)),
-        ),
-      ],
-    ),
-  );
-}
+
+              await AuthService().logout();
+              context.read<UserProvider>().clearUser();
+
+              if (mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const SignInScreen(userType: 'patient'),
+                  ),
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text('Log Out', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildMenuItem({
     required IconData icon,

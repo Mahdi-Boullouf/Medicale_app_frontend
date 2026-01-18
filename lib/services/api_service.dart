@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/api_config.dart'; // ✅ Import ApiConfig
@@ -13,18 +14,38 @@ class ApiService {
     try {
       final prefs = await SharedPreferences.getInstance();
       _token = prefs.getString('auth_token');
-      print(
+      debugPrint(
         '✅ ApiService initialized. Token: ${_token != null ? "Found" : "Not found"}',
       );
 
       if (_token != null) {
-        print(
-          '🔍 Token preview: ${_token!.substring(0, min(_token!.length, 20))}...',
+        debugPrint(
+          '🔍 Token status: ${isLoggedIn ? "Logged In" : "Not Logged In"}',
         );
-        print('🔍 Token status: ${isLoggedIn ? "Logged In" : "Not Logged In"}');
+
+        // ✅ SYNC SESSION: Fetch profile to ensure user_id in SharedPreferences is correct
+        try {
+          final profile = await getUserProfile();
+          if (profile['success'] == true) {
+            final realId = profile['data']['_id']?.toString();
+            if (realId != null) {
+              final currentSavedId = prefs.getString('user_id');
+              if (realId != currentSavedId) {
+                debugPrint(
+                  '⚠️ Session ID Mismatch! Syncing $currentSavedId -> $realId',
+                );
+                await prefs.setString('user_id', realId);
+              } else {
+                debugPrint('✅ Session ID synced: $realId');
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('⚠️ Profile sync failed during init: $e');
+        }
       }
     } catch (e) {
-      print('❌ Error initializing ApiService: $e');
+      debugPrint('❌ Error initializing ApiService: $e');
     }
   }
 
@@ -34,9 +55,11 @@ class ApiService {
       _token = token;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', token);
-      print('✅ Token saved: ${token.substring(0, min(token.length, 20))}...');
+      debugPrint(
+        '✅ Token saved: ${token.substring(0, min(token.length, 20))}...',
+      );
     } catch (e) {
-      print('❌ Error saving token: $e');
+      debugPrint('❌ Error saving token: $e');
     }
   }
 
@@ -46,9 +69,9 @@ class ApiService {
       _token = null;
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('auth_token');
-      print('✅ Token cleared');
+      debugPrint('✅ Token cleared');
     } catch (e) {
-      print('❌ Error clearing token: $e');
+      debugPrint('❌ Error clearing token: $e');
     }
   }
 
@@ -67,11 +90,11 @@ class ApiService {
 
     if (requiresAuth && _token != null && _token!.isNotEmpty) {
       headers['Authorization'] = 'Bearer $_token';
-      print(
+      debugPrint(
         '🔐 Token added to headers: Bearer ${_token!.substring(0, min(_token!.length, 20))}...',
       );
     } else if (requiresAuth && (_token == null || _token!.isEmpty)) {
-      print('⚠️ WARNING: Auth required but no token available!');
+      debugPrint('⚠️ WARNING: Auth required but no token available!');
     }
 
     return headers;
@@ -90,7 +113,7 @@ class ApiService {
       attempts++;
       try {
         if (requiresAuth && !isLoggedIn) {
-          print('❌ No token found - cannot make authenticated request');
+          debugPrint('❌ No token found - cannot make authenticated request');
           return {
             'success': false,
             'message': 'Token not found. Please login again.',
@@ -100,9 +123,9 @@ class ApiService {
 
         final url = '$_baseUrl$endpoint';
         if (attempts == 1)
-          print('📤 GET: $url');
+          debugPrint('📤 GET: $url');
         else
-          print('🔁 Retry GET ($attempts/$retries): $url');
+          debugPrint('🔁 Retry GET ($attempts/$retries): $url');
 
         final headers = _getHeaders(requiresAuth: requiresAuth);
 
@@ -112,7 +135,7 @@ class ApiService {
 
         return _handleResponse(response);
       } catch (e) {
-        print('❌ GET Error (Attempt $attempts): $e');
+        debugPrint('❌ GET Error (Attempt $attempts): $e');
         if (attempts > retries) {
           return {'success': false, 'message': _getErrorMessage(e)};
         }
@@ -131,7 +154,7 @@ class ApiService {
     try {
       // Token check BEFORE request
       if (requiresAuth && !isLoggedIn) {
-        print('❌ No token found - cannot make authenticated request');
+        debugPrint('❌ No token found - cannot make authenticated request');
         return {
           'success': false,
           'message': 'Token not found. Please login again.',
@@ -140,10 +163,10 @@ class ApiService {
       }
 
       final url = '$_baseUrl$endpoint';
-      print('📤 POST: $url');
-      print('📦 Body: $body');
-      print('🔐 Auth Required: $requiresAuth');
-      print('🔐 Token Status: ${isLoggedIn ? "Available" : "Missing"}');
+      debugPrint('📤 POST: $url');
+      debugPrint('📦 Body: $body');
+      debugPrint('🔐 Auth Required: $requiresAuth');
+      debugPrint('🔐 Token Status: ${isLoggedIn ? "Available" : "Missing"}');
 
       final headers = _getHeaders(requiresAuth: requiresAuth);
 
@@ -153,7 +176,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      print('❌ POST Error: $e');
+      debugPrint('❌ POST Error: $e');
       return {'success': false, 'message': _getErrorMessage(e)};
     }
   }
@@ -174,8 +197,8 @@ class ApiService {
       }
 
       final url = '$_baseUrl$endpoint';
-      print('📤 PUT: $url');
-      print('📦 Body: $body');
+      debugPrint('📤 PUT: $url');
+      debugPrint('📦 Body: $body');
 
       final headers = _getHeaders(requiresAuth: requiresAuth);
 
@@ -185,7 +208,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      print('❌ PUT Error: $e');
+      debugPrint('❌ PUT Error: $e');
       return {'success': false, 'message': _getErrorMessage(e)};
     }
   }
@@ -206,8 +229,8 @@ class ApiService {
       }
 
       final url = '$_baseUrl$endpoint';
-      print('📤 PATCH: $url');
-      print('📦 Body: $body');
+      debugPrint('📤 PATCH: $url');
+      debugPrint('📦 Body: $body');
 
       final headers = _getHeaders(requiresAuth: requiresAuth);
 
@@ -217,7 +240,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      print('❌ PATCH Error: $e');
+      debugPrint('❌ PATCH Error: $e');
       return {'success': false, 'message': _getErrorMessage(e)};
     }
   }
@@ -237,7 +260,7 @@ class ApiService {
       }
 
       final url = '$_baseUrl$endpoint';
-      print('📤 DELETE: $url');
+      debugPrint('📤 DELETE: $url');
 
       final headers = _getHeaders(requiresAuth: requiresAuth);
 
@@ -247,7 +270,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      print('❌ DELETE Error: $e');
+      debugPrint('❌ DELETE Error: $e');
       return {'success': false, 'message': _getErrorMessage(e)};
     }
   }
@@ -305,13 +328,13 @@ class ApiService {
 
       if (token != null) {
         await saveToken(token);
-        print('✅ Login successful - Token saved');
+        debugPrint('✅ Login successful - Token saved');
 
         final prefs = await SharedPreferences.getInstance();
 
         if (userRole != null) {
           await prefs.setString('user_role', userRole.toString().toLowerCase());
-          print('✅ User role saved: $userRole');
+          debugPrint('✅ User role saved: $userRole');
         }
 
         // ✅ FIXED: Save user_id for Socket Connection
@@ -323,9 +346,9 @@ class ApiService {
 
         if (userId != null) {
           await prefs.setString('user_id', userId.toString());
-          print('✅ User ID saved: $userId');
+          debugPrint('✅ User ID saved: $userId');
         } else {
-          print('⚠️ User ID NOT found in login response!');
+          debugPrint('⚠️ User ID NOT found in login response!');
         }
       }
     }
@@ -378,7 +401,7 @@ class ApiService {
     try {
       await post('/api/v1/auth/logout', {}, requiresAuth: true);
     } catch (e) {
-      print('⚠️ Logout request failed: $e');
+      debugPrint('⚠️ Logout request failed: $e');
     }
 
     await clearToken();
@@ -396,16 +419,22 @@ class ApiService {
     required int page,
     required int limit,
   }) async {
-    print('🔍 Getting messages for chatId: $chatId');
+    debugPrint('🔍 Getting messages for chatId: $chatId');
     return await get(
       '/api/v1/chat/$chatId/messages?page=$page&limit=$limit',
       requiresAuth: true,
     );
   }
 
+  /// Get Agora Chat Token
+  static Future<Map<String, dynamic>> getAgoraChatToken() async {
+    debugPrint('🔍 Fetching Agora Chat Token from backend');
+    return await get('/api/v1/chat/token', requiresAuth: true);
+  }
+
   /// Get My Chats
   static Future<Map<String, dynamic>> getMyChats() async {
-    print('🔍 Getting my chats');
+    debugPrint('🔍 Getting my chats');
     return await get('/api/v1/chat', requiresAuth: true);
   }
 
@@ -413,7 +442,7 @@ class ApiService {
   static Future<Map<String, dynamic>> createOrGetChat({
     required String userId,
   }) async {
-    print('🔍 Creating/Getting chat with userId: $userId');
+    debugPrint('🔍 Creating/Getting chat with userId: $userId');
     return await post('/api/v1/chat', {'userId': userId}, requiresAuth: true);
   }
 
@@ -434,10 +463,10 @@ class ApiService {
       }
 
       final url = '$_baseUrl/api/v1/chat/$chatId/messages';
-      print('📤 POST (Multipart): $url');
-      print('📦 Chat ID: $chatId');
-      print('📦 Content: $content');
-      print('📦 Files: ${files?.length ?? 0}');
+      debugPrint('📤 POST (Multipart): $url');
+      debugPrint('📦 Chat ID: $chatId');
+      debugPrint('📦 Content: $content');
+      debugPrint('📦 Files: ${files?.length ?? 0}');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
 
@@ -473,15 +502,15 @@ class ApiService {
         }
       }
 
-      print('📋 Request Fields: ${request.fields}');
-      print('📋 Request Files: ${request.files.length}');
+      debugPrint('📋 Request Fields: ${request.fields}');
+      debugPrint('📋 Request Files: ${request.files.length}');
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
       return _handleResponse(response);
     } catch (e) {
-      print('❌ Send Message Error: $e');
+      debugPrint('❌ Send Message Error: $e');
       return {'success': false, 'message': _getErrorMessage(e)};
     }
   }
@@ -506,10 +535,10 @@ class ApiService {
       }
 
       final url = '$_baseUrl/api/v1/posts';
-      print('📤 POST (Multipart): $url');
-      print('📦 Content: $content');
-      print('📦 Visibility: $visibility');
-      print('📦 Files: ${mediaFiles?.length ?? 0}');
+      debugPrint('📤 POST (Multipart): $url');
+      debugPrint('📦 Content: $content');
+      debugPrint('📦 Visibility: $visibility');
+      debugPrint('📦 Files: ${mediaFiles?.length ?? 0}');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
 
@@ -536,7 +565,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      print('❌ Create Post Error: $e');
+      debugPrint('❌ Create Post Error: $e');
       return {'success': false, 'message': _getErrorMessage(e)};
     }
   }
@@ -577,7 +606,7 @@ class ApiService {
   // ✅ KEEP ONLY THIS:
   static Future<Map<String, dynamic>> deletePost(String postId) async {
     try {
-      print('🗑️ Deleting post: $postId');
+      debugPrint('🗑️ Deleting post: $postId');
 
       final response = await delete(
         '/api/v1/posts/$postId',
@@ -741,17 +770,17 @@ class ApiService {
       }
 
       final url = '$_baseUrl/api/v1/reels';
-      print('📤 POST (Multipart): $url');
-      print('📦 Caption: $caption');
-      print('📦 Visibility: $visibility');
-      print('📦 Video file: ${videoFile?.path}');
+      debugPrint('📤 POST (Multipart): $url');
+      debugPrint('📦 Caption: $caption');
+      debugPrint('📦 Visibility: $visibility');
+      debugPrint('📦 Video file: ${videoFile?.path}');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
 
       // Add auth header
       if (_token != null && _token!.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $_token';
-        print('🔐 Token added to request');
+        debugPrint('🔐 Token added to request');
       }
 
       // Add text fields
@@ -760,7 +789,7 @@ class ApiService {
         request.fields['caption'] = caption;
       }
 
-      print('📋 Fields: ${request.fields}');
+      debugPrint('📋 Fields: ${request.fields}');
 
       // ✅ FIXED: Use 'video' as field name (NOT 'videoFile')
       if (videoFile != null) {
@@ -770,19 +799,19 @@ class ApiService {
             videoFile.path,
           ),
         );
-        print('📹 Video file added: ${videoFile.path}');
+        debugPrint('📹 Video file added: ${videoFile.path}');
       }
 
-      print('📤 Sending request...');
+      debugPrint('📤 Sending request...');
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('📥 Response status: ${response.statusCode}');
-      print('📥 Response body: ${response.body}');
+      debugPrint('📥 Response status: ${response.statusCode}');
+      debugPrint('📥 Response body: ${response.body}');
 
       return _handleResponse(response);
     } catch (e) {
-      print('❌ Create Reel Error: $e');
+      debugPrint('❌ Create Reel Error: $e');
       return {'success': false, 'message': 'Failed to upload reel: $e'};
     }
   }
@@ -793,17 +822,17 @@ class ApiService {
     int limit = 20,
   }) async {
     try {
-      print('📤 Fetching all reels (page: $page, limit: $limit)');
+      debugPrint('📤 Fetching all reels (page: $page, limit: $limit)');
 
       final response = await get(
         '/api/v1/reels/all-reels?page=$page&limit=$limit',
         requiresAuth: true,
       );
 
-      print('📥 Reels response: $response');
+      debugPrint('📥 Reels response: $response');
       return response;
     } catch (e) {
-      print('❌ Error fetching reels: $e');
+      debugPrint('❌ Error fetching reels: $e');
       return {'success': false, 'message': 'Failed to fetch reels: $e'};
     }
   }
@@ -811,7 +840,7 @@ class ApiService {
   /// Like/Unlike a reel
   static Future<Map<String, dynamic>> likeReel(String reelId) async {
     try {
-      print('❤️ Toggling like for reel: $reelId');
+      debugPrint('❤️ Toggling like for reel: $reelId');
 
       final result = await post(
         '/api/v1/reels/$reelId/like',
@@ -819,10 +848,10 @@ class ApiService {
         requiresAuth: true,
       );
 
-      print('✅ Like reel response: $result');
+      debugPrint('✅ Like reel response: $result');
       return result;
     } catch (e) {
-      print('❌ Error liking reel: $e');
+      debugPrint('❌ Error liking reel: $e');
       return {'success': false, 'message': 'Failed to like reel'};
     }
   }
@@ -833,16 +862,16 @@ class ApiService {
     required String content,
   }) async {
     try {
-      print('💬 Adding comment to reel: $reelId');
+      debugPrint('💬 Adding comment to reel: $reelId');
 
       final result = await post('/api/v1/reels/$reelId/comments', {
         'content': content,
       }, requiresAuth: true);
 
-      print('✅ Comment added successfully');
+      debugPrint('✅ Comment added successfully');
       return result;
     } catch (e) {
-      print('❌ Error adding reel comment: $e');
+      debugPrint('❌ Error adding reel comment: $e');
       return {'success': false, 'message': 'Failed to add comment'};
     }
   }
@@ -854,7 +883,7 @@ class ApiService {
     int limit = 50,
   }) async {
     try {
-      print(
+      debugPrint(
         '📥 Fetching reel comments (reelId: $reelId, page: $page, limit: $limit)',
       );
 
@@ -863,12 +892,12 @@ class ApiService {
         requiresAuth: true,
       );
 
-      print(
+      debugPrint(
         '✅ Reel comments response: ${result['data']?['items']?.length ?? 0} comments',
       );
       return result;
     } catch (e) {
-      print('❌ Error fetching reel comments: $e');
+      debugPrint('❌ Error fetching reel comments: $e');
       return {
         'success': false,
         'message': 'Failed to fetch comments',
@@ -896,7 +925,7 @@ class ApiService {
       }
 
       final url = '$_baseUrl/api/v1/upload';
-      print('📤 Uploading file: $filePath');
+      debugPrint('📤 Uploading file: $filePath');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
       request.headers.addAll(_getHeaders(requiresAuth: true));
@@ -908,7 +937,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      print('❌ File upload error: $e');
+      debugPrint('❌ File upload error: $e');
       return {'success': false, 'message': _getErrorMessage(e)};
     }
   }
@@ -928,7 +957,7 @@ class ApiService {
       }
 
       final url = '$_baseUrl/api/v1/upload/multiple';
-      print('📤 Uploading ${filePaths.length} files');
+      debugPrint('📤 Uploading ${filePaths.length} files');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
       request.headers.addAll(_getHeaders(requiresAuth: true));
@@ -944,7 +973,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      print('❌ Multiple file upload error: $e');
+      debugPrint('❌ Multiple file upload error: $e');
       return {'success': false, 'message': _getErrorMessage(e)};
     }
   }
@@ -955,7 +984,7 @@ class ApiService {
   /// Like/Unlike Post - SINGLE METHOD
   static Future<Map<String, dynamic>> likePost(String postId) async {
     try {
-      print('❤️ Toggling like for post: $postId');
+      debugPrint('❤️ Toggling like for post: $postId');
 
       final response = await post(
         '/api/v1/posts/$postId/like',
@@ -963,10 +992,10 @@ class ApiService {
         requiresAuth: true,
       );
 
-      print('📥 Like response: $response');
+      debugPrint('📥 Like response: $response');
       return response;
     } catch (e) {
-      print('❌ Error liking post: $e');
+      debugPrint('❌ Error liking post: $e');
       return {'success': false, 'message': 'Failed to like post: $e'};
     }
   }
@@ -1029,13 +1058,13 @@ class ApiService {
 
   /// Response handler
   static Map<String, dynamic> _handleResponse(http.Response response) {
-    print('📥 Status: ${response.statusCode}');
+    debugPrint('📥 Status: ${response.statusCode}');
 
     // Safe substring for logging
     final bodyPreview = response.body.length > 500
         ? response.body.substring(0, 500)
         : response.body;
-    print(
+    debugPrint(
       '📥 Response Body: $bodyPreview${response.body.length > 500 ? "..." : ""}',
     );
 
@@ -1048,7 +1077,7 @@ class ApiService {
       }
       // Unauthorized (401) - Token invalid/expired
       else if (response.statusCode == 401) {
-        print('⚠️ 401 Unauthorized - Clearing token');
+        debugPrint('⚠️ 401 Unauthorized - Clearing token');
         clearToken();
         return {
           'success': false,
@@ -1099,7 +1128,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('❌ Response parsing error: $e');
+      debugPrint('❌ Response parsing error: $e');
       return {
         'success': false,
         'message': 'Invalid response format',

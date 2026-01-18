@@ -24,7 +24,7 @@ class _PatientMainNavigationState extends State<PatientMainNavigation> {
     super.initState();
     // Initialize CallManager when dashboard loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('🏥 Patient Dashboard Loaded - Initializing CallManager');
+      debugPrint('🏥 Patient Dashboard Loaded - Initializing CallManager');
       CallManager.instance.initialize(context);
     });
   }

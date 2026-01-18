@@ -11,7 +11,8 @@ class ResetPasswordScreen extends StatefulWidget {
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
 
@@ -55,10 +56,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               const SizedBox(height: 8),
               Text(
                 'Set the new password for your account',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
               const SizedBox(height: 40),
               // New Password field
@@ -66,10 +64,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 hintText: 'New Password',
                 controller: _newPasswordController,
                 obscureText: _obscureNewPassword,
-                prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF1664CD)),
+                prefixIcon: const Icon(
+                  Icons.lock_outline,
+                  color: Color(0xFF1664CD),
+                ),
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscureNewPassword ? Icons.visibility_off : Icons.visibility,
+                    _obscureNewPassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
                     color: Colors.grey,
                   ),
                   onPressed: () {
@@ -85,10 +88,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 hintText: 'Confirm Password',
                 controller: _confirmPasswordController,
                 obscureText: _obscureConfirmPassword,
-                prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF1664CD)),
+                prefixIcon: const Icon(
+                  Icons.lock_outline,
+                  color: Color(0xFF1664CD),
+                ),
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                    _obscureConfirmPassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
                     color: Colors.grey,
                   ),
                   onPressed: () {
@@ -103,17 +111,22 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               CustomButton(
                 text: 'Continue',
                 onPressed: () {
-                  // TODO: Implement reset password logic
+                  // Implement reset password logic
                   // Show success dialog and navigate to sign in
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
                       title: const Text('Success'),
-                      content: const Text('Password has been reset successfully'),
+                      content: const Text(
+                        'Password has been reset successfully',
+                      ),
                       actions: [
                         TextButton(
                           onPressed: () {
-                            Navigator.popUntil(context, (route) => route.isFirst);
+                            Navigator.popUntil(
+                              context,
+                              (route) => route.isFirst,
+                            );
                           },
                           child: const Text('OK'),
                         ),

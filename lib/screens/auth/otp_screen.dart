@@ -10,7 +10,10 @@ class OtpScreen extends StatefulWidget {
 }
 
 class _OtpScreenState extends State<OtpScreen> {
-  final List<TextEditingController> _otpControllers = List.generate(4, (_) => TextEditingController());
+  final List<TextEditingController> _otpControllers = List.generate(
+    4,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(4, (_) => FocusNode());
 
   @override
@@ -53,10 +56,7 @@ class _OtpScreenState extends State<OtpScreen> {
               const SizedBox(height: 8),
               Text(
                 'We have sent you a one time code to your email',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
               const SizedBox(height: 40),
               // OTP input boxes
@@ -69,7 +69,10 @@ class _OtpScreenState extends State<OtpScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: const Color(0xFF1664CD), width: 2),
+                      border: Border.all(
+                        color: const Color(0xFF1664CD),
+                        width: 2,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.grey.withOpacity(0.1),
@@ -111,7 +114,7 @@ class _OtpScreenState extends State<OtpScreen> {
               Center(
                 child: TextButton(
                   onPressed: () {
-                    // TODO: Resend OTP
+                    // Resend OTP
                   },
                   child: RichText(
                     text: const TextSpan(

@@ -20,11 +20,15 @@ class DoctorProfileScreen extends StatefulWidget {
 
 class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
   bool _isSaving = false; // Track save state
+  bool isVoiceVideoCallActive = false;
+  String selectedLanguage = 'English';
 
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProfile();
+    });
   }
 
   Future<void> _loadProfile() async {
@@ -153,7 +157,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 10),
-                  
+
                   // Profile Picture Section
                   Center(
                     child: Column(
@@ -162,9 +166,14 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                           children: [
                             CircleAvatar(
                               radius: 55,
-                              backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
+                              backgroundImage:
+                                  profileImageUrl != null &&
+                                      profileImageUrl.isNotEmpty
                                   ? NetworkImage(profileImageUrl)
-                                  : const AssetImage('assets/images/doctor_booking.png') as ImageProvider,
+                                  : const AssetImage(
+                                          'assets/images/doctor_booking.png',
+                                        )
+                                        as ImageProvider,
                             ),
                             if (isLoading)
                               Positioned.fill(
@@ -176,7 +185,9 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                                   child: const Center(
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -200,9 +211,10 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        
+
                         // Show Specialty
-                        if (user?.specialty != null && user!.specialty!.isNotEmpty) ...[
+                        if (user?.specialty != null &&
+                            user!.specialty!.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
                             user.specialty!,
@@ -213,7 +225,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                             ),
                           ),
                         ],
-                        
+
                         // Show Bio
                         if (user?.bio != null && user!.bio!.isNotEmpty) ...[
                           const SizedBox(height: 15),
@@ -239,7 +251,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
-                  
+
                   // Profile Menu Items
                   _buildProfileItem(
                     icon: Icons.person_outline,
@@ -248,7 +260,8 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const DoctorPersonalInfoScreen(),
+                          builder: (context) =>
+                              const DoctorPersonalInfoScreen(),
                         ),
                       );
                       if (result == true) {
@@ -283,6 +296,51 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                       );
                     },
                   ),
+
+                  /// Language Selector
+                  _buildProfileItem(
+                    icon: Icons.language,
+                    title: 'Language',
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Select Language'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.abc),
+                                title: const Text('English'),
+                                onTap: () {
+                                  setState(() {
+                                    selectedLanguage = 'English';
+                                  });
+                                  Navigator.pop(context);
+                                },
+                              ),
+                              ListTile(
+                                leading: Text(
+                                  'ع',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                title: const Text('Arabic'),
+                                onTap: () {
+                                  setState(() {
+                                    selectedLanguage = 'Arabic';
+                                  });
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   _buildProfileItem(
                     icon: Icons.lock_outline,
                     title: 'Change Password',
@@ -296,7 +354,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                     },
                   ),
                   const SizedBox(height: 25),
-                  
+
                   // Logout Button
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -365,7 +423,8 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        trailing: trailing ??
+        trailing:
+            trailing ??
             const Icon(
               Icons.arrow_forward_ios,
               size: 16,
@@ -393,16 +452,16 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
               showDialog(
                 context: context,
                 barrierDismissible: false,
-                builder: (context) => const Center(
-                  child: CircularProgressIndicator(),
-                ),
+                builder: (context) =>
+                    const Center(child: CircularProgressIndicator()),
               );
               await AuthService().logout();
               context.read<UserProvider>().clearUser();
               if (mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(
-                    builder: (context) => const SignInScreen(userType: 'doctor'),
+                    builder: (context) =>
+                        const SignInScreen(userType: 'doctor'),
                   ),
                   (route) => false,
                 );

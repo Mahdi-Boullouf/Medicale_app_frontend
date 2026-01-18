@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart';
+
 import '../services/api_service.dart';
 
 class UserService {
   /// Get current user profile
   static Future<Map<String, dynamic>> getUserProfile() async {
-    print('🔍 Fetching user profile...');
+    debugPrint('🔍 Fetching user profile...');
     return await ApiService.get('/api/v1/user/profile', requiresAuth: true);
   }
 
@@ -34,8 +36,8 @@ class UserService {
     bool? isVideoCallAvailable,  // ✅ ADDED: Video call availability 
   }) async {
     try {
-      print('📤 Updating user profile...');
-      
+      debugPrint('📤 Updating user profile...');
+
       final Map<String, dynamic> body = {};
 
       // Basic fields
@@ -67,22 +69,22 @@ class UserService {
       // ✅ ADDED: Location fields
       if (latitude != null) {
         body['latitude'] = latitude;
-        print('📍 Latitude: $latitude');
+        debugPrint('📍 Latitude: $latitude');
       }
       if (longitude != null) {
         body['longitude'] = longitude;
-        print('📍 Longitude: $longitude');
+        debugPrint('📍 Longitude: $longitude');
       }
 
       // ✅ Convert image to base64 if provided
       if (profileImage != null) {
-        print('📸 Converting image to base64...');
+        debugPrint('📸 Converting image to base64...');
         final base64Image = await imageToBase64(profileImage);
         body['profileImage'] = base64Image;
-        print('✅ Base64 image added to payload');
+        debugPrint('✅ Base64 image added to payload');
       }
 
-      print('📦 Update payload keys: ${body.keys.toList()}');
+      debugPrint('📦 Update payload keys: ${body.keys.toList()}');
 
       final response = await ApiService.put(
         '/api/v1/user/profile',
@@ -91,18 +93,15 @@ class UserService {
       );
 
       if (response['success'] == true) {
-        print('✅ Profile updated successfully');
+        debugPrint('✅ Profile updated successfully');
       } else {
-        print('❌ Profile update failed: ${response['message']}');
+        debugPrint('❌ Profile update failed: ${response['message']}');
       }
 
       return response;
     } catch (e) {
-      print('❌ Update profile error: $e');
-      return {
-        'success': false,
-        'message': 'Failed to update profile: $e',
-      };
+      debugPrint('❌ Update profile error: $e');
+      return {'success': false, 'message': 'Failed to update profile: $e'};
     }
   }
 
@@ -112,35 +111,34 @@ class UserService {
     required String newPassword,
     required String confirmPassword,
   }) async {
-    print('🔐 Changing password...');
-    
-    return await ApiService.put(
-      '/api/v1/user/password',
-      {
-        'currentPassword': currentPassword,
-        'newPassword': newPassword,
-        'confirmPassword': confirmPassword,
-      },
-      requiresAuth: true,
-    );
+    debugPrint('🔐 Changing password...');
+
+    return await ApiService.put('/api/v1/user/password', {
+      'currentPassword': currentPassword,
+      'newPassword': newPassword,
+      'confirmPassword': confirmPassword,
+    }, requiresAuth: true);
   }
 
   /// Get users by role (patient | doctor | admin)
   static Future<Map<String, dynamic>> getUsersByRole(String role) async {
-    print('🔍 Fetching users with role: $role');
+    debugPrint('🔍 Fetching users with role: $role');
     return await ApiService.get('/api/v1/user/role/$role', requiresAuth: true);
   }
 
   /// Get user details by ID
   static Future<Map<String, dynamic>> getUserDetails(String userId) async {
-    print('🔍 Fetching user details for ID: $userId');
+    debugPrint('🔍 Fetching user details for ID: $userId');
     return await ApiService.get('/api/v1/user/$userId', requiresAuth: true);
   }
 
   /// Get my dependents
   static Future<Map<String, dynamic>> getMyDependents() async {
-    print('🔍 Fetching my dependents...');
-    return await ApiService.get('/api/v1/user/me/dependents', requiresAuth: true);
+    debugPrint('🔍 Fetching my dependents...');
+    return await ApiService.get(
+      '/api/v1/user/me/dependents',
+      requiresAuth: true,
+    );
   }
 
   /// Add dependent
@@ -152,10 +150,10 @@ class UserService {
     String? phone,
     String? notes,
   }) async {
-    print('➕ Adding dependent: $fullName');
-    
+    debugPrint('➕ Adding dependent: $fullName');
+
     final Map<String, dynamic> body = {'fullName': fullName};
-    
+
     if (relationship != null) body['relationship'] = relationship;
     if (gender != null) body['gender'] = gender;
     if (dob != null) body['dob'] = dob;
@@ -180,10 +178,10 @@ class UserService {
     String? notes,
     bool? isActive,
   }) async {
-    print('✏️ Updating dependent: $dependentId');
-    
+    debugPrint('✏️ Updating dependent: $dependentId');
+
     final Map<String, dynamic> body = {};
-    
+
     if (fullName != null) body['fullName'] = fullName;
     if (relationship != null) body['relationship'] = relationship;
     if (gender != null) body['gender'] = gender;
@@ -200,8 +198,10 @@ class UserService {
   }
 
   /// Delete dependent
-  static Future<Map<String, dynamic>> deleteDependent(String dependentId) async {
-    print('🗑️ Deleting dependent: $dependentId');
+  static Future<Map<String, dynamic>> deleteDependent(
+    String dependentId,
+  ) async {
+    debugPrint('🗑️ Deleting dependent: $dependentId');
     return await ApiService.delete(
       '/api/v1/user/me/dependents/$dependentId',
       requiresAuth: true,
@@ -211,14 +211,14 @@ class UserService {
   /// Convert image file to base64 with proper MIME type detection
   static Future<String> imageToBase64(File imageFile) async {
     try {
-      print('🔄 Converting image to base64...');
+      debugPrint('🔄 Converting image to base64...');
       final bytes = await imageFile.readAsBytes();
       final base64String = base64Encode(bytes);
-      
+
       // ✅ Detect image type from file extension
       String mimeType = 'image/jpeg';
       final extension = imageFile.path.split('.').last.toLowerCase();
-      
+
       if (extension == 'png') {
         mimeType = 'image/png';
       } else if (extension == 'jpg' || extension == 'jpeg') {
@@ -228,17 +228,17 @@ class UserService {
       } else if (extension == 'gif') {
         mimeType = 'image/gif';
       }
-      
+
       final result = 'data:$mimeType;base64,$base64String';
-      
-      print('✅ Image converted successfully');
-      print('   - Size: ${bytes.length} bytes');
-      print('   - Type: $mimeType');
-      print('   - Base64 length: ${result.length} chars');
-      
+
+      debugPrint('✅ Image converted successfully');
+      debugPrint('   - Size: ${bytes.length} bytes');
+      debugPrint('   - Type: $mimeType');
+      debugPrint('   - Base64 length: ${result.length} chars');
+
       return result;
     } catch (e) {
-      print('❌ Error converting image to base64: $e');
+      debugPrint('❌ Error converting image to base64: $e');
       rethrow;
     }
   }

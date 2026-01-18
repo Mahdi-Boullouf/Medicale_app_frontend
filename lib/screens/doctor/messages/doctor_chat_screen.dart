@@ -3,10 +3,12 @@ import 'package:docmobi/services/api_service.dart';
 import 'package:docmobi/services/socket_service.dart';
 import 'package:docmobi/screens/common/calls/video_call_screen.dart';
 import 'package:docmobi/screens/common/calls/audio_call_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:image_picker/image_picker.dart';
+import 'package:docmobi/services/agora_chat_service.dart';
+import 'package:agora_chat_sdk/agora_chat_sdk.dart';
+import 'package:intl/intl.dart';
 
 class DoctorChatDetailScreen extends StatefulWidget {
   final String chatId;
@@ -46,9 +48,9 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   String? _actualUserAvatar;
   String? _actualUserName;
   bool _isAutoScrollEnabled = true;
-
-  Timer? _refreshTimer;
-  Set<String> _messageIds = {};
+  Timer? _autoRefreshTimer; // ✅ Auto-refresh timer
+  Set<String> _selectedMessageIds = {}; // ✅ For multi-select delete
+  bool _isSelectionMode = false; // ✅ Selection mode toggle
 
   @override
   void initState() {
@@ -57,10 +59,15 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     _otherUserRole = widget.userRole;
     _actualUserAvatar = widget.userAvatar;
     _actualUserName = widget.userName;
-    _loadCurrentUserProfile();
-    _loadMessages();
-    _startAutoRefresh();
-    _setupSocketListeners();
+    _loadCurrentUserProfile().then((_) {
+      _loadMessages();
+      _setupAgoraListeners();
+      _ensureAgoraConnection();
+      _startAutoRefresh(); // ✅ Start polling as fallback
+      AgoraChatService.instance.markAllMessagesAsRead(
+        widget.chatId,
+      ); // ✅ Mark as read on entry
+    });
 
     _scrollController.addListener(() {
       if (_scrollController.hasClients) {
@@ -71,11 +78,37 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     });
   }
 
+  Future<void> _ensureAgoraConnection() async {
+    // 1. Initialize if needed
+    if (!AgoraChatService.instance.isConnected) {
+      await AgoraChatService.instance.init();
+    }
+
+    // 2. Check if logged in
+    final isLoggedIn = await ChatClient.getInstance.isLoginBefore();
+    debugPrint(
+      '🔍 [Doctor] Agora Login Status: $isLoggedIn | CurrentUser: $_currentUserId',
+    );
+
+    if (!isLoggedIn && _currentUserId != null) {
+      debugPrint(
+        '🔄 [Doctor] Not logged in. Attempting login for $_currentUserId...',
+      );
+      await AgoraChatService.instance.login(_currentUserId!);
+    } else if (isLoggedIn) {
+      final currentAgoraUser = await ChatClient.getInstance.getCurrentUserId();
+      if (currentAgoraUser != _currentUserId && _currentUserId != null) {
+        debugPrint(
+          '⚠️ [Doctor] Agora ID mismatch ($currentAgoraUser vs $_currentUserId). Relogging...',
+        );
+        await AgoraChatService.instance.logout();
+        await AgoraChatService.instance.login(_currentUserId!);
+      }
+    }
+  }
+
   Future<void> _loadCurrentUserProfile() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString('user_data');
-
       final profileResult = await ApiService.getUserProfile();
       if (profileResult['success'] == true) {
         setState(() {
@@ -85,174 +118,216 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
               ?.toString();
           _currentUserName = profileResult['data']['fullName']?.toString();
         });
-        print('✅ Current user profile loaded:');
-        print('   ID: $_currentUserId');
-        print('   Role: $_currentUserRole');
-        print('   Avatar: $_currentUserAvatar');
-        print('   Name: $_currentUserName');
+        debugPrint('✅ Current user profile loaded:');
+        debugPrint('   ID: $_currentUserId');
+        debugPrint('   Role: $_currentUserRole');
+        debugPrint('   Avatar: $_currentUserAvatar');
+        debugPrint('   Name: $_currentUserName');
       }
     } catch (e) {
-      print('❌ Error loading user profile: $e');
-    }
-  }
-
-  void _setupSocketListeners() {
-    final socket = SocketService.instance.socket;
-    if (socket != null) {
-      socket.on('message:new', (data) {
-        if (data['chatId'] == widget.chatId && mounted) {
-          _loadMessagesQuietly();
-        }
-      });
-    }
-  }
-
-  void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (mounted) {
-        _loadMessagesQuietly();
-      }
-    });
-  }
-
-  Future<void> _loadMessagesQuietly() async {
-    try {
-      final result = await ApiService.getChatMessages(
-        chatId: widget.chatId,
-        page: 1,
-        limit: 50,
-      );
-
-      if (result['success'] == true && mounted) {
-        final newMessages = result['data']?['items'] ?? [];
-
-        Set<String> newMessageIds = {};
-        for (var msg in newMessages) {
-          final msgId = msg['_id']?.toString();
-          if (msgId != null) {
-            newMessageIds.add(msgId);
-          }
-        }
-
-        if (newMessageIds.length != _messageIds.length ||
-            !newMessageIds.containsAll(_messageIds)) {
-          setState(() {
-            _messages = newMessages;
-            _messageIds = newMessageIds;
-          });
-
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_scrollController.hasClients) {
-              _scrollController.animateTo(
-                _scrollController.position.maxScrollExtent,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOut,
-              );
-            }
-          });
-        }
-      }
-    } catch (e) {
-      print('❌ Quiet refresh error: $e');
-    }
-  }
-
-  Future<void> _loadCurrentUserId() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString('user_data');
-
-      final profileResult = await ApiService.getUserProfile();
-      if (profileResult['success'] == true) {
-        setState(() {
-          _currentUserId = profileResult['data']['_id']?.toString();
-          _currentUserRole = profileResult['data']['role']?.toString();
-        });
-        print('✅ Current user ID: $_currentUserId');
-        print('✅ Current user role: $_currentUserRole');
-      }
-    } catch (e) {
-      print('❌ Error loading current user ID: $e');
+      debugPrint('❌ Error loading user profile: $e');
     }
   }
 
   Future<void> _loadMessages() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (!mounted) return;
+    setState(() => _isLoading = _messages.isEmpty);
+
+    final otherId = _resolvedOtherUserId ?? widget.otherUserId;
+    if (otherId == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
 
     try {
-      final result = await ApiService.getChatMessages(
-        chatId: widget.chatId,
-        page: 1,
-        limit: 50,
-      );
+      // ✅ Use local database for initial load (Much faster!)
+      final localMessages = await AgoraChatService.instance
+          .loadMessagesFromLocal(conversationId: otherId);
 
-      if (result['success'] == true) {
-        final messages = result['data']?['items'] ?? [];
-
-        Set<String> ids = {};
-        for (var msg in messages) {
-          final msgId = msg['_id']?.toString();
-          if (msgId != null) {
-            ids.add(msgId);
-          }
-        }
+      if (mounted) {
+        final List<dynamic> formattedMessages = localMessages
+            .map((m) => _convertAgoraMessage(m))
+            .toList();
 
         setState(() {
-          _messages = messages;
-          _messageIds = ids;
+          _messages = formattedMessages;
           _isLoading = false;
         });
 
-        if (_messages.isNotEmpty && _currentUserId != null) {
-          for (var msg in _messages) {
-            final senderId = msg['sender']?['_id']?.toString();
-            if (senderId != null && senderId != _currentUserId) {
-              setState(() {
-                if (_resolvedOtherUserId == null) {
-                  _resolvedOtherUserId = senderId;
-                }
-                _otherUserRole = msg['sender']?['role']?.toString();
-                _actualUserAvatar = msg['sender']?['avatar']?['url']
-                    ?.toString();
-              });
-              print('✅ Loaded real user data:');
-              print('   Name: $_actualUserName');
-              print('   Avatar: $_actualUserAvatar');
-              print('   Role: $_otherUserRole');
+        // Try to identify other user ID if not set
+        if (_resolvedOtherUserId == null && localMessages.isNotEmpty) {
+          for (var m in localMessages) {
+            if (m.from != _currentUserId) {
+              setState(() => _resolvedOtherUserId = m.from);
               break;
             }
           }
         }
 
-        print('✅ Loaded ${_messages.length} messages');
-        print('✅ Other user ID: $_resolvedOtherUserId');
-        print('✅ Other user role: $_otherUserRole');
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
-            _scrollController.jumpTo(
-              _scrollController.position.maxScrollExtent,
-            );
-          }
-        });
-      } else {
-        print('⚠️ Failed to load messages: ${result['message']}');
-        setState(() {
-          _isLoading = false;
-        });
+        _scrollToBottom();
       }
+
+      // 🔄 Sync from server in background silently
+      AgoraChatService.instance
+          .fetchHistoryMessages(conversationId: otherId)
+          .then((remoteMessages) {
+            if (mounted && remoteMessages.isNotEmpty) {
+              final List<dynamic> updatedMessages = remoteMessages
+                  .map((m) => _convertAgoraMessage(m))
+                  .toList();
+              setState(() {
+                _messages = updatedMessages;
+              });
+            }
+          });
     } catch (e) {
-      print('❌ Error loading messages: $e');
-      setState(() {
-        _isLoading = false;
+      debugPrint('❌ Error loading messages: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ✅ Multi-select Delete Helper
+  void _toggleSelection(String msgId) {
+    setState(() {
+      if (_selectedMessageIds.contains(msgId)) {
+        _selectedMessageIds.remove(msgId);
+        if (_selectedMessageIds.isEmpty) {
+          _isSelectionMode = false;
+        }
+      } else {
+        _selectedMessageIds.add(msgId);
+        _isSelectionMode = true;
+      }
+    });
+  }
+
+  void _cancelSelection() {
+    setState(() {
+      _selectedMessageIds.clear();
+      _isSelectionMode = false;
+    });
+  }
+
+  Future<void> _deleteSelectedMessages() async {
+    if (_selectedMessageIds.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Messages'),
+        content: Text(
+          'Are you sure you want to delete ${_selectedMessageIds.length} messages?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        final idsToDelete = _selectedMessageIds.toList();
+        await AgoraChatService.instance.deleteMessages(
+          conversationId: widget.chatId,
+          messageIds: idsToDelete,
+        );
+
+        if (mounted) {
+          setState(() {
+            _messages.removeWhere((m) => idsToDelete.contains(m['_id']));
+            _cancelSelection();
+          });
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Messages deleted')));
+        }
+      } catch (e) {
+        debugPrint('❌ Failed to delete messages: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete messages: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  // ✅ New Auto-refresh polling
+  void _startAutoRefresh() {
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (mounted) {
+        _loadMessages();
+      }
+    });
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients && _isAutoScrollEnabled) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Map<String, dynamic> _convertAgoraMessage(ChatMessage message) {
+    String content = '';
+    List<Map<String, dynamic>> fileUrl = [];
+
+    if (message.body is ChatTextMessageBody) {
+      content = (message.body as ChatTextMessageBody).content;
+    } else if (message.body is ChatImageMessageBody) {
+      final body = message.body as ChatImageMessageBody;
+      fileUrl.add({
+        'url': body.remotePath ?? body.localPath,
+        'name': body.displayName ?? 'image.jpg',
+      });
+    } else if (message.body is ChatFileMessageBody) {
+      final body = message.body as ChatFileMessageBody;
+      fileUrl.add({
+        'url': body.remotePath ?? body.localPath,
+        'name': body.displayName ?? 'file',
       });
     }
+
+    return {
+      '_id': message.msgId,
+      'content': content.isEmpty ? ' ' : content,
+      'sender': {
+        '_id': message.from,
+        'fullName': message.from == _currentUserId
+            ? (_currentUserName ?? 'Me')
+            : (_actualUserName ?? widget.userName),
+        'avatar': {
+          'url': message.from == _currentUserId
+              ? _currentUserAvatar
+              : _actualUserAvatar,
+        },
+      },
+      'fileUrl': fileUrl,
+      ...message.attributes ?? {},
+      'createdAt': DateTime.fromMillisecondsSinceEpoch(
+        message.serverTime,
+      ).toIso8601String(),
+    };
   }
 
   Future<void> _sendMessage() async {
     final content = _controller.text.trim();
+
+    debugPrint(
+      '📤 [Doctor] Attempting to send message. Content length: ${content.length}',
+    );
 
     if (content.isEmpty && _selectedFiles.isEmpty) return;
     if (_isSending) return;
@@ -262,39 +337,53 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     });
 
     try {
-      final result = await ApiService.sendMessage(
-        chatId: widget.chatId,
+      final otherId = _resolvedOtherUserId ?? widget.otherUserId;
+      if (otherId == null) throw Exception('Recipient ID missing');
+
+      debugPrint('✉️ [Doctor] Sending to PatientID: $otherId');
+
+      final sentMessage = await AgoraChatService.instance.sendMessage(
+        conversationId: otherId,
         content: content,
         files: _selectedFiles.isNotEmpty ? _selectedFiles : null,
-        contentType: _selectedFiles.isNotEmpty ? 'file' : 'text',
       );
 
-      if (result['success'] == true) {
+      debugPrint(
+        '✅ [Doctor] Message returned from SDK: ${sentMessage?.msgId ?? "NULL"}',
+      );
+
+      if (sentMessage != null && mounted) {
         _controller.clear();
         setState(() {
           _selectedFiles = [];
           _isAutoScrollEnabled = true;
+          // Optimistic update
+          _messages.add(_convertAgoraMessage(sentMessage));
         });
 
-        await _loadMessages();
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to send: ${result['message']}')),
-          );
-        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
       }
     } catch (e) {
-      print('❌ Error sending message: $e');
+      debugPrint('❌ [Doctor] Error sending message: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Failed to send message')));
       }
     } finally {
-      setState(() {
-        _isSending = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+        });
+      }
     }
   }
 
@@ -307,7 +396,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         });
       }
     } catch (e) {
-      print('Error picking image: $e');
+      debugPrint('Error picking image: $e');
     }
   }
 
@@ -333,17 +422,17 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     }
 
     try {
-      print(
+      debugPrint(
         '${isVideo ? "📹" : "🎤"} Starting ${isVideo ? "video" : "audio"} call...',
       );
-      print('👤 Current user: $_currentUserId');
-      print('👤 Other user: $targetUserId');
-      print('💬 Chat ID: ${widget.chatId}');
+      debugPrint('👤 Current user: $_currentUserId');
+      debugPrint('👤 Other user: $targetUserId');
+      debugPrint('💬 Chat ID: ${widget.chatId}');
 
       // ✅ Use API instead of direct socket emission
       final socketService = SocketService.instance;
       if (!socketService.isConnected) {
-        print('⚠️ Socket not connected, attempting to connect...');
+        debugPrint('⚠️ Socket not connected, attempting to connect...');
         if (_currentUserId != null) {
           await socketService.connect(_currentUserId!);
           // Wait a bit for connection to stabilize
@@ -355,7 +444,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         }
       }
 
-      print('✅ Socket connected, initiating call via API...');
+      debugPrint('✅ Socket connected, initiating call via API...');
 
       // ✅ Use API instead of direct socket emission
       final result = await ApiService.initiateCall(
@@ -365,22 +454,25 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       );
 
       if (result['success'] == true) {
-        print('📤 Call initiated successfully');
+        debugPrint('📤 Call initiated successfully');
 
         if (mounted) {
+          final String stableChatId =
+              result['data']?['chatId']?.toString() ?? widget.chatId;
+
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => isVideo
                   ? VideoCallScreen(
-                      chatId: widget.chatId,
+                      chatId: stableChatId,
                       userName: widget.userName,
                       userAvatar: _actualUserAvatar ?? widget.userAvatar,
                       otherUserId: targetUserId,
                       isInitiator: true,
                     )
                   : AudioCallScreen(
-                      chatId: widget.chatId,
+                      chatId: stableChatId,
                       userName: widget.userName,
                       userAvatar: _actualUserAvatar ?? widget.userAvatar,
                       otherUserId: targetUserId,
@@ -393,7 +485,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         throw Exception(result['message'] ?? 'Failed to initiate call');
       }
     } catch (e) {
-      print('❌ Error starting call: $e');
+      debugPrint('❌ Error starting call: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -412,71 +504,101 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 24),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundImage:
-                  (_actualUserAvatar ?? widget.userAvatar) != null &&
-                      (_actualUserAvatar ?? widget.userAvatar)!.isNotEmpty &&
-                      (_actualUserAvatar ?? widget.userAvatar) != 'file:///' &&
-                      ((_actualUserAvatar ?? widget.userAvatar)!.startsWith(
-                            'http://',
-                          ) ||
-                          (_actualUserAvatar ?? widget.userAvatar)!.startsWith(
-                            'https://',
-                          ))
-                  ? NetworkImage(_actualUserAvatar ?? widget.userAvatar!)
-                  : const AssetImage('assets/images/doctor.png')
-                        as ImageProvider,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        leading: _isSelectionMode
+            ? IconButton(
+                icon: const Icon(Icons.close, color: Colors.black),
+                onPressed: _cancelSelection,
+              )
+            : IconButton(
+                icon: const Icon(
+                  Icons.arrow_back,
+                  color: Colors.black,
+                  size: 24,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+        title: _isSelectionMode
+            ? Text(
+                '${_selectedMessageIds.length} selected',
+                style: const TextStyle(color: Colors.black, fontSize: 18),
+              )
+            : Row(
                 children: [
-                  Text(
-                    _actualUserName ?? widget.userName,
-                    style: const TextStyle(
-                      color: Color(0xFF1B2C49),
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundImage: _getAvatarImage(_actualUserAvatar),
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    _otherUserRole == 'doctor' ? 'Doctor' : 'Patient',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _actualUserName ?? widget.userName,
+                          style: const TextStyle(
+                            color: Color(0xFF1B2C49),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          _otherUserRole == 'doctor' ? 'Doctor' : 'Patient',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.phone_outlined,
-              color: Colors.black,
-              size: 24,
-            ),
-            onPressed: () => _initiateCall(isVideo: false),
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.videocam_outlined,
-              color: Colors.black,
-              size: 28,
-            ),
-            onPressed: () => _initiateCall(isVideo: true),
-          ),
-          const SizedBox(width: 10),
-        ],
+        actions: _isSelectionMode
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: _deleteSelectedMessages,
+                ),
+                const SizedBox(width: 10),
+              ]
+            : [
+                IconButton(
+                  icon: const Icon(
+                    Icons.phone_outlined,
+                    color: Colors.black,
+                    size: 24,
+                  ),
+                  onPressed: () => _initiateCall(isVideo: false),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.videocam_outlined,
+                    color: Colors.black,
+                    size: 28,
+                  ),
+                  onPressed: () => _initiateCall(isVideo: true),
+                ),
+                const SizedBox(width: 10),
+              ],
       ),
       body: Column(
         children: [
@@ -512,16 +634,36 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                       ],
                     ),
                   )
-                : ListView.builder(
+                : ListView.separated(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 10,
                     ),
                     itemCount: _messages.length,
+                    separatorBuilder: (context, index) {
+                      final currentDate =
+                          _messages[index]['createdAt'] as String;
+                      final nextDate = (index + 1 < _messages.length)
+                          ? _messages[index + 1]['createdAt'] as String
+                          : null;
+
+                      if (nextDate != null &&
+                          !_isSameDay(currentDate, nextDate)) {
+                        return _buildDateSeparator(nextDate);
+                      }
+                      return const SizedBox.shrink();
+                    },
                     itemBuilder: (context, index) {
-                      final message = _messages[index];
-                      return _buildMessageBubble(message);
+                      if (index == 0) {
+                        return Column(
+                          children: [
+                            _buildDateSeparator(_messages[0]['createdAt']),
+                            _buildMessageBubble(_messages[index]),
+                          ],
+                        );
+                      }
+                      return _buildMessageBubble(_messages[index]);
                     },
                   ),
           ),
@@ -574,51 +716,72 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
             ),
 
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: Colors.grey.shade200),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
                   ),
                 ],
               ),
               child: Row(
                 children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.add_circle_outline,
+                      color: Color(0xFF6C5CE7),
+                      size: 26,
+                    ),
+                    onPressed: _pickImage,
+                  ),
                   Expanded(
                     child: TextField(
                       controller: _controller,
                       maxLines: null,
+                      style: const TextStyle(fontSize: 15),
                       decoration: const InputDecoration(
-                        hintText: "Type your message.......",
+                        hintText: "Type a message...",
                         hintStyle: TextStyle(color: Colors.grey, fontSize: 15),
                         border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 8),
                       ),
                       onSubmitted: (_) => _sendMessage(),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.image_outlined,
-                      color: Colors.black87,
+                  GestureDetector(
+                    onTap: _sendMessage,
+                    child: Container(
+                      margin: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(10),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      child: _isSending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.send_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
                     ),
-                    onPressed: _pickImage,
-                  ),
-                  IconButton(
-                    icon: _isSending
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send, color: Color(0xFF1E61D4)),
-                    onPressed: _sendMessage,
                   ),
                 ],
               ),
@@ -629,14 +792,65 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     );
   }
 
+  void _setupAgoraListeners() {
+    final otherId = _resolvedOtherUserId ?? widget.otherUserId;
+    if (otherId == null) return;
+
+    AgoraChatService.instance.addMessageListener(
+      widget.chatId,
+      ChatEventHandler(
+        onMessagesReceived: (messages) {
+          bool hasNewForThisChat = false;
+          final List<dynamic> newMessages = [];
+
+          for (var msg in messages) {
+            debugPrint(
+              '📩 Received message: ${msg.msgId} from ${msg.from} conversationId: ${msg.conversationId}',
+            );
+
+            if (msg.conversationId == otherId || msg.from == otherId) {
+              hasNewForThisChat = true;
+              newMessages.add(_convertAgoraMessage(msg));
+            }
+          }
+
+          if (hasNewForThisChat && mounted) {
+            debugPrint(
+              '🔄 Appending ${newMessages.length} new messages locally',
+            );
+            setState(() {
+              _messages.addAll(newMessages);
+              _messages.sort(
+                (a, b) => (a['createdAt'] as String).compareTo(
+                  b['createdAt'] as String,
+                ),
+              );
+            });
+            _scrollToBottom();
+            AgoraChatService.instance.markAllMessagesAsRead(
+              widget.chatId,
+            ); // ✅ Clear count live
+          }
+        },
+      ),
+    );
+    debugPrint('✅ Agora Chat listeners setup for $otherId');
+  }
+
   Widget _buildMessageBubble(Map<String, dynamic> message) {
+    // Check for Call Log
+    if (message['type'] == 'call_log') {
+      return _buildCallLogBubble(message);
+    }
+
+    final String msgId = message['_id']?.toString() ?? '';
+    final bool isSelected = _selectedMessageIds.contains(msgId);
     final String content = message['content']?.toString() ?? '';
     final String senderId = message['sender']?['_id']?.toString() ?? '';
-    final String senderName =
-        message['sender']?['fullName']?.toString() ?? 'Unknown';
     final String? senderAvatar = message['sender']?['avatar']?['url']
         ?.toString();
 
+    // ✅ Robust alignment: Compare senderId with currentUserId
     final bool isMe = _currentUserId != null && senderId == _currentUserId;
 
     final DateTime? createdAt = message['createdAt'] != null
@@ -645,161 +859,217 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
 
     final List<dynamic> fileUrl = message['fileUrl'] ?? [];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isMe)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: CircleAvatar(
-                radius: 16,
-                backgroundImage:
-                    senderAvatar != null &&
-                        senderAvatar.isNotEmpty &&
-                        senderAvatar != 'file:///' &&
-                        (senderAvatar.startsWith('http://') ||
-                            senderAvatar.startsWith('https://'))
-                    ? NetworkImage(senderAvatar)
-                    : const AssetImage("assets/images/doctor.png")
-                          as ImageProvider,
+    return InkWell(
+      onTap: _isSelectionMode ? () => _toggleSelection(msgId) : null,
+      onLongPress: () => _toggleSelection(msgId),
+      child: Container(
+        color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+        child: Row(
+          mainAxisAlignment: isMe
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!isMe)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundImage: _getAvatarImage(senderAvatar),
+                ),
               ),
-            ),
-          Column(
-            crossAxisAlignment: isMe
-                ? CrossAxisAlignment.end
-                : CrossAxisAlignment.start,
-            children: [
-              if (!isMe)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8, bottom: 4),
-                  child: Text(
-                    senderName,
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+            Column(
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.7,
                   ),
-                ),
-              Container(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.65,
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: isMe
-                      ? const Color(0xFF7C69FF)
-                      : const Color(0xFFF1F4F7),
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(20),
-                    topRight: const Radius.circular(20),
-                    bottomLeft: isMe
-                        ? const Radius.circular(20)
-                        : const Radius.circular(4),
-                    bottomRight: isMe
-                        ? const Radius.circular(4)
-                        : const Radius.circular(20),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (fileUrl.isNotEmpty)
-                      ...fileUrl.map((file) {
-                        final String? url = file['url']?.toString();
-                        if (url != null &&
-                            url.isNotEmpty &&
-                            url != 'file:///' &&
-                            (url.startsWith('http://') ||
-                                url.startsWith('https://'))) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                url,
-                                width: 200,
-                                height: 200,
-                                fit: BoxFit.cover,
-                                loadingBuilder:
-                                    (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Container(
-                                        width: 200,
-                                        height: 200,
-                                        color: Colors.grey[300],
-                                        child: const Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                      );
-                                    },
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: 200,
-                                    height: 200,
-                                    color: Colors.grey[300],
-                                    child: const Icon(Icons.broken_image),
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }),
-
-                    if (content.isNotEmpty && content.trim() != ' ')
-                      Text(
-                        content,
-                        style: TextStyle(
-                          color: isMe ? Colors.white : const Color(0xFF1B2C49),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w400,
-                        ),
+                  decoration: BoxDecoration(
+                    gradient: isMe
+                        ? const LinearGradient(
+                            colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: isMe ? null : Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(22),
+                      topRight: const Radius.circular(22),
+                      bottomLeft: isMe
+                          ? const Radius.circular(22)
+                          : const Radius.circular(4),
+                      bottomRight: isMe
+                          ? const Radius.circular(4)
+                          : const Radius.circular(22),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(isMe ? 0.1 : 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                  ],
-                ),
-              ),
-              if (createdAt != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, left: 8, right: 8),
-                  child: Text(
-                    _formatMessageTime(createdAt),
-                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (fileUrl.isNotEmpty)
+                        ...fileUrl.map((file) {
+                          final String? url = file['url']?.toString();
+                          if (url != null && url.isNotEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child:
+                                    (url.startsWith('https://') ||
+                                        url.startsWith('http://'))
+                                    ? Image.network(
+                                        url,
+                                        width: 200,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Image.file(
+                                        File(url),
+                                        width: 200,
+                                        fit: BoxFit.cover,
+                                      ),
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        }),
+
+                      if (content.isNotEmpty && content.trim() != ' ')
+                        Text(
+                          content,
+                          style: TextStyle(
+                            color: isMe
+                                ? Colors.white
+                                : const Color(0xFF1B2C49),
+                            fontSize: 15,
+                            height: 1.4,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-            ],
-          ),
-          if (isMe)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: CircleAvatar(
-                radius: 16,
-                backgroundImage: AssetImage("assets/images/profile.png"),
-              ),
+                if (createdAt != null)
+                  Padding(
+                    padding: EdgeInsets.only(
+                      top: 6,
+                      left: isMe ? 0 : 8,
+                      right: isMe ? 8 : 0,
+                    ),
+                    child: Text(
+                      _formatTime(message['createdAt']),
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-        ],
+            if (isMe)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundImage: _getAvatarImage(_currentUserAvatar),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  String _formatMessageTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
+  Widget _buildCallLogBubble(Map<String, dynamic> message) {
+    final String msgId = message['_id']?.toString() ?? '';
+    final bool isSelected = _selectedMessageIds.contains(msgId);
+    final String callType = message['call_type']?.toString() ?? 'audio';
+    final String status = message['status']?.toString() ?? 'ended';
+    final String duration = message['duration']?.toString() ?? '';
+    final String content = message['content']?.toString() ?? 'Call';
 
-    if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'Just now';
+    final bool isVideo = callType == 'video';
+    Color iconColor;
+    IconData iconData;
+
+    switch (status) {
+      case 'missed':
+        iconColor = Colors.red;
+        iconData = isVideo ? Icons.missed_video_call : Icons.phone_missed;
+        break;
+      case 'declined':
+        iconColor = Colors.grey;
+        iconData = isVideo ? Icons.videocam_off : Icons.phone_disabled;
+        break;
+      case 'cancelled':
+        iconColor = Colors.grey;
+        iconData = isVideo ? Icons.videocam : Icons.phone;
+        break;
+      default:
+        iconColor = const Color(0xFF6C5CE7);
+        iconData = isVideo ? Icons.videocam : Icons.phone;
     }
+
+    return InkWell(
+      onTap: _isSelectionMode ? () => _toggleSelection(msgId) : null,
+      onLongPress: () => _toggleSelection(msgId),
+      child: Container(
+        color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? Colors.blue[50] : Colors.grey[100],
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected ? Colors.blue.shade300 : Colors.grey.shade300,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(iconData, size: 18, color: iconColor),
+                const SizedBox(width: 10),
+                Text(
+                  status == 'ended' && duration.isNotEmpty
+                      ? '${content.replaceFirst(' ($duration)', '')} ($duration)'
+                      : content,
+                  style: TextStyle(
+                    color: Colors.grey[800],
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   ImageProvider _getAvatarImage(String? avatarUrl) {
@@ -826,14 +1096,70 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     }
   }
 
+  bool _isSameDay(String? ts1, String? ts2) {
+    if (ts1 == null || ts2 == null) return false;
+    try {
+      final d1 = DateTime.parse(ts1).toLocal();
+      final d2 = DateTime.parse(ts2).toLocal();
+      return d1.year == d2.year && d1.month == d2.month && d1.day == d2.day;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Widget _buildDateSeparator(String? timestamp) {
+    if (timestamp == null) return const SizedBox.shrink();
+    try {
+      final date = DateTime.parse(timestamp).toLocal();
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final yesterday = today.subtract(const Duration(days: 1));
+      final msgDate = DateTime(date.year, date.month, date.day);
+
+      String text;
+      if (msgDate == today) {
+        text = 'Today';
+      } else if (msgDate == yesterday) {
+        text = 'Yesterday';
+      } else {
+        text = DateFormat('MMMM d, y').format(date);
+      }
+
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade100),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5),
+              ],
+            ),
+            child: Text(
+              text,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      return const SizedBox.shrink();
+    }
+  }
+
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    _autoRefreshTimer?.cancel(); // ✅ Stop timer
     _controller.dispose();
     _scrollController.dispose();
-    SocketService.instance.off('call:incoming');
-    SocketService.instance.off('message:new');
-    print('Auto-refresh stopped');
+    AgoraChatService.instance.removeMessageListener(widget.chatId);
     super.dispose();
   }
 }

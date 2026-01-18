@@ -2,7 +2,6 @@ import 'package:docmobi/screens/doctor/home/notifications/notifications.dart';
 import 'package:docmobi/screens/doctor/messages/doctor_messages_list_screen.dart';
 import 'package:docmobi/screens/doctor/posts/doctor_create_post_screen.dart';
 import 'package:docmobi/screens/doctor/profile/doctor_profile_screen.dart';
-import 'package:docmobi/screens/patient/notification/notification_screen.dart';
 import 'package:docmobi/widgets/post_card.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/services/api_service.dart';
@@ -126,7 +125,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
           _isSearchLoading = false;
         });
 
-        print(
+        debugPrint(
           '🔍 Search complete: ${_searchResults.length} posts, ${_searchSuggestions.length} suggestions',
         );
       } else {
@@ -137,7 +136,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
         });
       }
     } catch (e) {
-      print('❌ Search error: $e');
+      debugPrint('❌ Search error: $e');
       if (!mounted) return;
       setState(() {
         _isSearchLoading = false;
@@ -202,7 +201,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     try {
       await context.read<UserProvider>().fetchUserProfile();
     } catch (e) {
-      print('⚠️ Error loading user data: $e');
+      debugPrint('⚠️ Error loading user data: $e');
     }
   }
 

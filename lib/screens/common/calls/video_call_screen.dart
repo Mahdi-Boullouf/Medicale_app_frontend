@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 import '../../../services/socket_service.dart';
 import '../../../services/agora_service.dart';
+import '../../../services/agora_chat_service.dart';
 
 class VideoCallScreen extends StatefulWidget {
   final String chatId;
@@ -61,7 +62,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       final profileResult = await ApiService.getUserProfile();
       if (profileResult['success'] == true) {
         _currentUserId = profileResult['data']['_id']?.toString();
-        print('✅ Current user ID loaded: $_currentUserId');
+        debugPrint('✅ Current user ID loaded: $_currentUserId');
 
         // Initialize Call
         await _initializeCall();
@@ -69,7 +70,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         throw Exception('Failed to load user profile');
       }
     } catch (e) {
-      print('❌ Error loading user ID: $e');
+      debugPrint('❌ Error loading user ID: $e');
       if (mounted) {
         _showError('Failed to initialize: $e');
       }
@@ -88,7 +89,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       // 2. Setup Agora Listeners
       _agoraService.onUserJoined = (uid, elapsed) {
         if (mounted) {
-          print('✅ Remote user joined: $uid');
+          debugPrint('✅ Remote user joined: $uid');
           setState(() {
             _remoteUid = uid;
             _isCallConnected = true;
@@ -100,7 +101,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
       _agoraService.onUserOffline = (uid, reason) {
         if (mounted) {
-          print('Remote user offline: $reason');
+          debugPrint('Remote user offline: $reason');
           // Optional: Don't end call immediately if it's just a temporary drop, but for now we end it or show waiting
           // _endCall();
           setState(() {
@@ -111,7 +112,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       };
 
       _agoraService.onLeaveChannel = (stats) {
-        print('I left the channel');
+        debugPrint('I left the channel');
       };
 
       // 3. Setup Socket Listeners (for strict signaling like End Call)
@@ -127,11 +128,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         // Wait for 'call:accepted' event before joining to avoid joining empty channel
       } else {
         // Receiver joins immediately
-        print('📥 Receiver joining channel immediately...');
+        debugPrint('📥 Receiver joining channel immediately...');
         await _joinAgoraChannel();
       }
     } catch (e) {
-      print('❌ Error initializing call: $e');
+      debugPrint('❌ Error initializing call: $e');
       _showError('Failed to start call: $e');
     }
   }
@@ -150,7 +151,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         if (mounted) _showError('Connection security failed');
         return;
       }
-      print('🔐 Call Token Secured');
+      debugPrint('🔐 Call Token Secured');
 
       // Use chatId as channel name
       await _agoraService.joinChannel(
@@ -159,9 +160,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         isVideo: true,
         token: token, // Pass dynamic token
       );
-      print('✅ Joined Agora channel: ${widget.chatId}');
+      debugPrint('✅ Joined Agora channel: ${widget.chatId}');
     } catch (e) {
-      print('❌ Failed to join channel: $e');
+      debugPrint('❌ Failed to join channel: $e');
       _showError('Failed to connect to call');
     }
   }
@@ -176,9 +177,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     socket.off('call:rejected');
 
     socket.on('call:accepted', (data) async {
-      print('📥 Received call:accepted event');
+      debugPrint('📥 Received call:accepted event');
       if (data['chatId'] == widget.chatId) {
-        print('✅ Call accepted, joining Agora channel...');
+        debugPrint('✅ Call accepted, joining Agora channel...');
         setState(() => _callStatus = 'Connecting...');
         await _joinAgoraChannel();
       }
@@ -186,7 +187,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
     socket.on('call:ended', (data) {
       if (data['chatId'] == widget.chatId) {
-        print('📴 Call ended by remote user');
+        debugPrint('📴 Call ended by remote user');
         _endCall();
       }
     });
@@ -244,8 +245,22 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   void _endCall() async {
     if (_isDisposed) return;
     _isDisposed = true;
-
     _callTimer?.cancel();
+
+    // ✅ Log Call to Chat (Initiator Only to prevent duplicates)
+    try {
+      if (widget.otherUserId.isNotEmpty && widget.isInitiator) {
+        String status = _isCallConnected ? 'ended' : 'cancelled';
+        await AgoraChatService.instance.sendCallLog(
+          conversationId: widget.otherUserId,
+          callType: 'video',
+          status: status,
+          duration: _isCallConnected ? _callDuration : '',
+        );
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to send call log: $e');
+    }
 
     // Notify server
     SocketService.instance.emit('call:end', {
@@ -276,7 +291,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   @override
   void dispose() {
-    print('🧹 Disposing VideoCallScreen');
+    debugPrint('🧹 Disposing VideoCallScreen');
     WakelockPlus.disable();
     _callTimer?.cancel();
 

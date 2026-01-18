@@ -1,7 +1,8 @@
 import 'package:docmobi/screens/doctor/messages/doctor_chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/services/api_service.dart';
-import 'package:docmobi/services/socket_service.dart';
+import 'package:docmobi/services/agora_chat_service.dart';
+import 'package:agora_chat_sdk/agora_chat_sdk.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 
@@ -22,6 +23,8 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
   bool isLoading = true;
   String? currentUserId;
   Timer? _autoRefreshTimer;
+  Set<String> _selectedConversationIds = {}; // ✅ For multi-select delete
+  bool _isSelectionMode = false; // ✅ Selection mode toggle
 
   @override
   void initState() {
@@ -30,7 +33,7 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
     _loadCurrentUserId();
     _loadChats();
     _startAutoRefresh(); // ✅ Auto-refresh every 3 seconds
-    _setupSocketListener(); // ✅ Listen to socket events
+    _setupAgoraListener(); // ✅ Listen to Agora messages
 
     if (widget.initialDoctorId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -39,15 +42,17 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
     }
   }
 
-  // ✅ Setup socket listener for real-time updates
-  void _setupSocketListener() {
-    final socket = SocketService.instance.socket;
-    if (socket != null) {
-      socket.on('message:new', (data) {
-        print('📨 New message received in doctor list');
-        _loadChats(); // Reload chats when new message arrives
-      });
-    }
+  // ✅ Setup Agora listener for real-time updates
+  void _setupAgoraListener() {
+    AgoraChatService.instance.addMessageListener(
+      'doctor_chat_list_refresher',
+      ChatEventHandler(
+        onMessagesReceived: (messages) {
+          debugPrint('📨 Agora message received in doctor list - refreshing');
+          _loadChatsQuietly(); // Reload chats when new message arrives
+        },
+      ),
+    );
   }
 
   // ✅ Start auto-refresh timer
@@ -61,38 +66,183 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
 
   // ✅ Silent reload (no loading indicator)
   Future<void> _loadChatsQuietly() async {
+    await _loadChats(quiet: true);
+  }
+
+  Future<void> _loadChats({bool quiet = false}) async {
+    if (!quiet) setState(() => isLoading = true);
+
     try {
-      final response = await ApiService.getMyChats();
-      if (response['success'] == true && mounted) {
-        final chats = List<Map<String, dynamic>>.from(response['data'] ?? []);
+      // 1. Fetch conversations from Agora
+      final List<ChatConversation> conversations = await AgoraChatService
+          .instance
+          .fetchConversations();
 
-        Map<String, Map<String, dynamic>> uniqueChatsMap = {};
-        for (var chat in chats) {
-          final chatId = chat['_id']?.toString();
-          if (chatId != null) {
-            if (!uniqueChatsMap.containsKey(chatId) ||
-                _isNewerChat(chat, uniqueChatsMap[chatId]!)) {
-              uniqueChatsMap[chatId] = chat;
-            }
-          }
-        }
+      // 2. Pre-fetch details for sorting
+      List<Map<String, dynamic>> tempChats = [];
 
-        final uniqueChats = uniqueChatsMap.values.toList();
+      for (var conv in conversations) {
+        if (conv.id.isEmpty) continue; // ✅ 'id' instead of 'conversationId'
 
-        uniqueChats.sort((a, b) {
-          final aTime = a['updatedAt']?.toString() ?? '';
-          final bTime = b['updatedAt']?.toString() ?? '';
-          return bTime.compareTo(aTime);
+        final lastMsg = await conv.latestMessage(); // ✅ await the method
+        if (lastMsg == null) continue;
+
+        tempChats.add({
+          'conv': conv,
+          'lastMsg': lastMsg,
+          'time': lastMsg.serverTime,
         });
+      }
 
-        if (mounted) {
-          setState(() {
-            allChats = uniqueChats;
-          });
+      // Sort by time descending
+      tempChats.sort((a, b) => (b['time'] as int).compareTo(a['time'] as int));
+
+      List<Map<String, dynamic>> formattedChats = [];
+
+      for (var item in tempChats) {
+        final conv = item['conv'] as ChatConversation;
+        final lastMsg = item['lastMsg'] as ChatMessage;
+        final conversationId = conv.id;
+
+        // 3. Resolve user details from API
+        String userName = 'User';
+        String? avatarUrl;
+        String role = 'patient'; // Default to patient for doctor view
+
+        try {
+          final userProfile = await ApiService.getUserProfile(
+            userId: conversationId,
+          );
+          if (userProfile['success'] == true) {
+            userName = userProfile['data']['fullName'] ?? 'User';
+            avatarUrl = userProfile['data']['avatar']?['url'];
+            role = userProfile['data']['role'] ?? 'patient';
+          }
+        } catch (e) {
+          debugPrint('⚠️ Could not resolve user $conversationId: $e');
         }
+
+        // 4. Format for UI
+        String content = '';
+        if (lastMsg.attributes?['type'] == 'call_log') {
+          final isVideo = lastMsg.attributes?['call_type'] == 'video';
+          content = isVideo ? 'Video Call' : 'Voice Call';
+        } else if (lastMsg.body.type == MessageType.TXT) {
+          content = (lastMsg.body as ChatTextMessageBody).content;
+        } else if (lastMsg.body.type == MessageType.IMAGE) {
+          content = '[Image]';
+        } else if (lastMsg.body.type == MessageType.FILE) {
+          content = '[File]';
+        } else {
+          content = '[Message]';
+        }
+
+        formattedChats.add({
+          '_id': conversationId,
+          'participants': [
+            {
+              'role': role,
+              '_id': conversationId,
+              'fullName': userName,
+              'avatar': {'url': avatarUrl},
+            },
+          ],
+          'lastMessage': {
+            'content': content,
+            'createdAt': DateTime.fromMillisecondsSinceEpoch(
+              lastMsg.serverTime,
+            ).toIso8601String(),
+          },
+          'unreadCount': await conv.unreadCount(),
+          'updatedAt': DateTime.fromMillisecondsSinceEpoch(
+            lastMsg.serverTime,
+          ).toIso8601String(),
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          allChats = formattedChats;
+          isLoading = false;
+        });
+        debugPrint('✅ Loaded ${allChats.length} conversations from Agora');
       }
     } catch (e) {
-      print('Error in quiet reload: $e');
+      debugPrint('Error loading chats: $e');
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  // ✅ Multi-select Delete Helper
+  void _toggleSelection(String convId) {
+    setState(() {
+      if (_selectedConversationIds.contains(convId)) {
+        _selectedConversationIds.remove(convId);
+        if (_selectedConversationIds.isEmpty) {
+          _isSelectionMode = false;
+        }
+      } else {
+        _selectedConversationIds.add(convId);
+        _isSelectionMode = true;
+      }
+    });
+  }
+
+  void _cancelSelection() {
+    setState(() {
+      _selectedConversationIds.clear();
+      _isSelectionMode = false;
+    });
+  }
+
+  Future<void> _deleteSelectedConversations() async {
+    if (_selectedConversationIds.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Chats'),
+        content: Text(
+          'Are you sure you want to delete ${_selectedConversationIds.length} conversations? This will remove all messages.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        final idsToDelete = _selectedConversationIds.toList();
+        for (var id in idsToDelete) {
+          await AgoraChatService.instance.deleteConversation(
+            conversationId: id,
+            deleteMessages: true,
+          );
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Conversations deleted')),
+          );
+          _cancelSelection();
+          _loadChats(); // Reload list
+        }
+      } catch (e) {
+        debugPrint('❌ Failed to delete conversations: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
+        }
+      }
     }
   }
 
@@ -103,55 +253,30 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
         setState(() {
           currentUserId = result['data']['_id']?.toString();
         });
+        await _ensureAgoraConnection(); // ✅ Ensure connection
       }
     } catch (e) {
-      print('Error loading user ID: $e');
+      debugPrint('Error loading user ID: $e');
     }
   }
 
-  Future<void> _loadChats() async {
-    setState(() => isLoading = true);
+  Future<void> _ensureAgoraConnection() async {
+    // 1. Initialize
+    if (!AgoraChatService.instance.isConnected) {
+      await AgoraChatService.instance.init();
+    }
+    // 2. Login Check
     try {
-      final response = await ApiService.getMyChats();
-      if (response['success'] == true) {
-        final chats = List<Map<String, dynamic>>.from(response['data'] ?? []);
-
-        Map<String, Map<String, dynamic>> uniqueChatsMap = {};
-        for (var chat in chats) {
-          final chatId = chat['_id']?.toString();
-          if (chatId != null) {
-            if (!uniqueChatsMap.containsKey(chatId) ||
-                _isNewerChat(chat, uniqueChatsMap[chatId]!)) {
-              uniqueChatsMap[chatId] = chat;
-            }
-          }
-        }
-
-        final uniqueChats = uniqueChatsMap.values.toList();
-
-        uniqueChats.sort((a, b) {
-          final aTime = a['updatedAt']?.toString() ?? '';
-          final bTime = b['updatedAt']?.toString() ?? '';
-          return bTime.compareTo(aTime);
-        });
-
-        setState(() {
-          allChats = uniqueChats;
-          isLoading = false;
-        });
-
-        print('✅ Loaded ${allChats.length} unique chats');
+      final isLoggedIn = await ChatClient.getInstance.isLoginBefore();
+      if (!isLoggedIn && currentUserId != null) {
+        debugPrint(
+          '🔄 DoctorList: Not logged in. logging in $currentUserId...',
+        );
+        await AgoraChatService.instance.login(currentUserId!);
       }
     } catch (e) {
-      print('Error loading chats: $e');
-      setState(() => isLoading = false);
+      debugPrint('❌ DoctorList: Agora Auth Check Failed: $e');
     }
-  }
-
-  bool _isNewerChat(Map<String, dynamic> chat1, Map<String, dynamic> chat2) {
-    final time1 = chat1['updatedAt']?.toString() ?? '';
-    final time2 = chat2['updatedAt']?.toString() ?? '';
-    return time1.compareTo(time2) > 0;
   }
 
   Future<void> _createChatWithDoctor(String doctorId) async {
@@ -229,14 +354,31 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Messages',
-          style: TextStyle(
+        leading: _isSelectionMode
+            ? IconButton(
+                icon: const Icon(Icons.close, color: Colors.black),
+                onPressed: _cancelSelection,
+              )
+            : null,
+        title: Text(
+          _isSelectionMode
+              ? "${_selectedConversationIds.length} selected"
+              : 'Messages',
+          style: const TextStyle(
             color: Color(0xFF1B2C49),
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: _isSelectionMode
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: _deleteSelectedConversations,
+                ),
+                const SizedBox(width: 10),
+              ]
+            : null,
         bottom: TabBar(
           controller: _tabController,
           labelColor: const Color(0xFF1664CD),
@@ -293,10 +435,22 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
 
   Widget _buildChatCard(Map<String, dynamic> chat) {
     final participants = chat['participants'] as List? ?? [];
-    final otherUser = participants.firstWhere(
-      (p) => p['_id'] != currentUserId,
-      orElse: () => participants.isNotEmpty ? participants[0] : {},
-    );
+    // ✅ Robust search for other participant to avoid TypeError
+    Map<String, dynamic>? otherUser;
+    for (var p in participants) {
+      if (p is Map && p['_id'] != currentUserId) {
+        otherUser = Map<String, dynamic>.from(p);
+        break;
+      }
+    }
+
+    if (otherUser == null && participants.isNotEmpty) {
+      otherUser = Map<String, dynamic>.from(participants[0]);
+    }
+
+    if (otherUser == null) {
+      return const SizedBox.shrink();
+    }
 
     final String userName = otherUser['fullName'] ?? 'Unknown';
     final String? userAvatar = otherUser['avatar']?['url'];
@@ -310,27 +464,36 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
         ? _formatTime(DateTime.parse(lastMessageTime))
         : '';
 
+    final String convId = chat['_id']?.toString() ?? '';
+    final bool isSelected = _selectedConversationIds.contains(convId);
+
     return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DoctorChatDetailScreen(
-              chatId: chat['_id'],
-              userName: userName,
-              userAvatar: userAvatar,
-              userRole: userRole,
-              otherUserId: otherUser['_id'],
-            ),
-          ),
-        ).then((_) => _loadChats());
-      },
+      onTap: _isSelectionMode
+          ? () => _toggleSelection(convId)
+          : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DoctorChatDetailScreen(
+                    chatId: chat['_id'],
+                    userName: userName,
+                    userAvatar: userAvatar,
+                    userRole: userRole,
+                    otherUserId: otherUser!['_id'],
+                  ),
+                ),
+              ).then((_) => _loadChats());
+            },
+      onLongPress: () => _toggleSelection(convId),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isSelected ? Colors.blue[50] : Colors.white,
           borderRadius: BorderRadius.circular(12),
+          border: isSelected
+              ? Border.all(color: Colors.blue.shade300)
+              : Border.all(color: Colors.transparent),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
@@ -450,7 +613,9 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
   void dispose() {
     _tabController.dispose();
     _autoRefreshTimer?.cancel(); // ✅ Cancel timer
-    SocketService.instance.off('message:new'); // ✅ Remove listener
+    AgoraChatService.instance.removeMessageListener(
+      'doctor_chat_list_refresher',
+    );
     super.dispose();
   }
 }
