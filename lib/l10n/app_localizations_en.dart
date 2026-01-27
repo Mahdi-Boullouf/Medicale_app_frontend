@@ -651,6 +651,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get videoCall => 'Video Call';
 
   @override
+  String get audioVideoCalls => 'Audio/Video Calls';
+
+  @override
   String get rescheduleAppointment => 'Reschedule Appointment';
 
   @override
@@ -1069,6 +1072,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceCall => 'Voice Call';
+
+  @override
+  String get doctorUnavailableForCalls =>
+      'Doctor is not available for calls at this time';
+
+  @override
+  String doctorUnavailableForCallsDescription(Object type) {
+    return 'The doctor is not available for $type calls. You can send a message or try again later.';
+  }
 
   @override
   String get imageLabel => '[Image]';

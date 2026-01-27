@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:docmobi/services/socket_service.dart';
 import 'package:docmobi/screens/common/calls/video_call_screen.dart';
 import 'package:docmobi/screens/common/calls/audio_call_screen.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 
 class CallManager {
   static final CallManager _instance = CallManager._internal();
@@ -75,6 +77,10 @@ class CallManager {
       debugPrint('   • Type: ${callData['isVideo'] ? "VIDEO 📹" : "AUDIO 📞"}');
       debugPrint('   • Context: ${_context != null ? "Available" : "NULL"}');
       debugPrint('   • Mounted: ${_context?.mounted}');
+
+      // Check availability before proceeding
+      final available = _isDoctorAvailableForCalls();
+      debugPrint('   • Doctor Available: ${available ? "YES ✅" : "NO 🚫"}');
       debugPrint('');
 
       if (_context != null && _context!.mounted) {
@@ -123,7 +129,14 @@ class CallManager {
       return;
     }
 
-    debugPrint('📱 Showing incoming call dialog');
+    // Check if doctor is available for calls
+    if (!_isDoctorAvailableForCalls()) {
+      debugPrint('🚫 Doctor not available for calls - Auto rejecting');
+      _rejectCallAutomatically(data);
+      return;
+    }
+
+    debugPrint('📱 Doctor available - Showing incoming call dialog');
 
     try {
       showDialog(
@@ -140,6 +153,84 @@ class CallManager {
       debugPrint('✅ Dialog shown successfully');
     } catch (e) {
       debugPrint('❌ Error showing dialog: $e');
+    }
+  }
+
+  /// Check if current user (doctor) is available for calls
+  bool _isDoctorAvailableForCalls() {
+    if (_context == null || !_context!.mounted) {
+      debugPrint('⚠️ Context not available for availability check');
+      return false;
+    }
+
+    try {
+      final userProvider = Provider.of<UserProvider>(_context!, listen: false);
+      final user = userProvider.user;
+
+      if (user == null) {
+        debugPrint('⚠️ No user found in provider');
+        return false;
+      }
+
+      // Check if user is a doctor and their call availability
+      final isDoctor = user.role == 'doctor';
+      final isAvailableForCalls = user.isVideoCallAvailable;
+
+      debugPrint('📋 Doctor Availability Check:');
+      debugPrint('   • Role: ${user.role}');
+      debugPrint('   • Is Doctor: $isDoctor');
+      debugPrint('   • Call Available: $isAvailableForCalls');
+
+      // Only apply availability check for doctors
+      // Patients should always be able to receive calls
+      return !isDoctor || isAvailableForCalls;
+    } catch (e) {
+      debugPrint('❌ Error checking doctor availability: $e');
+      return false;
+    }
+  }
+
+  /// Auto-reject call when doctor is unavailable
+  void _rejectCallAutomatically(Map<String, dynamic> callData) {
+    final fromUserId =
+        callData['fromUserId']?.toString() ?? callData['callerId']?.toString();
+    final chatId = callData['chatId']?.toString();
+    final isVideo = callData['isVideo'] == true;
+    final callerName = callData['callerName']?.toString() ?? 'Unknown User';
+
+    debugPrint('');
+    debugPrint('╔═══════════════════════════════════════════════════════════╗');
+    debugPrint('║              🚫 AUTO-REJECTING CALL                    ║');
+    debugPrint('╚═══════════════════════════════════════════════════════════╝');
+    debugPrint(
+      '   • Reason: Doctor is not available for ${isVideo ? "video" : "audio"} calls',
+    );
+    debugPrint('   • From: $callerName ($fromUserId)');
+    debugPrint('   • Chat: $chatId');
+
+    if (fromUserId != null && chatId != null) {
+      try {
+        // Send reject event with reason
+        SocketService.instance.emit('call:reject', {
+          'chatId': chatId,
+          'toUserId': fromUserId,
+          'reason': 'Doctor is not available for calls',
+          'isAutoRejected': true,
+        });
+
+        // Send call end event
+        SocketService.instance.emit('call:end', {
+          'chatId': chatId,
+          'toUserId': fromUserId,
+          'reason': 'Doctor is not available for calls',
+          'isAutoRejected': true,
+        });
+
+        debugPrint('✅ Auto-reject events sent to caller');
+        debugPrint('');
+      } catch (e) {
+        debugPrint('❌ Error sending auto-reject: $e');
+      }
     }
   }
 

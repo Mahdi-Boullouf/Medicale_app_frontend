@@ -1312,6 +1312,12 @@ abstract class AppLocalizations {
   /// **'Video Call'**
   String get videoCall;
 
+  /// Audio/Video calls toggle title
+  ///
+  /// In en, this message translates to:
+  /// **'Audio/Video Calls'**
+  String get audioVideoCalls;
+
   /// Title for rescheduling screen
   ///
   /// In en, this message translates to:
@@ -2043,6 +2049,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Voice Call'**
   String get voiceCall;
+
+  /// No description provided for @doctorUnavailableForCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor is not available for calls at this time'**
+  String get doctorUnavailableForCalls;
+
+  /// No description provided for @doctorUnavailableForCallsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The doctor is not available for {type} calls. You can send a message or try again later.'**
+  String doctorUnavailableForCallsDescription(Object type);
 
   /// No description provided for @imageLabel.
   ///

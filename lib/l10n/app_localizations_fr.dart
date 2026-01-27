@@ -666,6 +666,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get videoCall => 'Appel vidéo';
 
   @override
+  String get audioVideoCalls => 'Appels Audio/Vidéo';
+
+  @override
   String get rescheduleAppointment => 'Reprogrammer le rendez-vous';
 
   @override
@@ -1094,6 +1097,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get voiceCall => 'Appel vocal';
+
+  @override
+  String get doctorUnavailableForCalls =>
+      'Le médecin n\'est pas disponible pour les appels à ce moment';
+
+  @override
+  String doctorUnavailableForCallsDescription(Object type) {
+    return 'Le médecin n\'est pas disponible pour les appels $type. Vous pouvez envoyer un message ou réessayer plus tard.';
+  }
 
   @override
   String get imageLabel => '[Image]';

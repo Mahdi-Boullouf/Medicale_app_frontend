@@ -894,6 +894,10 @@
   "@videoCall": {
     "description": "Appointment type video call"
   },
+  "audioVideoCalls": "Audio/Video Calls",
+  "@audioVideoCalls": {
+    "description": "Audio/Video calls toggle title"
+  },
   "rescheduleAppointment": "Reschedule Appointment",
   "@rescheduleAppointment": {
     "description": "Title for rescheduling screen"
@@ -1175,6 +1179,8 @@
   "failedToStartCall": "Failed to start call: {error}",
   "videoCall": "Video Call",
   "voiceCall": "Voice Call",
+  "doctorUnavailableForCalls": "Doctor is not available for calls at this time",
+  "doctorUnavailableForCallsDescription": "The doctor is not available for {type} calls. You can send a message or try again later.",
   "imageLabel": "[Image]",
   "fileLabel": "[File]",
   "messageLabel": "[Message]",

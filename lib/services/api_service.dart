@@ -285,17 +285,44 @@ class ApiService {
     );
   }
 
-  /// Initiate Call - FIXED
+  /// Initiate Call - Enhanced with Doctor Availability Check
   static Future<Map<String, dynamic>> initiateCall({
     required String chatId,
     required String receiverId,
     required bool isVideo,
   }) async {
-    return await post('/api/v1/call/initiate', {
-      'chatId': chatId,
-      'receiverId': receiverId,
-      'callType': isVideo ? 'video' : 'audio',
-    }, requiresAuth: true);
+    debugPrint('📞 Initiating ${isVideo ? "video" : "audio"} call');
+    debugPrint('   • Chat ID: $chatId');
+    debugPrint('   • Receiver ID: $receiverId');
+
+    try {
+      final response = await post('/api/v1/call/initiate', {
+        'chatId': chatId,
+        'receiverId': receiverId,
+        'callType': isVideo ? 'video' : 'audio',
+      }, requiresAuth: true);
+
+      debugPrint(
+        '   • Response: ${response['success'] ? 'SUCCESS' : 'FAILED'}',
+      );
+
+      if (response['success'] == false) {
+        // Enhanced error handling for doctor unavailable
+        final message =
+            response['message'] as String? ?? 'Call initiation failed';
+        debugPrint('   • Error: $message');
+
+        if (response['code'] == 'DOCTOR_UNAVAILABLE' ||
+            message.toLowerCase().contains('not available')) {
+          debugPrint('   • Type: Doctor unavailable for calls');
+        }
+      }
+
+      return response;
+    } catch (e) {
+      debugPrint('❌ Call initiation error: $e');
+      rethrow;
+    }
   }
 
   // ========================================

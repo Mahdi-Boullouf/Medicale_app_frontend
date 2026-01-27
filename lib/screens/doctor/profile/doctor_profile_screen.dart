@@ -25,6 +25,7 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
   bool _isSaving = false; // Track save state
   bool isVoiceVideoCallActive = false;
   String selectedLanguage = 'English';
+  bool? _optimisticVideoCallValue; // Optimistic state for instant UI feedback
 
   @override
   void initState() {
@@ -48,9 +49,11 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
     ).fetchUserProfile();
   }
 
-  /// ✅ Save video call availability to backend
+  /// ✅ Save video call availability to backend with Optimistic UI
   Future<void> _toggleVideoCall(bool value) async {
+    // 1. Optimistic Update: Update UI immediately
     setState(() {
+      _optimisticVideoCallValue = value;
       _isSaving = true;
     });
 
@@ -62,7 +65,7 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
 
       debugPrint('🔄 Toggling video call to: $value');
 
-      // ✅ FIXED: Pass the video call parameter
+      // 2. Perform API Call
       final success = await userProvider.updateUserProfile(
         isVideoCallAvailable: value,
       );
@@ -76,52 +79,55 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
               content: Row(
                 children: [
                   Icon(
-                    value ? Icons.videocam : Icons.videocam_off,
+                    value ? Icons.check_circle : Icons.cancel,
                     color: Colors.white,
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    value ? 'Video calls enabled ✅' : 'Video calls disabled ❌',
+                    value ? 'Calls are now Enabled' : 'Calls are now Disabled',
                   ),
                 ],
               ),
-              duration: const Duration(seconds: 2),
-              backgroundColor: value ? Colors.green : Colors.orange,
+              duration: const Duration(seconds: 2), // Shorter duration
+              backgroundColor: value ? Colors.green : Colors.red,
+              behavior: SnackBarBehavior.floating, // Floating is better UX
+              margin: const EdgeInsets.all(20),
             ),
           );
         }
       } else {
-        debugPrint('❌ Failed to save video call setting');
-
-        // Revert to previous state on failure
-        await _refreshProfile();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Failed to update: ${userProvider.error ?? "Unknown error"}',
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        throw Exception('Update failed');
       }
     } catch (e) {
       debugPrint('❌ Error updating video call setting: $e');
 
-      // Revert to previous state on error
-      await _refreshProfile();
-
+      // 3. Rollback on Error
       if (mounted) {
+        setState(() {
+          _optimisticVideoCallValue = null; // Revert to provider value
+        });
+
+        // Refresh to ensure sync
+        await _refreshProfile();
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed to update: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
+      // 4. Cleanup
       if (mounted) {
         setState(() {
           _isSaving = false;
+          // We keep _optimisticVideoCallValue set until the next full refresh
+          // or we can clear it if we are sure provider is updated.
+          // To be safe against "switch jumping back", we can leave it null
+          // ONLY if we know the provider has the new value.
+          // For now, clearing it is safer if we trust _refreshProfile or updateUserProfile.
+          _optimisticVideoCallValue = null;
         });
       }
     }
@@ -177,7 +183,11 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
           final userName = user?.fullName ?? 'Doctor';
           final userRole = user?.role ?? 'doctor';
           final profileImageUrl = user?.profileImage;
-          final isVideoCallAvailable = user?.isVideoCallAvailable ?? false;
+
+          // ✅ Use Optimistic Value if available, otherwise Provider value
+          final isVideoCallAvailable =
+              _optimisticVideoCallValue ??
+              (user?.isVideoCallAvailable ?? false);
 
           return RefreshIndicator(
             onRefresh: _refreshProfile,
@@ -297,6 +307,79 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
                         _refreshProfile();
                       }
                     },
+                  ),
+                  _buildProfileItem(
+                    icon: isVideoCallAvailable
+                        ? Icons.videocam
+                        : Icons
+                              .videocam_off, // Changed icon to be more specific to video/calls
+                    title: l10n.audioVideoCalls,
+                    onTap: _isSaving
+                        ? null
+                        : () => _toggleVideoCall(
+                            !isVideoCallAvailable,
+                          ), // ✅ Row is now tappable
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Status Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isVideoCallAvailable
+                                ? const Color(0xFF1664CD).withOpacity(0.1)
+                                : Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isVideoCallAvailable
+                                  ? const Color(0xFF1664CD)
+                                  : Colors.red,
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isVideoCallAvailable
+                                    ? Icons.check_circle_outline
+                                    : Icons.cancel_outlined,
+                                size: 14,
+                                color: isVideoCallAvailable
+                                    ? const Color(0xFF1664CD)
+                                    : Colors.red,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isVideoCallAvailable ? "Enabled" : "Disabled",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isVideoCallAvailable
+                                      ? const Color(0xFF1664CD)
+                                      : Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Toggle switch
+                        Switch(
+                          value: isVideoCallAvailable,
+                          onChanged: _isSaving ? null : _toggleVideoCall,
+                          activeColor: const Color(0xFF1664CD),
+                          activeTrackColor: const Color(
+                            0xFF1664CD,
+                          ).withOpacity(0.3),
+                          inactiveThumbColor: Colors.grey.shade400,
+                          inactiveTrackColor: Colors.grey.withOpacity(0.2),
+                        ),
+                      ],
+                    ),
                   ),
                   _buildProfileItem(
                     icon: Icons.calendar_today_outlined,

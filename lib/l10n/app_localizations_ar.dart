@@ -652,6 +652,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get videoCall => 'مكالمة فيديو';
 
   @override
+  String get audioVideoCalls => 'المكالمات الصوتية/المرئية';
+
+  @override
   String get rescheduleAppointment => 'إعادة جدولة الموعد';
 
   @override
@@ -1052,6 +1055,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get voiceCall => 'مكالمة صوتية';
+
+  @override
+  String get doctorUnavailableForCalls =>
+      'الطبيب غير متاح للمكالمات في هذا الوقت';
+
+  @override
+  String doctorUnavailableForCallsDescription(Object type) {
+    return 'الطبيب غير متاح لمكالمات $type. يمكنك إرسال رسالة أو المحاولة مرة أخرى لاحقًا.';
+  }
 
   @override
   String get imageLabel => '[صورة]';

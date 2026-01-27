@@ -47,7 +47,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   bool _isAutoScrollEnabled = true;
   Timer? _autoRefreshTimer; // ✅ Auto-refresh timer
-  Set<String> _selectedMessageIds = {}; // ✅ For multi-select delete
+  final Set<String> _selectedMessageIds = {}; // ✅ For multi-select delete
   bool _isSelectionMode = false; // ✅ Selection mode toggle
 
   @override
@@ -513,16 +513,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       );
 
       if (result['success'] != true) {
+        final message = result['message'] as String? ?? '';
+        final errorCode = result['code'] as String?;
+
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                AppLocalizations.of(
-                  context,
-                )!.failedToStartCall(result['message'] ?? ''),
+          // Enhanced error handling for doctor unavailable
+          if (errorCode == 'DOCTOR_UNAVAILABLE' ||
+              message.toLowerCase().contains('not available')) {
+            _showDoctorUnavailableDialog(isVideo);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  AppLocalizations.of(context)!.failedToStartCall(message),
+                ),
               ),
-            ),
-          );
+            );
+          }
         }
         return;
       }
@@ -568,6 +575,62 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
       );
     }
+  }
+
+  /// Show doctor unavailable dialog
+  void _showDoctorUnavailableDialog(bool isVideo) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: Row(
+          children: [
+            Icon(Icons.phone_missed, color: Colors.red, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Doctor Unavailable',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1B2C49),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.doctorUnavailableForCallsDescription(
+                isVideo ? 'video' : 'audio',
+              ),
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('OK', style: const TextStyle(color: Color(0xFF1664CD))),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Text(
+              'Send Message',
+              style: const TextStyle(color: Color(0xFF1664CD)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _getAvatarWidget(String? avatarUrl, {bool isDoctor = false}) {

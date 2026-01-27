@@ -70,7 +70,9 @@ class UserProvider with ChangeNotifier {
 
       if (response['success'] == true && response['data'] != null) {
         _user = UserModel.fromJson(response['data']);
-        print('✅ Video call availability updated: ${_user?.isVideoCallAvailable}');
+        print(
+          '✅ Video call availability updated: ${_user?.isVideoCallAvailable}',
+        );
         _isLoading = false;
         notifyListeners();
         return true;
@@ -156,7 +158,21 @@ class UserProvider with ChangeNotifier {
       );
 
       if (response['success'] == true && response['data'] != null) {
-        _user = UserModel.fromJson(response['data']);
+        var updatedUser = UserModel.fromJson(response['data']);
+
+        // ⚠️ PATCH: The backend might return stale data for isVideoCallAvailable.
+        // If we explicitly updated it and the server confirms success, we trust the intent.
+        if (isVideoCallAvailable != null &&
+            updatedUser.isVideoCallAvailable != isVideoCallAvailable) {
+          debugPrint(
+            '⚠️ Server returned stale video call data. Forcing local update to: $isVideoCallAvailable',
+          );
+          updatedUser = updatedUser.copyWith(
+            isVideoCallAvailable: isVideoCallAvailable,
+          );
+        }
+
+        _user = updatedUser;
         debugPrint('✅ Profile updated successfully!');
         debugPrint('   - Name: ${_user?.fullName}');
         debugPrint('   - Specialty: ${_user?.specialty}');
