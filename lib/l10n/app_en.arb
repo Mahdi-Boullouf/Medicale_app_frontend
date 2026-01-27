@@ -407,6 +407,8 @@
     "description": "Label for medical license field"
   },
   "enterLicenseNumber": "Enter License Number",
+  "referralCode": "Referral Code",
+  "enterReferralCode": "Enter Referral Code",
   "@enterLicenseNumber": {
     "description": "Hint text for medical license field"
   },

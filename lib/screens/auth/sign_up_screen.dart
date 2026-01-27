@@ -24,6 +24,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   // Doctor Specific Controllers
   final TextEditingController _licenseController = TextEditingController();
+  final TextEditingController _referralController = TextEditingController();
   final TextEditingController _experienceController = TextEditingController();
   String? _selectedSpecialty;
 
@@ -51,11 +52,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _licenseController.dispose();
+    _referralController.dispose();
     _experienceController.dispose();
     super.dispose();
   }
 
-  /// ✅ Validate form
+  /// Validate form
   bool _validateForm() {
     if (!_formKey.currentState!.validate()) {
       return false;
@@ -95,7 +97,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return true;
   }
 
-  /// ✅ Handle Sign Up
+  ///  Handle Sign Up
   void _handleSignUp() async {
     // Validate form
     if (!_validateForm()) return;
@@ -108,7 +110,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       debugPrint('   Name: ${_nameController.text.trim()}');
       debugPrint('   Email: ${_emailController.text.trim()}');
 
-      // ✅ Call ApiService.register with correct parameters
+      //  Call ApiService.register with correct parameters
       final result = await ApiService.register(
         fullName: _nameController.text.trim(),
         email: _emailController.text.trim(),
@@ -123,6 +125,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
         experienceYears: widget.userType.toLowerCase() == 'doctor'
             ? _experienceController.text.trim()
             : null,
+        referralCode: widget.userType.toLowerCase() == 'doctor'
+            ? _referralController.text.trim()
+            : null,
       );
 
       if (!mounted) return;
@@ -132,7 +137,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       debugPrint('📥 Registration result: ${result['success']}');
 
       if (result['success'] == true) {
-        debugPrint('✅ Registration successful');
+        debugPrint('Registration successful');
 
         final l10n = AppLocalizations.of(context)!;
         _showSnackBar(
@@ -148,7 +153,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         // Go back to login screen
         Navigator.pop(context);
       } else {
-        debugPrint('❌ Registration failed: ${result['message']}');
+        debugPrint('Registration failed: ${result['message']}');
 
         String errorMessage = result['message'] ?? 'Registration failed';
 
@@ -163,7 +168,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         _showSnackBar(errorMessage, isError: true);
       }
     } catch (e) {
-      debugPrint('❌ Registration error: $e');
+      debugPrint('Registration error: $e');
 
       if (!mounted) return;
 
@@ -174,7 +179,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  /// ✅ Show snackbar
+  ///  Show snackbar
   void _showSnackBar(String msg, {bool isError = false}) {
     if (!mounted) return;
 
@@ -326,6 +331,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     controller: _licenseController,
                     prefixIcon: const Icon(
                       Icons.badge_outlined,
+                      color: Color(0xFF1664CD),
+                    ),
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  // Referral Code
+                  Text(
+                    l10n.referralCode,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0B3267),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  CustomTextField(
+                    hintText: l10n.enterReferralCode,
+                    controller: _referralController,
+                    prefixIcon: const Icon(
+                      Icons.discount_outlined,
                       color: Color(0xFF1664CD),
                     ),
                   ),

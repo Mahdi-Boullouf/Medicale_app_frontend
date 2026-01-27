@@ -407,6 +407,8 @@
     "description": "Label for medical license field"
   },
   "enterLicenseNumber": "Entrez le numéro de licence",
+  "referralCode": "Code de parrainage",
+  "enterReferralCode": "Entrez le code de parrainage",
   "@enterLicenseNumber": {
     "description": "Hint text for medical license field"
   },

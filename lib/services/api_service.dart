@@ -365,6 +365,7 @@ class ApiService {
     String? medicalLicenseNumber,
     String? specialty,
     String? experienceYears,
+    String? referralCode,
   }) async {
     final Map<String, dynamic> body = {
       'fullName': fullName,
@@ -384,6 +385,9 @@ class ApiService {
       }
       if (experienceYears != null) {
         body['experienceYears'] = experienceYears;
+      }
+      if (referralCode != null && referralCode.isNotEmpty) {
+        body['refferalCode'] = referralCode;
       }
     }
 
@@ -1069,74 +1073,81 @@ class ApiService {
     );
 
     try {
-      final data = json.decode(response.body) as Map<String, dynamic>;
-
-      // Success response (200-299)
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return {'success': true, 'statusCode': response.statusCode, ...data};
-      }
-      // Unauthorized (401) - Token invalid/expired
-      else if (response.statusCode == 401) {
-        debugPrint('⚠️ 401 Unauthorized - Clearing token');
-        clearToken();
-        return {
-          'success': false,
-          'message': data['message'] ?? 'Session expired. Please login again.',
-          'requiresLogin': true,
-          'statusCode': response.statusCode,
-        };
-      }
-      // Forbidden (403)
-      else if (response.statusCode == 403) {
-        return {
-          'success': false,
-          'message': data['message'] ?? 'Access denied',
-          'statusCode': response.statusCode,
-        };
-      }
-      // Not Found (404)
-      else if (response.statusCode == 404) {
-        return {
-          'success': false,
-          'message': data['message'] ?? 'Resource not found',
-          'statusCode': response.statusCode,
-        };
-      }
-      // Bad Request (400)
-      else if (response.statusCode == 400) {
-        return {
-          'success': false,
-          'message': data['message'] ?? 'Bad request',
-          'statusCode': response.statusCode,
-          'errors': data['errors'] ?? [],
-        };
-      }
-      // Server Error (500+)
-      else if (response.statusCode >= 500) {
-        return {
-          'success': false,
-          'message': 'Server error. Please try again later.',
-          'statusCode': response.statusCode,
-        };
-      }
-      // Other errors
-      else {
-        return {
-          'success': false,
-          'message': data['message'] ?? 'Request failed',
-          'statusCode': response.statusCode,
-        };
-      }
+    final body = response.body;
+    dynamic data;
+    try {
+      data = json.decode(body);
     } catch (e) {
-      debugPrint('❌ Response parsing error: $e');
+      debugPrint('⚠️ JSON Decode Error: $e');
+      
+      // Detect HTML response (like 502 Bad Gateway)
+      if (body.contains('<html>') || body.contains('nginx')) {
+         return {
+          'success': false,
+          'message': 'Server is currently unavailable (502 Bad Gateway). Please try again later.',
+          'statusCode': response.statusCode,
+          'error': '502 Bad Gateway'
+        };
+      }
+
+      // If it's not JSON, it might be a plain text error from nginx/server
       return {
         'success': false,
-        'message': 'Invalid response format',
+        'message': body.isNotEmpty ? body.substring(0, min(body.length, 200)) : 'Unknown server error',
         'statusCode': response.statusCode,
-        'rawBody': response.body,
       };
     }
+
+    if (data is! Map<String, dynamic>) {
+       return {
+        'success': false,
+        'message': 'Invalid response format (not a valid JSON object)',
+        'statusCode': response.statusCode,
+      };
+    }
+
+    // Success response (200-299)
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return {'success': true, 'statusCode': response.statusCode, ...data};
+    }
+    
+    // Extract error message safely
+    String errorMessage = data['message'] ?? 'Request failed';
+    if(data['error'] != null && data['error'] is String) {
+        errorMessage = data['error'];
+    }
+
+    // Unauthorized (401) - Token invalid/expired
+    if (response.statusCode == 401) {
+      debugPrint('⚠️ 401 Unauthorized - Clearing token');
+      clearToken();
+      return {
+        'success': false,
+        'message': errorMessage,
+        'requiresLogin': true,
+        'statusCode': response.statusCode,
+      };
+    }
+    
+    // Return structured error
+    return {
+      'success': false,
+      'message': errorMessage,
+      'statusCode': response.statusCode,
+      'errors': data['errors'] ?? [],
+      'data': data // Include data just in case
+    };
+
+  } catch (e, stack) {
+    debugPrint('❌ Response handling error: $e');
+    debugPrint(stack.toString());
+    return {
+      'success': false,
+      'message': 'Failed to process server response',
+      'statusCode': response.statusCode,
+    };
   }
+}
 
   /// Error message generator
   static String _getErrorMessage(dynamic error) {

@@ -311,6 +311,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get enterLicenseNumber => 'Enter License Number';
 
   @override
+  String get referralCode => 'Referral Code';
+
+  @override
+  String get enterReferralCode => 'Enter Referral Code';
+
+  @override
   String get medicalSpecialty => 'Medical Specialty *';
 
   @override

@@ -670,6 +670,18 @@ abstract class AppLocalizations {
   /// **'Enter License Number'**
   String get enterLicenseNumber;
 
+  /// No description provided for @referralCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral Code'**
+  String get referralCode;
+
+  /// No description provided for @enterReferralCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Referral Code'**
+  String get enterReferralCode;
+
   /// Label for medical specialty field
   ///
   /// In en, this message translates to:

@@ -15,23 +15,23 @@ import 'package:docmobi/providers/locale_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  debugPrint('🚀 Starting app initialization...');
+  debugPrint('Starting app initialization...');
 
-  // ✅ Load saved locale for immediate application startup
+  // Load saved locale for immediate application startup
   final savedLocaleCode = await getSavedLocaleCode();
   final initialLocale = Locale(savedLocaleCode ?? 'en');
 
-  // ✅ Load token
+  // Load token
   await ApiService.init();
 
   final isLoggedIn = ApiService.isLoggedIn;
   debugPrint(
-    '🔍 Token status: ${isLoggedIn ? "✅ Logged In" : "❌ Not Logged In"}',
+    '🔍 Token status: ${isLoggedIn ? "Logged In" : "Not Logged In"}',
   );
 
-  debugPrint('✅ Local Notification System ready (will start after login)');
+  debugPrint('Local Notification System ready (will start after login)');
 
-  // ✅ Initialize Agora Chat if logged in
+  // Initialize Agora Chat if logged in
   if (isLoggedIn) {
     try {
       final prefs = await SharedPreferences.getInstance();

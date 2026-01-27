@@ -95,6 +95,8 @@
   "invalidEmail": "يرجى إدخال بريد إلكتروني صالح",
   "medicalLicenseNumber": "رقم الترخيص الطبي *",
   "enterLicenseNumber": "أدخل رقم الترخيص",
+  "referralCode": "رمز الإحالة",
+  "enterReferralCode": "أدخل رمز الإحالة",
   "medicalSpecialty": "التخصص الطبي *",
   "selectSpecialty": "اختر تخصصك",
   "yearsExperienceStar": "سنوات الخبرة *",

@@ -312,6 +312,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get enterLicenseNumber => 'أدخل رقم الترخيص';
 
   @override
+  String get referralCode => 'رمز الإحالة';
+
+  @override
+  String get enterReferralCode => 'أدخل رمز الإحالة';
+
+  @override
   String get medicalSpecialty => 'التخصص الطبي *';
 
   @override

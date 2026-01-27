@@ -318,6 +318,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get enterLicenseNumber => 'Entrez le numéro de licence';
 
   @override
+  String get referralCode => 'Code de parrainage';
+
+  @override
+  String get enterReferralCode => 'Entrez le code de parrainage';
+
+  @override
   String get medicalSpecialty => 'Spécialité médicale *';
 
   @override
