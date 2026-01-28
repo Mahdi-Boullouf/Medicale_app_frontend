@@ -12,7 +12,7 @@ class UserModel {
   final String? bloodGroup;
   final String? address;
   final String? profileImage;
-  
+
   // ✅ Doctor fields from backend
   final String? bio;
   final String? specialty;
@@ -20,24 +20,29 @@ class UserModel {
   final int? experienceYears;
   final String? medicalLicenseNumber;
   final String? visitingHoursText;
-  
+
   // ✅ NEW: Video call availability
   final bool isVideoCallAvailable;
-  
+
   // ✅ Fees structure
   final double? feesAmount;
   final String? feesCurrency;
-  
+
   // ✅ Degrees
   final List<Degree>? degrees;
-  
+
   // ✅ Weekly schedule
   final List<DaySchedule>? weeklySchedule;
-  
+
   // ✅ Location fields
   final double? latitude;
   final double? longitude;
-  
+
+  // ✅ Helper for fees
+  Map<String, dynamic>? get fees => feesAmount != null
+      ? {'amount': feesAmount, 'currency': feesCurrency}
+      : null;
+
   final DateTime? createdAt;
 
   UserModel({
@@ -78,43 +83,57 @@ class UserModel {
       gender: json['gender'],
       bloodGroup: json['bloodGroup'],
       address: json['address'],
-      
+
       // ✅ Handle avatar object from backend
       profileImage: json['avatar']?['url'] ?? json['profileImage'],
-      
+
       // ✅ Doctor fields
       bio: json['bio'],
       specialty: json['specialty'],
-      specialties: json['specialties'] != null 
-          ? List<String>.from(json['specialties']) 
+      specialties: json['specialties'] != null
+          ? List<String>.from(json['specialties'])
           : null,
       experienceYears: json['experienceYears'],
       medicalLicenseNumber: json['medicalLicenseNumber'],
       visitingHoursText: json['visitingHoursText'],
-      
-      // ✅ NEW: Video call availability
-      isVideoCallAvailable: json['isVideoCallAvailable'] ?? false,
-      
+
+      // ✅ NEW: Video call availability - Robust parsing
+      isVideoCallAvailable:
+          json['isVideoCallAvailable'] ??
+          json['isVideoAvailable'] ??
+          json['isAvailable'] ??
+          (json['video']?['isAvailable'] ?? false),
+
       // ✅ Fees
-      feesAmount: json['fees']?['amount']?.toDouble(),
-      feesCurrency: json['fees']?['currency'],
-      
+      feesAmount: json['fees']?['amount']?.toDouble() ?? 0.0,
+      feesCurrency: json['fees']?['currency'] ?? 'DZD',
+
       // ✅ Degrees
       degrees: json['degrees'] != null
           ? (json['degrees'] as List).map((d) => Degree.fromJson(d)).toList()
           : null,
-      
+
       // ✅ Weekly schedule
       weeklySchedule: json['weeklySchedule'] != null
-          ? (json['weeklySchedule'] as List).map((d) => DaySchedule.fromJson(d)).toList()
+          ? (json['weeklySchedule'] as List)
+                .map((d) => DaySchedule.fromJson(d))
+                .toList()
           : null,
-      
-      // ✅ Location fields
-      latitude: json['latitude']?.toDouble(),
-      longitude: json['longitude']?.toDouble(),
-      
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
+
+      // ✅ Location fields - Handle nested structure from backend
+      latitude:
+          json['latitude']?.toDouble() ??
+          (json['location'] != null
+              ? double.tryParse(json['location']['lat'].toString())
+              : null),
+      longitude:
+          json['longitude']?.toDouble() ??
+          (json['location'] != null
+              ? double.tryParse(json['location']['lng'].toString())
+              : null),
+
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
           : null,
     );
   }
@@ -138,10 +157,7 @@ class UserModel {
       'medicalLicenseNumber': medicalLicenseNumber,
       'visitingHoursText': visitingHoursText,
       'isVideoCallAvailable': isVideoCallAvailable, // ✅ NEW
-      'fees': {
-        'amount': feesAmount,
-        'currency': feesCurrency,
-      },
+      'fees': {'amount': feesAmount, 'currency': feesCurrency},
       'degrees': degrees?.map((d) => d.toJson()).toList(),
       'weeklySchedule': weeklySchedule?.map((d) => d.toJson()).toList(),
       'latitude': latitude,
@@ -193,7 +209,8 @@ class UserModel {
       experienceYears: experienceYears ?? this.experienceYears,
       medicalLicenseNumber: medicalLicenseNumber ?? this.medicalLicenseNumber,
       visitingHoursText: visitingHoursText ?? this.visitingHoursText,
-      isVideoCallAvailable: isVideoCallAvailable ?? this.isVideoCallAvailable, // ✅ NEW
+      isVideoCallAvailable:
+          isVideoCallAvailable ?? this.isVideoCallAvailable, // ✅ NEW
       feesAmount: feesAmount ?? this.feesAmount,
       feesCurrency: feesCurrency ?? this.feesCurrency,
       degrees: degrees ?? this.degrees,
@@ -211,11 +228,7 @@ class Degree {
   final String? institute;
   final int? year;
 
-  Degree({
-    required this.title,
-    this.institute,
-    this.year,
-  });
+  Degree({required this.title, this.institute, this.year});
 
   factory Degree.fromJson(Map<String, dynamic> json) {
     return Degree(
@@ -226,11 +239,7 @@ class Degree {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'title': title,
-      'institute': institute,
-      'year': year,
-    };
+    return {'title': title, 'institute': institute, 'year': year};
   }
 }
 
@@ -240,11 +249,7 @@ class DaySchedule {
   final bool isActive;
   final List<TimeSlot>? slots;
 
-  DaySchedule({
-    required this.day,
-    required this.isActive,
-    this.slots,
-  });
+  DaySchedule({required this.day, required this.isActive, this.slots});
 
   factory DaySchedule.fromJson(Map<String, dynamic> json) {
     return DaySchedule(
@@ -270,22 +275,13 @@ class TimeSlot {
   final String start;
   final String end;
 
-  TimeSlot({
-    required this.start,
-    required this.end,
-  });
+  TimeSlot({required this.start, required this.end});
 
   factory TimeSlot.fromJson(Map<String, dynamic> json) {
-    return TimeSlot(
-      start: json['start'] ?? '',
-      end: json['end'] ?? '',
-    );
+    return TimeSlot(start: json['start'] ?? '', end: json['end'] ?? '');
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'start': start,
-      'end': end,
-    };
+    return {'start': start, 'end': end};
   }
 }

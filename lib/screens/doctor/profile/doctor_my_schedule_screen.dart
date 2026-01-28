@@ -179,6 +179,20 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
           });
         }
 
+        // ✅ Load video call availability (onlineAppointment)
+        bool? isVideoAvailable =
+            userData['isVideoCallAvailable'] ??
+            userData['isVideoAvailable'] ??
+            userData['isAvailable'] ??
+            (userData['video']?['isAvailable']);
+
+        if (isVideoAvailable != null) {
+          setState(() {
+            onlineAppointment = isVideoAvailable;
+          });
+          debugPrint('✅ Loaded video call availability: $onlineAppointment');
+        }
+
         // Load weeklySchedule
         if (userData['weeklySchedule'] != null) {
           final backendSchedule = userData['weeklySchedule'] as List;

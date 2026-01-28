@@ -593,6 +593,55 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get notif_appointment_booked_title => 'طلب موعد جديد';
+
+  @override
+  String get notif_appointment_booked_body => 'لديك طلب موعد جديد من مريض.';
+
+  @override
+  String get notif_appointment_confirmed_title => 'تم تأكيد الموعد';
+
+  @override
+  String get notif_appointment_confirmed_body => 'تم تأكيد موعدك مع الطبيب.';
+
+  @override
+  String get notif_appointment_cancelled_title => 'تم إلغاء الموعد';
+
+  @override
+  String get notif_appointment_cancelled_body => 'تم إلغاء موعد.';
+
+  @override
+  String get notif_appointment_completed_title => 'اكتمل الموعد';
+
+  @override
+  String get notif_appointment_completed_body =>
+      'تم وضع علامة على موعدك كمكتمل.';
+
+  @override
+  String get notif_post_liked_title => 'إعجاب جديد';
+
+  @override
+  String get notif_post_liked_body => 'أعجب شخص ما بمنشورك.';
+
+  @override
+  String get notif_post_commented_title => 'تعليق جديد';
+
+  @override
+  String get notif_post_commented_body => 'علق شخص ما على منشورك.';
+
+  @override
+  String get notif_reel_liked_title => 'إعجاب جديد على الريل';
+
+  @override
+  String get notif_reel_liked_body => 'أعجب شخص ما بالريل الخاص بك.';
+
+  @override
+  String get notif_reel_commented_title => 'تعليق جديد على الريل';
+
+  @override
+  String get notif_reel_commented_body => 'علق شخص ما على الريل الخاص بك.';
+
+  @override
   String get reviewSubmitted => 'تم تقديم التقييم بنجاح!';
 
   @override

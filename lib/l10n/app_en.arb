@@ -799,6 +799,70 @@
       }
     }
   },
+  "notif_appointment_booked_title": "New Appointment Request",
+  "@notif_appointment_booked_title": {
+    "description": "Notification title when appointment is booked"
+  },
+  "notif_appointment_booked_body": "You have a new appointment request from a patient.",
+  "@notif_appointment_booked_body": {
+    "description": "Notification body when appointment is booked"
+  },
+  "notif_appointment_confirmed_title": "Appointment Confirmed",
+  "@notif_appointment_confirmed_title": {
+    "description": "Notification title when appointment is confirmed"
+  },
+  "notif_appointment_confirmed_body": "Your appointment with the doctor has been confirmed.",
+  "@notif_appointment_confirmed_body": {
+    "description": "Notification body when appointment is confirmed"
+  },
+  "notif_appointment_cancelled_title": "Appointment Cancelled",
+  "@notif_appointment_cancelled_title": {
+    "description": "Notification title when appointment is cancelled"
+  },
+  "notif_appointment_cancelled_body": "An appointment has been cancelled.",
+  "@notif_appointment_cancelled_body": {
+    "description": "Notification body when appointment is cancelled"
+  },
+  "notif_appointment_completed_title": "Appointment Completed",
+  "@notif_appointment_completed_title": {
+    "description": "Notification title when appointment is completed"
+  },
+  "notif_appointment_completed_body": "Your appointment has been marked as completed.",
+  "@notif_appointment_completed_body": {
+    "description": "Notification body when appointment is completed"
+  },
+  "notif_post_liked_title": "New Like",
+  "@notif_post_liked_title": {
+    "description": "Notification title when post is liked"
+  },
+  "notif_post_liked_body": "Someone liked your post.",
+  "@notif_post_liked_body": {
+    "description": "Notification body when post is liked"
+  },
+  "notif_post_commented_title": "New Comment",
+  "@notif_post_commented_title": {
+    "description": "Notification title when post is commented"
+  },
+  "notif_post_commented_body": "Someone commented on your post.",
+  "@notif_post_commented_body": {
+    "description": "Notification body when post is commented"
+  },
+  "notif_reel_liked_title": "New Reel Like",
+  "@notif_reel_liked_title": {
+    "description": "Notification title when reel is liked"
+  },
+  "notif_reel_liked_body": "Someone liked your reel.",
+  "@notif_reel_liked_body": {
+    "description": "Notification body when reel is liked"
+  },
+  "notif_reel_commented_title": "New Reel Comment",
+  "@notif_reel_commented_title": {
+    "description": "Notification title when reel is commented"
+  },
+  "notif_reel_commented_body": "Someone commented on your reel.",
+  "@notif_reel_commented_body": {
+    "description": "Notification body when reel is commented"
+  },
   "reviewSubmitted": "Review submitted successfully! ⭐",
   "@reviewSubmitted": {
     "description": "Success snackbar after review submission"

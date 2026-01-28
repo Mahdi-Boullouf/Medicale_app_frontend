@@ -898,5 +898,21 @@
   "to": "À",
   "selectStartTime": "Sélectionner l'heure de début",
   "selectEndTime": "Sélectionner l'heure de fin",
-  "selectTimeFromPicker": "Veuillez sélectionner l'heure dans le sélecteur ci-dessous"
+  "selectTimeFromPicker": "Veuillez sélectionner l'heure dans le sélecteur ci-dessous",
+  "notif_appointment_booked_title": "Nouvelle demande de rendez-vous",
+  "notif_appointment_booked_body": "Vous avez une nouvelle demande de rendez-vous d'un patient.",
+  "notif_appointment_confirmed_title": "Rendez-vous confirmé",
+  "notif_appointment_confirmed_body": "Votre rendez-vous avec le médecin a été confirmé.",
+  "notif_appointment_cancelled_title": "Rendez-vous annulé",
+  "notif_appointment_cancelled_body": "Un rendez-vous a été annulé.",
+  "notif_appointment_completed_title": "Rendez-vous terminé",
+  "notif_appointment_completed_body": "Votre rendez-vous a été marqué comme terminé.",
+  "notif_post_liked_title": "Nouveau J'aime",
+  "notif_post_liked_body": "Quelqu'un a aimé votre publication.",
+  "notif_post_commented_title": "Nouveau commentaire",
+  "notif_post_commented_body": "Quelqu'un a commenté votre publication.",
+  "notif_reel_liked_title": "Nouveau J'aime sur Reel",
+  "notif_reel_liked_body": "Quelqu'un a aimé votre reel.",
+  "notif_reel_commented_title": "Nouveau commentaire sur Reel",
+  "notif_reel_commented_body": "Quelqu'un a commenté votre reel."
 }

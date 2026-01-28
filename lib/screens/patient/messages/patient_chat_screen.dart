@@ -1,4 +1,5 @@
 import 'package:docmobi/l10n/app_localizations.dart';
+import 'package:docmobi/widgets/custom_image.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/services/api_service.dart';
 import 'package:docmobi/services/socket_service.dart';
@@ -633,32 +634,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
-  Widget _getAvatarWidget(String? avatarUrl, {bool isDoctor = false}) {
-    // ✅ Use actual avatar from API first, then fallback to widget avatar
-    final displayAvatar = isDoctor
-        ? (_actualDoctorAvatar ?? widget.doctorAvatar)
-        : avatarUrl;
-
-    if (displayAvatar != null &&
-        displayAvatar.isNotEmpty &&
-        displayAvatar != 'file:///' &&
-        (displayAvatar.startsWith('http://') ||
-            displayAvatar.startsWith('https://'))) {
-      return CircleAvatar(
-        radius: 20,
-        backgroundImage: NetworkImage(displayAvatar),
-        onBackgroundImageError: (exception, stackTrace) {},
-      );
-    }
-
-    return CircleAvatar(
-      radius: 20,
-      backgroundImage: AssetImage(
-        isDoctor ? 'assets/images/doctor1.png' : 'assets/images/profile.png',
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -688,9 +663,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 children: [
                   Stack(
                     children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundImage: _getAvatarImage(_actualDoctorAvatar),
+                      ClipOval(
+                        child: CustomImage(
+                          imageUrl: _actualDoctorAvatar,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          placeholderAsset: 'assets/images/doctor1.png',
+                        ),
                       ),
                       Positioned(
                         right: 0,
@@ -995,7 +975,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   : MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (!isMe) _getAvatarWidget(senderAvatar, isDoctor: true),
+                if (!isMe)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ClipOval(
+                      child: CustomImage(
+                        imageUrl: senderAvatar,
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.cover,
+                        placeholderAsset: 'assets/images/doctor1.png',
+                      ),
+                    ),
+                  ),
                 if (!isMe) const SizedBox(width: 8),
                 Container(
                   constraints: BoxConstraints(
@@ -1046,9 +1038,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                 child:
                                     (url.startsWith('https://') ||
                                         url.startsWith('http://'))
-                                    ? Image.network(
-                                        url,
+                                    ? CustomImage(
+                                        imageUrl: url,
                                         width: 200,
+                                        height: 200,
                                         fit: BoxFit.cover,
                                       )
                                     : Image.file(
@@ -1076,7 +1069,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   ),
                 ),
                 if (isMe) const SizedBox(width: 8),
-                if (isMe) _getAvatarWidget(_currentUserAvatar, isDoctor: false),
+                if (isMe)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: ClipOval(
+                      child: CustomImage(
+                        imageUrl: _currentUserAvatar,
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.cover,
+                        placeholderAsset: 'assets/images/profile.png',
+                      ),
+                    ),
+                  ),
               ],
             ),
             if (message['createdAt'] != null)
@@ -1176,17 +1181,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
       ),
     );
-  }
-
-  ImageProvider _getAvatarImage(String? avatarUrl) {
-    if (avatarUrl == null ||
-        avatarUrl.isEmpty ||
-        avatarUrl == 'file:///' ||
-        (!avatarUrl.startsWith('http://') &&
-            !avatarUrl.startsWith('https://'))) {
-      return const AssetImage('assets/images/doctor1.png');
-    }
-    return NetworkImage(avatarUrl);
   }
 
   String _formatTime(String? timestamp) {

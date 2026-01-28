@@ -1465,52 +1465,12 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
   }
 
   Widget _buildDoctorImage(String? imageUrl) {
-    if (imageUrl != null &&
-        imageUrl.isNotEmpty &&
-        (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
-      return Image.network(
-        imageUrl,
-        height: 80,
-        width: 80,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildImagePlaceholder();
-        },
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            height: 80,
-            width: 80,
-            color: Colors.grey[200],
-            child: const Center(
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          );
-        },
-      );
-    }
-
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      return Image.asset(
-        imageUrl,
-        height: 80,
-        width: 80,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildImagePlaceholder();
-        },
-      );
-    }
-
-    return _buildImagePlaceholder();
-  }
-
-  Widget _buildImagePlaceholder() {
-    return Container(
-      height: 80,
+    return CustomImage(
+      imageUrl: imageUrl,
       width: 80,
-      color: Colors.grey[200],
-      child: const Icon(Icons.person, size: 40, color: Colors.grey),
+      height: 80,
+      fit: BoxFit.cover,
+      placeholderAsset: 'assets/images/doctor_booking.png',
     );
   }
 

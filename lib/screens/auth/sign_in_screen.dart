@@ -55,8 +55,6 @@ class _SignInScreenState extends State<SignInScreen> {
       );
 
       if (!mounted) return;
-      setState(() => _isLoading = false);
-
       debugPrint('📥 Login result: ${result['success']}');
 
       if (result['success'] == true) {
@@ -127,6 +125,7 @@ class _SignInScreenState extends State<SignInScreen> {
           } else {
             // Unknown role
             debugPrint('⚠️ Unknown role: $userRole');
+            if (mounted) setState(() => _isLoading = false);
             _showSnackBar('Invalid account type', isError: true);
             await ApiService.clearToken();
           }
@@ -135,6 +134,7 @@ class _SignInScreenState extends State<SignInScreen> {
           debugPrint(
             '⚠️ Role mismatch: Expected ${widget.userType}, Got $userRole',
           );
+          if (mounted) setState(() => _isLoading = false);
           await ApiService.clearToken();
           final l10n = AppLocalizations.of(context)!;
           _showSnackBar(
@@ -145,6 +145,7 @@ class _SignInScreenState extends State<SignInScreen> {
       } else {
         // Login failed
         debugPrint('❌ Login failed: ${result['message']}');
+        if (mounted) setState(() => _isLoading = false);
         final l10n = AppLocalizations.of(context)!;
         _showSnackBar(result['message'] ?? l10n.loginFailed, isError: true);
       }

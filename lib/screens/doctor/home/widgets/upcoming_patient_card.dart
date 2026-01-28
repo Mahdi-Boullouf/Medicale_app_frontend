@@ -1,3 +1,4 @@
+import 'package:docmobi/widgets/custom_image.dart';
 import 'package:docmobi/models/appointment_model.dart';
 import 'package:flutter/material.dart';
 
@@ -98,27 +99,12 @@ class UpcomingPatientCard extends StatelessWidget {
   }
 
   Widget _buildPatientImage() {
-    final imageUrl = appointment.patientImage;
-    if (imageUrl != null &&
-        imageUrl.isNotEmpty &&
-        imageUrl.startsWith('http')) {
-      return Image.network(
-        imageUrl,
-        width: 60,
-        height: 60,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
-      );
-    }
-    return _buildPlaceholder();
-  }
-
-  Widget _buildPlaceholder() {
-    return Container(
+    return CustomImage(
+      imageUrl: appointment.patientImage,
       width: 60,
       height: 60,
-      color: Colors.blue.shade50,
-      child: Icon(Icons.person, color: Colors.blue.shade200, size: 30),
+      fit: BoxFit.cover,
+      placeholderAsset: 'assets/images/profile.png',
     );
   }
 }

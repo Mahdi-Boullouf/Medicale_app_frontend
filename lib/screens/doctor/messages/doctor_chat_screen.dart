@@ -1,4 +1,5 @@
 import 'package:docmobi/l10n/app_localizations.dart';
+import 'package:docmobi/widgets/custom_image.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/services/api_service.dart';
 import 'package:docmobi/services/socket_service.dart';
@@ -542,9 +543,14 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                 children: [
                   Stack(
                     children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundImage: _getAvatarImage(_actualUserAvatar),
+                      ClipOval(
+                        child: CustomImage(
+                          imageUrl: _actualUserAvatar,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          placeholderAsset: 'assets/images/doctor1.png',
+                        ),
                       ),
                       Positioned(
                         right: 0,
@@ -899,9 +905,14 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
             if (!isMe)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundImage: _getAvatarImage(senderAvatar),
+                child: ClipOval(
+                  child: CustomImage(
+                    imageUrl: senderAvatar,
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.cover,
+                    placeholderAsset: 'assets/images/doctor1.png',
+                  ),
                 ),
               ),
             Column(
@@ -958,14 +969,16 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                                 child:
                                     (url.startsWith('https://') ||
                                         url.startsWith('http://'))
-                                    ? Image.network(
-                                        url,
+                                    ? CustomImage(
+                                        imageUrl: url,
                                         width: 200,
+                                        height: 200,
                                         fit: BoxFit.cover,
                                       )
                                     : Image.file(
                                         File(url),
                                         width: 200,
+                                        height: 200,
                                         fit: BoxFit.cover,
                                       ),
                               ),
@@ -1009,9 +1022,14 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
             if (isMe)
               Padding(
                 padding: const EdgeInsets.only(left: 8),
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundImage: _getAvatarImage(_currentUserAvatar),
+                child: ClipOval(
+                  child: CustomImage(
+                    imageUrl: _currentUserAvatar,
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.cover,
+                    placeholderAsset: 'assets/images/doctor1.png',
+                  ),
                 ),
               ),
           ],
@@ -1095,17 +1113,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         ),
       ),
     );
-  }
-
-  ImageProvider _getAvatarImage(String? avatarUrl) {
-    if (avatarUrl == null ||
-        avatarUrl.isEmpty ||
-        avatarUrl == 'file:///' ||
-        (!avatarUrl.startsWith('http://') &&
-            !avatarUrl.startsWith('https://'))) {
-      return const AssetImage('assets/images/doctor1.png');
-    }
-    return NetworkImage(avatarUrl);
   }
 
   String _formatTime(String? timestamp) {

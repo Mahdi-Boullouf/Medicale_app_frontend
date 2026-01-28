@@ -592,6 +592,58 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get notif_appointment_booked_title => 'New Appointment Request';
+
+  @override
+  String get notif_appointment_booked_body =>
+      'You have a new appointment request from a patient.';
+
+  @override
+  String get notif_appointment_confirmed_title => 'Appointment Confirmed';
+
+  @override
+  String get notif_appointment_confirmed_body =>
+      'Your appointment with the doctor has been confirmed.';
+
+  @override
+  String get notif_appointment_cancelled_title => 'Appointment Cancelled';
+
+  @override
+  String get notif_appointment_cancelled_body =>
+      'An appointment has been cancelled.';
+
+  @override
+  String get notif_appointment_completed_title => 'Appointment Completed';
+
+  @override
+  String get notif_appointment_completed_body =>
+      'Your appointment has been marked as completed.';
+
+  @override
+  String get notif_post_liked_title => 'New Like';
+
+  @override
+  String get notif_post_liked_body => 'Someone liked your post.';
+
+  @override
+  String get notif_post_commented_title => 'New Comment';
+
+  @override
+  String get notif_post_commented_body => 'Someone commented on your post.';
+
+  @override
+  String get notif_reel_liked_title => 'New Reel Like';
+
+  @override
+  String get notif_reel_liked_body => 'Someone liked your reel.';
+
+  @override
+  String get notif_reel_commented_title => 'New Reel Comment';
+
+  @override
+  String get notif_reel_commented_body => 'Someone commented on your reel.';
+
+  @override
   String get reviewSubmitted => 'Review submitted successfully! ⭐';
 
   @override

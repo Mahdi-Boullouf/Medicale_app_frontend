@@ -463,6 +463,21 @@
   "to": "إلى",
   "selectStartTime": "اختيار وقت البدء",
   "selectEndTime": "اختيار وقت النهاية",
-  "selectTimeFromPicker": "يرجى اختيار الوقت من المختار بالأسفل"
+  "selectTimeFromPicker": "يرجى اختيار الوقت من المختار بالأسفل",
+  "notif_appointment_booked_title": "طلب موعد جديد",
+  "notif_appointment_booked_body": "لديك طلب موعد جديد من مريض.",
+  "notif_appointment_confirmed_title": "تم تأكيد الموعد",
+  "notif_appointment_confirmed_body": "تم تأكيد موعدك مع الطبيب.",
+  "notif_appointment_cancelled_title": "تم إلغاء الموعد",
+  "notif_appointment_cancelled_body": "تم إلغاء موعد.",
+  "notif_appointment_completed_title": "اكتمل الموعد",
+  "notif_appointment_completed_body": "تم وضع علامة على موعدك كمكتمل.",
+  "notif_post_liked_title": "إعجاب جديد",
+  "notif_post_liked_body": "أعجب شخص ما بمنشورك.",
+  "notif_post_commented_title": "تعليق جديد",
+  "notif_post_commented_body": "علق شخص ما على منشورك.",
+  "notif_reel_liked_title": "إعجاب جديد على الريل",
+  "notif_reel_liked_body": "أعجب شخص ما بالريل الخاص بك.",
+  "notif_reel_commented_title": "تعليق جديد على الريل",
+  "notif_reel_commented_body": "علق شخص ما على الريل الخاص بك."
 }
-

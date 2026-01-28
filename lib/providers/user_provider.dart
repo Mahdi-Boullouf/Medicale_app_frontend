@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/user_service.dart';
+import '../services/doctor_schedule_service.dart';
 
 class UserProvider with ChangeNotifier {
   UserModel? _user;
@@ -62,30 +63,57 @@ class UserProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      print('📤 Updating video call availability: $isAvailable');
-
-      final response = await UserService.updateUserProfile(
-        isVideoCallAvailable: isAvailable,
+      debugPrint(
+        '📤 Updating video call availability via Schedule Service: $isAvailable',
       );
 
-      if (response['success'] == true && response['data'] != null) {
-        _user = UserModel.fromJson(response['data']);
-        print(
-          '✅ Video call availability updated: ${_user?.isVideoCallAvailable}',
-        );
+      // ✅ ENSURE PERSISTENCE: Use DoctorScheduleService which is known to work
+      // with this specific combination of fields.
+      final scheduleService = DoctorScheduleService();
+
+      final currentFees = _user?.fees ?? {'amount': 0, 'currency': 'USD'};
+      final currentSchedule =
+          _user?.weeklySchedule?.map((d) => d.toJson()).toList() ?? [];
+
+      final response = await scheduleService.saveWeeklySchedule(
+        weeklySchedule: currentSchedule,
+        fees: currentFees,
+        isVideoCallAvailable: isAvailable,
+        isAvailable: isAvailable, // ✅ Send redundant field
+      );
+
+      if (response['success'] == true) {
+        debugPrint('✅ Server confirmed update. Refreshing profile...');
+
+        // Patch locally immediately so the UI reflects it even if refresh returns stale data
+        if (_user != null) {
+          _user = _user!.copyWith(isVideoCallAvailable: isAvailable);
+          notifyListeners();
+        }
+
+        // Force refresh from server to see what it actually stored
+        await fetchUserProfile();
+
+        // ⚠️ FINAL PATCH: If server STILL returned stale data, force our intent
+        if (_user != null && _user!.isVideoCallAvailable != isAvailable) {
+          debugPrint(
+            '⚠️ Server returned stale data after refresh. Forcing local patch again.',
+          );
+          _user = _user!.copyWith(isVideoCallAvailable: isAvailable);
+          notifyListeners();
+        }
+
         _isLoading = false;
-        notifyListeners();
         return true;
       } else {
-        _error = response['message'] ?? 'Failed to update video call setting';
-        print('❌ Update failed: $_error');
+        _error = response['message'] ?? 'Failed to update availability';
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
       _error = 'Error: $e';
-      print('❌ Exception: $e');
+      debugPrint('❌ Exception during availability update: $e');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -132,29 +160,53 @@ class UserProvider with ChangeNotifier {
       debugPrint('   - isVideoCallAvailable: $isVideoCallAvailable'); // ✅ NEW
       debugPrint('   - profileImage: ${profileImage != null ? "Yes" : "No"}');
 
-      // ✅ Pass all fields including video call to UserService
+      // ✅ ENSURE PERSISTENCE for doctors: include current doctor-specific fields if not provided
+      final currentFees =
+          fees ?? (_user?.role == 'doctor' ? _user?.fees : null);
+      final currentSchedule =
+          weeklySchedule ??
+          (_user?.role == 'doctor'
+              ? _user?.weeklySchedule?.map((d) => d.toJson()).toList()
+              : null);
+      final currentSpecialty =
+          specialty ?? (_user?.role == 'doctor' ? _user?.specialty : null);
+      final currentExperience =
+          experienceYears ??
+          (_user?.role == 'doctor' ? _user?.experienceYears : null);
+      final currentBio = bio ?? (_user?.role == 'doctor' ? _user?.bio : null);
+      final currentLicense =
+          medicalLicenseNumber ??
+          (_user?.role == 'doctor' ? _user?.medicalLicenseNumber : null);
+
+      // ✅ Location handling - persist if not explicitly updated
+      final currentLat = latitude ?? (_user?.latitude);
+      final currentLng = longitude ?? (_user?.longitude);
+
+      // ✅ Pass ONLY provided fields (plus required doctor fields for persistence)
       final response = await UserService.updateUserProfile(
         fullName: fullName,
         username: username,
         phone: phone,
-        bio: bio,
+        bio: currentBio, // Use persisted bio for doctors
         gender: gender,
         dob: dob,
         address: address,
         country: country,
         language: language,
-        experienceYears: experienceYears,
-        specialty: specialty,
+        experienceYears:
+            currentExperience, // Use persisted experience for doctors
+        specialty: currentSpecialty, // Use persisted specialty for doctors
         specialties: specialties,
         degrees: degrees,
-        fees: fees,
-        weeklySchedule: weeklySchedule,
+        fees: currentFees, // Use persisted fees for doctors
+        weeklySchedule: currentSchedule, // Use persisted schedule for doctors
         visitingHoursText: visitingHoursText,
-        medicalLicenseNumber: medicalLicenseNumber,
+        medicalLicenseNumber:
+            currentLicense, // Use persisted license for doctors
         profileImage: profileImage,
-        latitude: latitude,
-        longitude: longitude,
-        isVideoCallAvailable: isVideoCallAvailable, // ✅ NEW
+        latitude: currentLat, // Use persisted latitude
+        longitude: currentLng, // Use persisted longitude
+        isVideoCallAvailable: isVideoCallAvailable,
       );
 
       if (response['success'] == true && response['data'] != null) {

@@ -7,7 +7,8 @@ class DoctorScheduleService {
   Future<Map<String, dynamic>> saveWeeklySchedule({
     required List<Map<String, dynamic>> weeklySchedule,
     required Map<String, dynamic> fees,
-    required bool isVideoCallAvailable, // ✅ Added parameter
+    required bool isVideoCallAvailable,
+    bool isAvailable = true, // ✅ New optional parameter
   }) async {
     try {
       // ✅ Data is already formatted correctly from screen
@@ -16,13 +17,16 @@ class DoctorScheduleService {
       final body = {
         'weeklySchedule': weeklySchedule,
         'fees': fees,
-        'isVideoCallAvailable': isVideoCallAvailable, // ✅ Send to backend
+        'isVideoCallAvailable': isVideoCallAvailable, // ✅ Primary key
+        'isVideoAvailable': isVideoCallAvailable, // ✅ Redundant key 1
+        'isAvailable': isAvailable, // ✅ Redundant key 2
       };
 
       print('📤 Sending to backend:');
       print('   - weeklySchedule: ${weeklySchedule.length} days');
       print('   - fees: $fees');
       print('   - isVideoCallAvailable: $isVideoCallAvailable');
+      print('   - isAvailable: $isAvailable');
 
       final response = await ApiService.put(
         '/api/v1/user/profile',

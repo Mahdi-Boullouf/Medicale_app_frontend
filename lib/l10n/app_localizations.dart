@@ -1198,6 +1198,102 @@ abstract class AppLocalizations {
   /// **'with {name}'**
   String withDoctor(String name);
 
+  /// Notification title when appointment is booked
+  ///
+  /// In en, this message translates to:
+  /// **'New Appointment Request'**
+  String get notif_appointment_booked_title;
+
+  /// Notification body when appointment is booked
+  ///
+  /// In en, this message translates to:
+  /// **'You have a new appointment request from a patient.'**
+  String get notif_appointment_booked_body;
+
+  /// Notification title when appointment is confirmed
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment Confirmed'**
+  String get notif_appointment_confirmed_title;
+
+  /// Notification body when appointment is confirmed
+  ///
+  /// In en, this message translates to:
+  /// **'Your appointment with the doctor has been confirmed.'**
+  String get notif_appointment_confirmed_body;
+
+  /// Notification title when appointment is cancelled
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment Cancelled'**
+  String get notif_appointment_cancelled_title;
+
+  /// Notification body when appointment is cancelled
+  ///
+  /// In en, this message translates to:
+  /// **'An appointment has been cancelled.'**
+  String get notif_appointment_cancelled_body;
+
+  /// Notification title when appointment is completed
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment Completed'**
+  String get notif_appointment_completed_title;
+
+  /// Notification body when appointment is completed
+  ///
+  /// In en, this message translates to:
+  /// **'Your appointment has been marked as completed.'**
+  String get notif_appointment_completed_body;
+
+  /// Notification title when post is liked
+  ///
+  /// In en, this message translates to:
+  /// **'New Like'**
+  String get notif_post_liked_title;
+
+  /// Notification body when post is liked
+  ///
+  /// In en, this message translates to:
+  /// **'Someone liked your post.'**
+  String get notif_post_liked_body;
+
+  /// Notification title when post is commented
+  ///
+  /// In en, this message translates to:
+  /// **'New Comment'**
+  String get notif_post_commented_title;
+
+  /// Notification body when post is commented
+  ///
+  /// In en, this message translates to:
+  /// **'Someone commented on your post.'**
+  String get notif_post_commented_body;
+
+  /// Notification title when reel is liked
+  ///
+  /// In en, this message translates to:
+  /// **'New Reel Like'**
+  String get notif_reel_liked_title;
+
+  /// Notification body when reel is liked
+  ///
+  /// In en, this message translates to:
+  /// **'Someone liked your reel.'**
+  String get notif_reel_liked_body;
+
+  /// Notification title when reel is commented
+  ///
+  /// In en, this message translates to:
+  /// **'New Reel Comment'**
+  String get notif_reel_commented_title;
+
+  /// Notification body when reel is commented
+  ///
+  /// In en, this message translates to:
+  /// **'Someone commented on your reel.'**
+  String get notif_reel_commented_body;
+
   /// Success snackbar after review submission
   ///
   /// In en, this message translates to:

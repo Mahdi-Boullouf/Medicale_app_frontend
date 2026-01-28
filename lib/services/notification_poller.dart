@@ -212,8 +212,8 @@ class NotificationPoller {
             'docmobi_notifications',
             'DocMobi Notifications',
             channelDescription: 'Notifications from DocMobi app',
-            importance: Importance.high,
-            priority: Priority.high,
+            importance: Importance.max,
+            priority: Priority.max,
             enableVibration: true,
             playSound: true,
           );

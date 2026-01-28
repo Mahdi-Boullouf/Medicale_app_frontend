@@ -15,6 +15,7 @@ import 'package:docmobi/services/notification_poller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:docmobi/providers/locale_provider.dart';
+import 'package:docmobi/services/auth_service.dart';
 
 class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
@@ -23,7 +24,7 @@ class MyApp extends ConsumerStatefulWidget {
   ConsumerState<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends ConsumerState<MyApp> {
+class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
   bool _isLoggedIn = false;
   bool _isLoading = true;
   String? _userRole;
@@ -33,7 +34,38 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // ✅ Register observer
     _checkLoginStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // ✅ Remove observer
+    super.dispose();
+  }
+
+  // ✅ Handle App Lifecycle Changes
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    debugPrint('🔄 App Lifecycle State: $state');
+
+    if (state == AppLifecycleState.resumed) {
+      // App came to foreground - Refresh data
+      debugPrint('⚡ App resumed - Refreshing notifications & socket...');
+
+      if (_isLoggedIn) {
+        // 1. Refresh Notifications
+        NotificationPoller().refreshNotifications();
+
+        // 2. Ensure Socket is connected
+        SharedPreferences.getInstance().then((prefs) {
+          final uid = prefs.getString('user_id');
+          if (uid != null && !SocketService.instance.isConnected) {
+            SocketService.instance.connect(uid);
+          }
+        });
+      }
+    }
   }
 
   Future<void> _checkLoginStatus() async {
@@ -300,37 +332,61 @@ class _MyAppState extends ConsumerState<MyApp> {
 
   Future<void> _logout() async {
     try {
-      debugPrint('🔄 Logging out user...');
+      debugPrint('🔄 Logging out user (Optimistic)...');
 
-      // Stop notification polling
-      NotificationPoller().stopPolling();
-      await NotificationPoller().clearAllData();
-      debugPrint('✅ Notification polling stopped');
-
-      // ✅ Dispose CallManager
-      CallManager.instance.dispose();
-
-      // ✅ Disconnect socket
-      SocketService.instance.disconnect();
-      debugPrint('✅ Socket disconnected');
+      // 1. Immediately clear local state
+      if (mounted) {
+        setState(() {
+          _isLoggedIn = false;
+          _userRole = null;
+          _isLoading = false; // Ensure loading is off so splash/login shows
+        });
+      }
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
 
-      // Clear ApiService token
+      // Clear ApiService token in memory
       await ApiService.clearToken();
+      debugPrint('✅ Local state cleared immediately');
 
-      debugPrint('✅ Logout successful - All data cleared');
+      // 2. Perform background cleanup (Fire and Forget)
+      Future.wait([
+            // Stop notification polling
+            Future(() {
+              NotificationPoller().stopPolling();
+              return NotificationPoller().clearAllData();
+            }),
 
-      // Update state to show splash screen
+            // Backend Logout
+            AuthService().logout(),
+
+            // Socket Disconnect
+            Future(() {
+              SocketService.instance.disconnect();
+              debugPrint('✅ Socket disconnected');
+            }),
+
+            // CallManager Dispose
+            Future(() {
+              CallManager.instance.dispose();
+            }),
+          ])
+          .then((_) {
+            debugPrint('✅ Background logout tasks completed');
+          })
+          .catchError((e) {
+            debugPrint('⚠️ Background logout tasks had error: $e');
+          });
+    } catch (e) {
+      debugPrint('❌ Error during optimistic logout: $e');
+      // Even if error, ensure state is cleared
       if (mounted) {
         setState(() {
           _isLoggedIn = false;
           _userRole = null;
         });
       }
-    } catch (e) {
-      debugPrint('❌ Error during logout: $e');
     }
   }
 }

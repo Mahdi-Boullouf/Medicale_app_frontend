@@ -1,7 +1,7 @@
 import 'package:docmobi/l10n/app_localizations.dart';
 import 'package:docmobi/screens/patient/appointments/patient_appointments_screen.dart';
 import 'package:docmobi/screens/patient/profile/dependents_list_screen.dart';
-import 'package:docmobi/screens/patient/profile/help_support_screen.dart';
+import 'package:docmobi/screens/common/help_support_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/screens/patient/profile/personal_info_screen.dart';
 import 'package:docmobi/screens/patient/profile/change_password_screen.dart';
@@ -10,6 +10,8 @@ import 'package:docmobi/screens/patient/navigation/patient_main_navigation.dart'
 import 'package:provider/provider.dart' as legacy_provider;
 import '../../../providers/user_provider.dart';
 import '../../../services/auth_service.dart';
+import 'package:docmobi/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../screens/auth/sign_in_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:docmobi/providers/locale_provider.dart';
@@ -384,26 +386,40 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
             onPressed: () async {
               Navigator.pop(context); // Pop confirmation dialog
 
-              // Show loading dialog
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) =>
-                    const Center(child: CircularProgressIndicator()),
-              );
-
-              await AuthService().logout();
-
-              if (context.mounted) {
-                Navigator.pop(context); // Pop loading dialog explicitly
-              }
-
-              if (context.mounted) {
+              // Optimistic Logout Logic
+              try {
+                // 1. Clear local state immediately
                 legacy_provider.Provider.of<UserProvider>(
                   context,
                   listen: false,
                 ).clearUser();
 
+                // 2. Navigate immediately
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const SignInScreen(userType: 'patient'),
+                  ),
+                  (route) => false,
+                );
+
+                // 3. Perform background cleanup (Fire and Forget)
+                Future.wait([
+                      AuthService().logout(),
+                      ApiService.clearToken(),
+                      SharedPreferences.getInstance().then(
+                        (prefs) => prefs.clear(),
+                      ),
+                    ])
+                    .then((_) {
+                      debugPrint('✅ Background logout tasks completed');
+                    })
+                    .catchError((e) {
+                      debugPrint('⚠️ Background logout tasks warning: $e');
+                    });
+              } catch (e) {
+                debugPrint('❌ Error during optimistic logout: $e');
+                // Even on error, we force navigation to login
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(
                     builder: (context) =>

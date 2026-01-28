@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import 'package:provider/provider.dart';
 import 'package:docmobi/providers/user_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:docmobi/widgets/custom_image.dart';
 
 class PostCard extends StatefulWidget {
   final PostModel post;
@@ -342,12 +343,14 @@ class _PostCardState extends State<PostCard> {
               children: [
                 GestureDetector(
                   onTap: () => _handleAuthorTap(),
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundImage: _currentPost.author.avatar != null
-                        ? NetworkImage(_currentPost.author.avatar!)
-                        : const AssetImage('assets/images/doctor_booking.png')
-                              as ImageProvider,
+                  child: ClipOval(
+                    child: CustomImage(
+                      imageUrl: _currentPost.author.avatar,
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                      placeholderAsset: 'assets/images/doctor_booking.png',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -507,18 +510,11 @@ class _PostCardState extends State<PostCard> {
       return Stack(
         children: [
           if (video.thumbnail != null)
-            Image.network(
-              video.thumbnail!,
+            CustomImage(
+              imageUrl: video.thumbnail,
               width: double.infinity,
               height: 250,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  height: 250,
-                  color: Colors.grey[300],
-                  child: const Center(child: Icon(Icons.error, size: 50)),
-                );
-              },
             )
           else
             Container(height: 250, color: Colors.grey[300]),
@@ -606,17 +602,11 @@ class _PostCardState extends State<PostCard> {
 
   Widget _buildSingleImage(PostMedia image) {
     return ClipRRect(
-      child: Image.network(
-        image.url,
+      child: CustomImage(
+        imageUrl: image.url,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            height: 200,
-            color: Colors.grey[300],
-            child: const Center(child: Icon(Icons.error, size: 50)),
-          );
-        },
+        height: 200,
       ),
     );
   }
@@ -629,7 +619,12 @@ class _PostCardState extends State<PostCard> {
               (img) => Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(1),
-                  child: Image.network(img.url, height: 200, fit: BoxFit.cover),
+                  child: CustomImage(
+                    imageUrl: img.url,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
             )
@@ -651,7 +646,12 @@ class _PostCardState extends State<PostCard> {
           return Stack(
             fit: StackFit.expand,
             children: [
-              Image.network(images[index].url, fit: BoxFit.cover),
+              CustomImage(
+                imageUrl: images[index].url,
+                fit: BoxFit.cover,
+                height: double.infinity,
+                width: double.infinity,
+              ),
               Container(
                 color: Colors.black54,
                 child: Center(
@@ -668,7 +668,7 @@ class _PostCardState extends State<PostCard> {
             ],
           );
         }
-        return Image.network(images[index].url, fit: BoxFit.cover);
+        return CustomImage(imageUrl: images[index].url, fit: BoxFit.cover);
       },
     );
   }

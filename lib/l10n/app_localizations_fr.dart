@@ -607,6 +607,59 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get notif_appointment_booked_title =>
+      'Nouvelle demande de rendez-vous';
+
+  @override
+  String get notif_appointment_booked_body =>
+      'Vous avez une nouvelle demande de rendez-vous d\'un patient.';
+
+  @override
+  String get notif_appointment_confirmed_title => 'Rendez-vous confirmé';
+
+  @override
+  String get notif_appointment_confirmed_body =>
+      'Votre rendez-vous avec le médecin a été confirmé.';
+
+  @override
+  String get notif_appointment_cancelled_title => 'Rendez-vous annulé';
+
+  @override
+  String get notif_appointment_cancelled_body => 'Un rendez-vous a été annulé.';
+
+  @override
+  String get notif_appointment_completed_title => 'Rendez-vous terminé';
+
+  @override
+  String get notif_appointment_completed_body =>
+      'Votre rendez-vous a été marqué comme terminé.';
+
+  @override
+  String get notif_post_liked_title => 'Nouveau J\'aime';
+
+  @override
+  String get notif_post_liked_body => 'Quelqu\'un a aimé votre publication.';
+
+  @override
+  String get notif_post_commented_title => 'Nouveau commentaire';
+
+  @override
+  String get notif_post_commented_body =>
+      'Quelqu\'un a commenté votre publication.';
+
+  @override
+  String get notif_reel_liked_title => 'Nouveau J\'aime sur Reel';
+
+  @override
+  String get notif_reel_liked_body => 'Quelqu\'un a aimé votre reel.';
+
+  @override
+  String get notif_reel_commented_title => 'Nouveau commentaire sur Reel';
+
+  @override
+  String get notif_reel_commented_body => 'Quelqu\'un a commenté votre reel.';
+
+  @override
   String get reviewSubmitted => 'Avis soumis avec succès ! ⭐';
 
   @override
