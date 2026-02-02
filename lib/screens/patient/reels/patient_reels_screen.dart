@@ -811,34 +811,34 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
     }
   }
 
-  // ✅ UPDATED: Share with count increment
-  Future<void> _shareReel(Map<String, dynamic> reel) async {
-    final author = reel['author'];
-    final caption = reel['caption'] ?? '';
-    final doctorName =
-        author?['fullName'] ?? AppLocalizations.of(context)!.unknownDoctor;
-    final reelId = reel['_id'] ?? '';
+  // // ✅ UPDATED: Share with count increment
+  // Future<void> _shareReel(Map<String, dynamic> reel) async {
+  //   final author = reel['author'];
+  //   final caption = reel['caption'] ?? '';
+  //   final doctorName =
+  //       author?['fullName'] ?? AppLocalizations.of(context)!.unknownDoctor;
+  //   final reelId = reel['_id'] ?? '';
 
-    String shareText =
-        '${AppLocalizations.of(context)!.authorSharedReel(doctorName)}\n\n';
-    if (caption.isNotEmpty) {
-      shareText += caption;
-    }
+  //   String shareText =
+  //       '${AppLocalizations.of(context)!.authorSharedReel(doctorName)}\n\n';
+  //   if (caption.isNotEmpty) {
+  //     shareText += caption;
+  //   }
 
-    try {
-      await Share.share(shareText);
+  //   try {
+  //     await Share.share(shareText);
 
-      // ✅ Increment share count locally
-      setState(() {
-        _shareCounts[reelId] = (_shareCounts[reelId] ?? 0) + 1;
-      });
+  //     // ✅ Increment share count locally
+  //     setState(() {
+  //       _shareCounts[reelId] = (_shareCounts[reelId] ?? 0) + 1;
+  //     });
 
-      // TODO: Call API to increment share count on backend
-      // await ApiService.shareReel(reelId);
-    } catch (e) {
-      debugPrint('❌ Error sharing: $e');
-    }
-  }
+  //     // TODO: Call API to increment share count on backend
+  //     // await ApiService.shareReel(reelId);
+  //   } catch (e) {
+  //     debugPrint('❌ Error sharing: $e');
+  //   }
+  // }
 
   void _showComments(String reelId) {
     showModalBottomSheet(
@@ -1274,12 +1274,12 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
                 () => _showComments(reelId),
               ),
               const SizedBox(height: 25),
-              _buildActionButton(
-                Icons.share_outlined,
-                _formatCount(sharesCount),
-                Colors.white,
-                () => _shareReel(reel),
-              ),
+              // _buildActionButton(
+              //   Icons.share_outlined,
+              //   _formatCount(sharesCount),
+              //   Colors.white,
+              //   () => _shareReel(reel),
+              // ),
               const SizedBox(height: 25),
               Container(
                 width: 50,
