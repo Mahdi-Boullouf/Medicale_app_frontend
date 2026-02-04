@@ -10,6 +10,8 @@ class SocketService {
   bool _isConnecting = false;
   final StreamController<bool> _connectionController =
       StreamController<bool>.broadcast();
+  final StreamController<void> _reconnectController =
+      StreamController<void>.broadcast();
 
   static SocketService get instance {
     _instance ??= SocketService._();
@@ -21,6 +23,7 @@ class SocketService {
   IO.Socket? get socket => _socket;
   bool get isConnected => _socket?.connected ?? false;
   Stream<bool> get connectionStream => _connectionController.stream;
+  Stream<void> get reconnectStream => _reconnectController.stream;
   String? get currentUserId => _currentUserId;
 
   Future<bool> connect(String userId) async {
@@ -37,6 +40,8 @@ class SocketService {
     // If already connected with same user
     if (_socket != null && _socket!.connected && _currentUserId == userId) {
       debugPrint('✅ Socket already connected');
+      // Re-emit join room just in case
+      _socket!.emit('joinUserRoom', userId);
       return true;
     }
 
@@ -58,6 +63,12 @@ class SocketService {
     debugPrint('   • User ID : $userId');
     debugPrint('   • Server  : $serverUrl');
     debugPrint('');
+
+    // Cleanup any existing socket instance if it was disconnected
+    if (_socket != null) {
+      _socket!.dispose();
+      _socket = null;
+    }
 
     _socket = IO.io(
       serverUrl,
@@ -128,6 +139,7 @@ class SocketService {
       if (_currentUserId != null) {
         _socket!.emit('joinUserRoom', _currentUserId);
         debugPrint('📡 Re-joined room after reconnect');
+        _reconnectController.add(null);
       }
     });
 

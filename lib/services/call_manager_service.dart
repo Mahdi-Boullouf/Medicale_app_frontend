@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:docmobi/services/socket_service.dart';
 import 'package:docmobi/screens/common/calls/video_call_screen.dart';
 import 'package:docmobi/screens/common/calls/audio_call_screen.dart';
@@ -13,17 +14,38 @@ class CallManager {
 
   BuildContext? _context;
   bool _isListening = false;
+  StreamSubscription<bool>? _connectionSubscription;
+  StreamSubscription<void>? _reconnectSubscription;
 
   void initialize(BuildContext context) {
     _context = context;
 
     if (_isListening) {
-      debugPrint('⚠️ CallManager already listening - reinitializing');
-      _cleanup();
+      debugPrint('⚠️ CallManager already listening - updating context');
+      // No need to cleanup and re-setup if already listening,
+      // but ensure we have the latest context
+      return;
     }
 
     _setupCallListeners();
     _isListening = true;
+
+    // Listen for reconnection to re-setup listeners if needed
+    _connectionSubscription?.cancel();
+    _connectionSubscription = SocketService.instance.connectionStream.listen((
+      connected,
+    ) {
+      if (connected) {
+        debugPrint('📡 CallManager: Socket connected - ensuring listeners');
+        _setupCallListeners();
+      }
+    });
+
+    _reconnectSubscription?.cancel();
+    _reconnectSubscription = SocketService.instance.reconnectStream.listen((_) {
+      debugPrint('🔄 CallManager: Socket reconnected - ensuring listeners');
+      _setupCallListeners();
+    });
 
     debugPrint('');
     debugPrint('╔═══════════════════════════════════════════╗');
@@ -251,6 +273,9 @@ class CallManager {
     socket?.off('call:incoming');
     socket?.off('call:accepted');
     socket?.off('call:rejected');
+
+    _connectionSubscription?.cancel();
+    _reconnectSubscription?.cancel();
     _isListening = false;
   }
 

@@ -240,10 +240,8 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
     _timer?.cancel();
     _agoraService.leaveChannel();
 
-    final socket = SocketService.instance.socket;
-    socket?.off('call:accepted');
-    socket?.off('call:ended');
-    socket?.off('call:rejected');
+    // ⚠️ DO NOT use socket.off('event') here as it removes ALL listeners,
+    // including the ones in CallManager.
 
     super.dispose();
   }

@@ -37,15 +37,31 @@ class AgoraService {
         ),
       );
 
-      // 3. Set Video Profile (Optimized for Mobile Data/Performance)
+      // 3. Set Video Profile (Optimized for High Quality Mobile)
       await _engine!.setVideoEncoderConfiguration(
         const VideoEncoderConfiguration(
-          dimensions: VideoDimensions(width: 640, height: 360),
-          frameRate: 15,
-          bitrate: 0, // Standard bitrate
+          dimensions: VideoDimensions(width: 960, height: 540), // 540p Quality
+          frameRate: 24, // Smoother motion
+          bitrate: 1200, // Higher bitrate for clarity
           orientationMode: OrientationMode.orientationModeAdaptive,
+          degradationPreference: DegradationPreference.maintainQuality,
         ),
       );
+
+      // 4. Set Audio Profile (High Fidelity)
+      await _engine!.setAudioProfile(
+        profile: AudioProfileType.audioProfileMusicStandard,
+        scenario: AudioScenarioType.audioScenarioGameStreaming,
+      );
+
+      // 5. Enable Advanced Features
+      await _engine!.enableDualStreamMode(enabled: true);
+      await _engine!.setParameters(
+        '{"che.audio.opensl":true}',
+      ); // Low latency audio
+      await _engine!.setParameters(
+        '{"rtc.noise_suppression":true}',
+      ); // AI Noise Suppression
 
       // 4. Register event handlers
       _engine!.registerEventHandler(

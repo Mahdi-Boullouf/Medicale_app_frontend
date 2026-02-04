@@ -314,10 +314,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     WakelockPlus.disable();
     _callTimer?.cancel();
 
-    final socket = SocketService.instance.socket;
-    socket?.off('call:accepted');
-    socket?.off('call:ended');
-    socket?.off('call:rejected');
+    // ⚠️ DO NOT use socket.off('event') here as it removes ALL listeners,
+    // including the ones in CallManager.
+    // Instead, we just let the screen dispose.
 
     _agoraService.leaveChannel();
 
