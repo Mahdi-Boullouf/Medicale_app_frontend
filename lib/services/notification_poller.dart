@@ -171,28 +171,83 @@ class NotificationPoller {
       _polledNotifications = notifications;
 
       if (notifications.isNotEmpty) {
-        final latestNotification = notifications.first;
+        // Find truly new notifications that we haven't shown yet
+        // We check against:
+        // 1. _deletedIds (user deleted them)
+        // 2. _lastNotificationIdKey preference (persisted last seen ID)
+        // 3. _polledNotifications previous state (in-memory check) - though we just overwrote it, we should check IDs.
 
-        // Check if this is a new notification
-        if (lastNotificationId == null ||
-            (latestNotification.id.isNotEmpty &&
-                latestNotification.id != lastNotificationId)) {
-          // Show notification for each new notification
-          final newNotifications = lastNotificationId == null
-              ? notifications
-              : notifications
-                    .takeWhile((n) => n.id != lastNotificationId)
-                    .toList();
+        // Better approach:
+        // Filter notifications that are:
+        // - Newer than the saved lastNotificationId (if it exists)
+        // - NOT read
+        // - NOT deleted
+        
+        // If lastNotificationId is null, it might be first run.
+        // But to avoid spamming ALL notifications on first login, maybe we only show the very latest one?
+        // Or we trust the backend 'isRead' status.
 
-          for (final notification in newNotifications.reversed) {
-            if (!notification.isRead &&
-                !_deletedIds.contains(notification.id)) {
-              await _showLocalNotification(notification);
-            }
-          }
+        // Let's rely on 'isRead' and a local 'shown' tracking set to avoid re-alerting in the same session.
+        // PROPOSAL: We iterate through unread notifications. If we haven't "seen" it in this session (or persisted "last alerted"), we show it.
+        
+        // HOWEVER, the current logic relies on `lastNotificationId`. 
+        // If the backend returns the SAME list, `latestNotification.id` will be the SAME as `lastNotificationId`.
+        // So the `if` block `latestNotification.id != lastNotificationId` PREVENTS re-alerting for the same top notification.
+        
+        // ISSUE: User says "after a short while it comes again". 
+        // This implies `lastNotificationId` might be getting CLEARED or the ID is CHANGING.
+        // Or maybe the list order flips? 
+        
+        // Let's refine the logic to be more robust.
+        
+        final newUnreadNotifications = notifications.where((n) {
+          // Must be unread
+          if (n.isRead) return false;
+          // Must not be deleted locally
+          if (_deletedIds.contains(n.id)) return false;
+          
+          // Must not have been the 'latest' we already handled? 
+          // Actually, we want to know if we've explicitly notified for THIS specific ID.
+          // The current code only tracks ONE 'lastNotificationId'. 
+          // If a newer one comes, we notify for all newer ones. 
+          // That seems okay, unless the "latest" one is somehow fluctuating or we are clearing prefs.
+          
+          return true;
+        }).toList();
 
-          // Update last notification ID
-          await prefs.setString(_lastNotificationIdKey, latestNotification.id);
+        if (newUnreadNotifications.isNotEmpty) {
+           // Check if the VERY LATEST unread is different from what we last saw.
+           // If it is the same, we do nothing (assuming we already notified for it and everything below it).
+           
+           // Exception: If the user explicitly wants to be nagged? Unlikely.
+           
+           final topNotification = newUnreadNotifications.first; // Assumes backend sorts by date desc
+           
+           if (lastNotificationId != topNotification.id) {
+             // It's a new top notification! 
+             // BE CAREFUL: If the user has 5 unread, and we just started the app, `lastNotificationId` might be null.
+             // We don't want to blast 5 notifications. Maybe just the newest one?
+             
+             if (lastNotificationId == null) {
+               // First run (or cleared data). Just notify the newest one to be safe, or sync silently.
+               // User complaint: "comes again and again". 
+               // Fix: Only notify if we are SURE it is new.
+               
+               // Let's just update the ID and NOT show notification on first load to avoid spam? 
+               // Or show only the first one.
+               await _showLocalNotification(topNotification);
+             } else {
+               // We have a previous ID. Find all notifications newer than that ID.
+               // This assumes we can just iterate until we hit the old ID.
+               for (final n in newUnreadNotifications) {
+                 if (n.id == lastNotificationId) break; // Found the old one, stop.
+                 await _showLocalNotification(n);
+               }
+             }
+
+             // Update the last seen ID to the NEW top one
+             await prefs.setString(_lastNotificationIdKey, topNotification.id);
+           }
         }
       }
       _notifyUpdate();
