@@ -47,10 +47,10 @@ class MarkerFactory {
       icon = _markerCache['static_doctor_icon']!;
     } else {
       try {
-        // ✅ Resize icon to 100px width (Adjust this value to change size)
+        // ✅ Resize icon to 50px width (Adjusted from 100 to 50)
         final Uint8List markerIcon = await _getBytesFromAsset(
           'assets/icons/doclocation.png',
-          100,
+          50,
         );
         icon = BitmapDescriptor.bytes(markerIcon);
         // Cache it
