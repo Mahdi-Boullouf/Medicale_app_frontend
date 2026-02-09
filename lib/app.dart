@@ -15,7 +15,8 @@ import 'package:docmobi/services/notification_poller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:docmobi/providers/locale_provider.dart';
-import 'package:docmobi/services/auth_service.dart';
+import 'package:docmobi/services/notification_service.dart';
+import 'services/auth_service.dart';
 
 class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
@@ -101,8 +102,10 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
         // Initialize CallManager after navigation is ready
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_navigatorKey.currentContext != null) {
+            NotificationService.navigatorKey = _navigatorKey; // ✅ Added
             CallManager.instance.initialize(_navigatorKey.currentContext!);
-            debugPrint('✅ CallManager initialized');
+            NotificationService.checkInitialMessage(); // ✅ Check for terminated launch
+            debugPrint('✅ CallManager & Notification Navigator initialized');
           }
         });
       } else {

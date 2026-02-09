@@ -1,14 +1,41 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 
 class UserService {
-  /// Get current user profile
+  /// Get current user profile and save name/avatar to SharedPreferences
   static Future<Map<String, dynamic>> getUserProfile() async {
     debugPrint('🔍 Fetching user profile...');
-    return await ApiService.get('/api/v1/user/profile', requiresAuth: true);
+    final result = await ApiService.get('/api/v1/user/profile', requiresAuth: true);
+    
+    // ✅ Save profile details for notification attributes
+    if (result['success'] == true) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final userData = result['data'] ?? result['user'];
+        
+        if (userData != null) {
+          final fullName = userData['fullName'];
+          final avatarUrl = userData['avatar']?['url'];
+          
+          if (fullName != null) {
+            await prefs.setString('user_full_name', fullName.toString());
+            debugPrint('💾 Profile: Saved user_full_name = $fullName');
+          }
+          if (avatarUrl != null && avatarUrl.toString().isNotEmpty) {
+            await prefs.setString('user_avatar', avatarUrl.toString());
+            debugPrint('💾 Profile: Saved user_avatar = $avatarUrl');
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Error saving profile to SharedPreferences: $e');
+      }
+    }
+    
+    return result;
   }
 
   /// Update user profile with image and location support

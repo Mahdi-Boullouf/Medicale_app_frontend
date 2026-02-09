@@ -380,7 +380,7 @@ class ApiService {
           debugPrint('✅ User role saved: $userRole');
         }
 
-        // ✅ FIXED: Save user_id for Socket Connection
+        // Extract user_id
         final userId =
             result['data']?['user']?['_id'] ??
             result['data']?['user']?['id'] ??
@@ -392,6 +392,25 @@ class ApiService {
           debugPrint('✅ User ID saved: $userId');
         } else {
           debugPrint('⚠️ User ID NOT found in login response!');
+        }
+
+        // Save Full Name and Avatar for notification attributes
+        final fullName =
+            result['data']?['user']?['fullName'] ??
+            result['data']?['fullName'] ??
+            result['user']?['fullName'];
+        final avatarUrl =
+            result['data']?['user']?['avatar']?['url'] ??
+            result['data']?['avatar']?['url'] ??
+            result['user']?['avatar']?['url'];
+
+        if (fullName != null) {
+          await prefs.setString('user_full_name', fullName.toString());
+          debugPrint('✅ Full Name saved: $fullName');
+        }
+        if (avatarUrl != null) {
+          await prefs.setString('user_avatar', avatarUrl.toString());
+          debugPrint('✅ Avatar URL saved: $avatarUrl');
         }
       }
     }

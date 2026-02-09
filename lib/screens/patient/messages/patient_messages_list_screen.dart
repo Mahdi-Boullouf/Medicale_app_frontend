@@ -133,56 +133,85 @@ class _PatientMessagesListScreenState extends State<PatientMessagesListScreen> {
           String? avatarUrl;
 
           try {
-            // This now uses the static cache in ApiService internally
-            final userProfile = await ApiService.getUserProfile(
-              userId: conversationId,
-            );
-            if (userProfile['success'] == true) {
-              fullName = userProfile['data']['fullName'] ?? 'Doctor';
-              avatarUrl = userProfile['data']['avatar']?['url'];
+            // Resolve backend chatId and doctor profile
+            final result = await ApiService.createOrGetChat(userId: conversationId);
+            if (result['success'] == true) {
+              final chatData = result['data'];
+              final backendChatId = chatData['_id']?.toString();
+              
+              final participants = chatData['participants'] as List;
+              final otherUser = participants.firstWhere(
+                (p) => p['_id'] != _currentUserId,
+                orElse: () => participants[0],
+              );
+              
+              fullName = otherUser['fullName'] ?? 'Doctor';
+              avatarUrl = otherUser['avatar']?['url'];
+
+              // Format for UI
+              String content = '';
+              if (lastMsg.attributes?['type'] == 'call_log') {
+                final isVideo = lastMsg.attributes?['call_type'] == 'video';
+                content = isVideo
+                    ? (l10n?.videoCall ?? 'Video Call')
+                    : (l10n?.voiceCall ?? 'Voice Call');
+              } else if (lastMsg.body.type == MessageType.TXT) {
+                content = (lastMsg.body as ChatTextMessageBody).content;
+              } else if (lastMsg.body.type == MessageType.IMAGE) {
+                content = l10n?.imageLabel ?? '[Image]';
+              } else if (lastMsg.body.type == MessageType.FILE) {
+                content = l10n?.fileLabel ?? '[File]';
+              } else {
+                content = l10n?.messageLabel ?? '[Message]';
+              }
+
+              return {
+                '_id': backendChatId ?? conversationId,
+                'actualUserId': conversationId, // For Agora
+                'participants': chatData['participants'],
+                'lastMessage': {
+                  'content': content,
+                  'createdAt': DateTime.fromMillisecondsSinceEpoch(
+                    lastMsg.serverTime,
+                  ).toIso8601String(),
+                },
+                'unreadCount': await conv.unreadCount(),
+                'updatedAt': DateTime.fromMillisecondsSinceEpoch(
+                  lastMsg.serverTime,
+                ).toIso8601String(),
+              };
             }
-          } catch (e) {
-            debugPrint('⚠️ Could not resolve user $conversationId: $e');
-          }
-
-          // Format for UI
-          String content = '';
-          if (lastMsg.attributes?['type'] == 'call_log') {
-            final isVideo = lastMsg.attributes?['call_type'] == 'video';
-            content = isVideo
-                ? (l10n?.videoCall ?? 'Video Call')
-                : (l10n?.voiceCall ?? 'Voice Call');
-          } else if (lastMsg.body.type == MessageType.TXT) {
-            content = (lastMsg.body as ChatTextMessageBody).content;
-          } else if (lastMsg.body.type == MessageType.IMAGE) {
-            content = l10n?.imageLabel ?? '[Image]';
-          } else if (lastMsg.body.type == MessageType.FILE) {
-            content = l10n?.fileLabel ?? '[File]';
-          } else {
-            content = l10n?.messageLabel ?? '[Message]';
-          }
-
-          return {
-            '_id': conversationId,
-            'participants': [
-              {
-                'role': 'doctor',
-                '_id': conversationId,
-                'fullName': fullName,
-                'avatar': {'url': avatarUrl},
+            // Fallback return if success is false
+            return {
+              '_id': conversationId,
+              'actualUserId': conversationId,
+              'participants': [],
+              'lastMessage': {
+                'content': '',
+                'createdAt': DateTime.fromMillisecondsSinceEpoch(
+                  lastMsg.serverTime,
+                ).toIso8601String(),
               },
-            ],
-            'lastMessage': {
-              'content': content,
-              'createdAt': DateTime.fromMillisecondsSinceEpoch(
+              'unreadCount': 0,
+              'updatedAt': DateTime.fromMillisecondsSinceEpoch(
                 lastMsg.serverTime,
               ).toIso8601String(),
-            },
-            'unreadCount': await conv.unreadCount(),
-            'updatedAt': DateTime.fromMillisecondsSinceEpoch(
-              lastMsg.serverTime,
-            ).toIso8601String(),
-          };
+            };
+          } catch (e) {
+            debugPrint('⚠️ Could not resolve chat/user $conversationId: $e');
+            // Fallback return for error
+            return {
+              '_id': conversationId,
+              'actualUserId': conversationId,
+              'participants': [],
+              'lastMessage': {
+                'content': '',
+                'createdAt': DateTime.now().toIso8601String(),
+              },
+              'unreadCount': 0,
+              'updatedAt': DateTime.now().toIso8601String(),
+            };
+          }
         }),
       );
 
@@ -421,9 +450,16 @@ class _PatientMessagesListScreenState extends State<PatientMessagesListScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: InkWell(
-        onTap: _isSelectionMode
-            ? () => _toggleSelection(convId)
-            : () async {
+        onTap: () async {
+          if (_isSelectionMode) {
+            _toggleSelection(convId);
+            return;
+          }
+
+          final String backendId = chat['_id']?.toString() ?? '';
+          final String actualUserId =
+              chat['actualUserId']?.toString() ?? backendId;
+
                 // ✅ Mark as read immediately (optimistic UI update)
                 if (unreadCount > 0) {
                   setState(() {
@@ -432,19 +468,13 @@ class _PatientMessagesListScreenState extends State<PatientMessagesListScreen> {
 
                   // Mark all messages as read in both Agora and backend
                   try {
-                    // Agora SDK
-                    await AgoraChatService.instance.markAllMessagesAsRead(
-                      convId,
-                    );
-                    debugPrint(
-                      '✅ Marked conversation $convId as read in Agora',
-                    );
+                    // Agora SDK - MUST use UserID
+                    await AgoraChatService.instance.markAllMessagesAsRead(actualUserId);
+                    debugPrint('✅ Marked conversation $actualUserId as read in Agora');
 
-                    // Backend API
-                    await ApiService.markChatAsRead(chatId: chat['_id']);
-                    debugPrint(
-                      '✅ Marked conversation $convId as read in backend',
-                    );
+                    // Backend API - MUST use ChatID
+                    await ApiService.markChatAsRead(chatId: backendId);
+                    debugPrint('✅ Marked conversation $backendId as read in backend');
                   } catch (e) {
                     debugPrint('⚠️ Failed to mark as read: $e');
                   }
@@ -456,13 +486,16 @@ class _PatientMessagesListScreenState extends State<PatientMessagesListScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (_) => ChatDetailScreen(
-                      chatId: chat['_id'].toString(),
+                      chatId: backendId,
                       doctorName: doctorName,
                       doctorAvatar: doctorAvatar,
-                      doctorId: doctorId,
+                      doctorId: actualUserId,
                     ),
                   ),
-                );
+                ).then((_) {
+                  // ✅ Reload chats when returning to update unread counts
+                  if (mounted) _loadChatsQuietly();
+                });
 
                 // ✅ Don't reload chats here - we've already optimistically updated the UI
                 // The real-time listener will handle any new messages that arrive

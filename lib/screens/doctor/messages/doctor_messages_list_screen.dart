@@ -130,59 +130,62 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
         String role = 'patient'; // Default to patient for doctor view
 
         try {
-          final userProfile = await ApiService.getUserProfile(
-            userId: conversationId,
-          );
-          if (userProfile['success'] == true) {
-            userName = userProfile['data']['fullName'] ?? 'User';
-            avatarUrl = userProfile['data']['avatar']?['url'];
-            role = userProfile['data']['role'] ?? 'patient';
+          // Resolve backend chatId and user profile
+          final result = await ApiService.createOrGetChat(userId: conversationId);
+          if (result['success'] == true) {
+            final chatData = result['data'];
+            final backendChatId = chatData['_id']?.toString();
+            
+            final participants = chatData['participants'] as List;
+            final otherUser = participants.firstWhere(
+              (p) => p['_id'] != currentUserId,
+              orElse: () => participants[0],
+            );
+            
+            userName = otherUser['fullName'] ?? 'User';
+            avatarUrl = otherUser['avatar']?['url'];
+            role = otherUser['role'] ?? 'patient';
+            
+            // Format for UI
+            String content = '';
+            if (mounted) {
+              final l10n = AppLocalizations.of(context);
+              if (lastMsg.attributes?['type'] == 'call_log') {
+                final isVideo = lastMsg.attributes?['call_type'] == 'video';
+                content = isVideo
+                    ? (l10n?.videoCall ?? 'Video Call')
+                    : (l10n?.voiceCall ?? 'Voice Call');
+              } else if (lastMsg.body.type == MessageType.TXT) {
+                content = (lastMsg.body as ChatTextMessageBody).content;
+              } else if (lastMsg.body.type == MessageType.IMAGE) {
+                content = l10n?.imageLabel ?? '[Image]';
+              } else if (lastMsg.body.type == MessageType.FILE) {
+                content = l10n?.fileLabel ?? '[File]';
+              } else {
+                content = l10n?.messageLabel ?? '[Message]';
+              }
+            }
+
+            // ✅ Use the true backend chatId instead of conversationId (UserID)
+            formattedChats.add({
+              '_id': backendChatId ?? conversationId,
+              'actualUserId': conversationId, // Keep for Agora
+              'participants': chatData['participants'],
+              'lastMessage': {
+                'content': content,
+                'createdAt': DateTime.fromMillisecondsSinceEpoch(
+                  lastMsg.serverTime,
+                ).toIso8601String(),
+              },
+              'unreadCount': await conv.unreadCount(),
+              'updatedAt': DateTime.fromMillisecondsSinceEpoch(
+                lastMsg.serverTime,
+              ).toIso8601String(),
+            });
           }
         } catch (e) {
-          debugPrint('⚠️ Could not resolve user $conversationId: $e');
+          debugPrint('⚠️ Could not resolve chat/user $conversationId: $e');
         }
-
-        // 4. Format for UI
-        String content = '';
-        if (mounted) {
-          final l10n = AppLocalizations.of(context);
-          if (lastMsg.attributes?['type'] == 'call_log') {
-            final isVideo = lastMsg.attributes?['call_type'] == 'video';
-            content = isVideo
-                ? (l10n?.videoCall ?? 'Video Call')
-                : (l10n?.voiceCall ?? 'Voice Call');
-          } else if (lastMsg.body.type == MessageType.TXT) {
-            content = (lastMsg.body as ChatTextMessageBody).content;
-          } else if (lastMsg.body.type == MessageType.IMAGE) {
-            content = l10n?.imageLabel ?? '[Image]';
-          } else if (lastMsg.body.type == MessageType.FILE) {
-            content = l10n?.fileLabel ?? '[File]';
-          } else {
-            content = l10n?.messageLabel ?? '[Message]';
-          }
-        }
-
-        formattedChats.add({
-          '_id': conversationId,
-          'participants': [
-            {
-              'role': role,
-              '_id': conversationId,
-              'fullName': userName,
-              'avatar': {'url': avatarUrl},
-            },
-          ],
-          'lastMessage': {
-            'content': content,
-            'createdAt': DateTime.fromMillisecondsSinceEpoch(
-              lastMsg.serverTime,
-            ).toIso8601String(),
-          },
-          'unreadCount': await conv.unreadCount(),
-          'updatedAt': DateTime.fromMillisecondsSinceEpoch(
-            lastMsg.serverTime,
-          ).toIso8601String(),
-        });
       }
 
       if (mounted) {
@@ -504,12 +507,13 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
         ? _formatTime(DateTime.parse(lastMessageTime))
         : '';
 
-    final String convId = chat['_id']?.toString() ?? '';
-    final bool isSelected = _selectedConversationIds.contains(convId);
+    final String backendId = chat['_id']?.toString() ?? '';
+    final String actualUserId = chat['actualUserId']?.toString() ?? backendId;
+    final bool isSelected = _selectedConversationIds.contains(backendId);
 
     return InkWell(
       onTap: _isSelectionMode
-          ? () => _toggleSelection(convId)
+          ? () => _toggleSelection(backendId)
           : () async {
               // ✅ Mark as read immediately (optimistic UI update)
               if (unreadCount > 0) {
@@ -519,14 +523,14 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
 
                 // Mark all messages as read in both Agora and backend
                 try {
-                  // Agora SDK
-                  await AgoraChatService.instance.markAllMessagesAsRead(convId);
-                  debugPrint('✅ Marked conversation $convId as read in Agora');
+                  // Agora SDK - MUST use UserID
+                  await AgoraChatService.instance.markAllMessagesAsRead(actualUserId);
+                  debugPrint('✅ Marked conversation $actualUserId as read in Agora');
 
-                  // Backend API
-                  await ApiService.markChatAsRead(chatId: chat['_id']);
+                  // Backend API - MUST use ChatID
+                  await ApiService.markChatAsRead(chatId: backendId);
                   debugPrint(
-                    '✅ Marked conversation $convId as read in backend',
+                    '✅ Marked conversation $backendId as read in backend',
                   );
                 } catch (e) {
                   debugPrint('⚠️ Failed to mark as read: $e');
@@ -539,19 +543,21 @@ class _DoctorMessagesListScreenState extends State<DoctorMessagesListScreen>
                 context,
                 MaterialPageRoute(
                   builder: (context) => DoctorChatDetailScreen(
-                    chatId: chat['_id'],
+                    chatId: backendId,
                     userName: userName,
                     userAvatar: userAvatar,
                     userRole: userRole,
-                    otherUserId: otherUser!['_id'],
+                    otherUserId: actualUserId,
                   ),
                 ),
-              );
+              ).then((_) {
+                 if (mounted) _loadChatsQuietly();
+              });
 
-              // ✅ Don't reload chats here - we've already optimistically updated the UI
-              // The real-time listener will handle any new messages that arrive
+              // ✅ Don't reload chats here - we've also optimistically updated the UI
+              // but reloading ensures we catch any changes from the chat screen (like reads)
             },
-      onLongPress: () => _toggleSelection(convId),
+      onLongPress: () => _toggleSelection(backendId),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         padding: const EdgeInsets.all(12),

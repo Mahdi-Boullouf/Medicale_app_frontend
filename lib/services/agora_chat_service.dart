@@ -2,7 +2,10 @@ import 'package:agora_chat_sdk/agora_chat_sdk.dart';
 import 'package:flutter/foundation.dart';
 import 'package:docmobi/config/agora_config.dart';
 import 'package:docmobi/services/api_service.dart';
+import 'package:docmobi/services/notification_service.dart';
 import 'dart:io';
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AgoraChatService {
   static final AgoraChatService _instance = AgoraChatService._internal();
@@ -142,6 +145,23 @@ class AgoraChatService {
     Map<String, dynamic>? attributes, // ✅ Added attributes support
   }) async {
     try {
+      // 0. Get our own profile for attributes
+      final prefs = await SharedPreferences.getInstance();
+      final myName = prefs.getString('user_full_name') ?? 'User';
+      final myAvatar = prefs.getString('user_avatar') ?? '';
+
+      debugPrint('📝 [SendMessage] Sender Info:');
+      debugPrint('   - Name: $myName');
+      debugPrint('   - Avatar: $myAvatar');
+      debugPrint('   - Backend Chat ID: $backendChatId');
+
+      final Map<String, dynamic> msgAttributes = {
+        'senderName': myName,
+        'senderAvatar': myAvatar,
+        'chatId': backendChatId ?? conversationId,
+        ...?attributes,
+      };
+
       ChatMessage? lastMessage;
 
       // 1. Send via Agora SDK (Real-time & Data)
@@ -152,9 +172,7 @@ class AgoraChatService {
             filePath: file.path,
             chatType: type,
           );
-          if (attributes != null) {
-            message.attributes = attributes;
-          }
+          message.attributes = msgAttributes;
 
           // Add status listener for better debugging
           ChatClient.getInstance.chatManager.addMessageEvent(
@@ -177,9 +195,7 @@ class AgoraChatService {
             content: content,
             chatType: type,
           );
-          if (attributes != null) {
-            message.attributes = attributes;
-          }
+          message.attributes = msgAttributes;
           await ChatClient.getInstance.chatManager.sendMessage(message);
           lastMessage = message;
         }
@@ -189,9 +205,7 @@ class AgoraChatService {
           content: content,
           chatType: type,
         );
-        if (attributes != null) {
-          message.attributes = attributes;
-        }
+        message.attributes = msgAttributes;
 
         ChatClient.getInstance.chatManager.addMessageEvent(
           "SEND_HANDLER_${DateTime.now().millisecondsSinceEpoch}",
@@ -364,10 +378,16 @@ class AgoraChatService {
 
   Future<void> markAllMessagesAsRead(String conversationId) async {
     try {
+      debugPrint('📖 [Agora] Marking all messages as read for: $conversationId');
       ChatConversation? conv = await ChatClient.getInstance.chatManager
           .getConversation(conversationId);
-      await conv?.markAllMessagesAsRead();
-      debugPrint('✅ Marked all messages as read for $conversationId');
+      
+      if (conv != null) {
+        await conv.markAllMessagesAsRead();
+        debugPrint('✅ [Agora] Successfully marked all messages as read for $conversationId');
+      } else {
+        debugPrint('⚠️ [Agora] Conversation not found for $conversationId');
+      }
     } catch (e) {
       debugPrint('❌ Mark as Read Failed: $e');
     }
@@ -429,14 +449,63 @@ class AgoraChatService {
       "GLOBAL_DEBUG",
       ChatEventHandler(
         onMessagesReceived: (messages) {
+          debugPrint('🌏 [GLOBAL AGORA] Received ${messages.length} messages');
           for (var msg in messages) {
             debugPrint(
-              '🌏 [GLOBAL AGORA] Received message: ${msg.msgId} from ${msg.from} to ${msg.to}',
+              '🌏 [GLOBAL AGORA] MsgID: ${msg.msgId} | From: ${msg.from} | To: ${msg.to}',
             );
             debugPrint('   - Body: ${msg.body.toString()}');
+            debugPrint('   - Attributes: ${msg.attributes}');
+
+            // ✅ Trigger local notification if not in this chat
+            _triggerLocalNotification(msg);
           }
         },
       ),
     );
+  }
+
+  void _triggerLocalNotification(ChatMessage msg) async {
+    try {
+      // 1. Get current logged in user ID to ensure we are the receiver
+      final currentUserId = await ChatClient.getInstance.getCurrentUserId();
+      if (msg.from == currentUserId) return; // Don't notify for our own messages
+
+      // 2. Extract content
+      String content = '';
+      if (msg.body is ChatTextMessageBody) {
+        content = (msg.body as ChatTextMessageBody).content;
+      } else if (msg.body is ChatImageMessageBody) {
+        content = '[Image]';
+      } else if (msg.body is ChatFileMessageBody) {
+        content = '[File]';
+      }
+
+      // 3. Extract metadata from attributes if possible
+      final String senderName = msg.attributes?['senderName']?.toString() ??
+          msg.from ??
+          'User';
+      final String? avatar = msg.attributes?['senderAvatar']?.toString();
+      final String? backendChatId =
+          msg.attributes?['chatId']?.toString() ??
+          msg.conversationId; // Fallback to conversation ID (Agora ID)
+
+      if (backendChatId != null) {
+        debugPrint(
+          '🔔 Triggering Local Notification for $senderName in chat $backendChatId',
+        );
+        NotificationService.showLocalNotificationForChat(
+          senderName: senderName,
+          content: content,
+          chatId: backendChatId,
+          otherUserId: msg.from ?? '',
+          avatar: avatar,
+        );
+      } else {
+        debugPrint('⚠️ Skipping local notification: backendChatId is NULL');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error triggering local notification: $e');
+    }
   }
 }

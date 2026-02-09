@@ -82,6 +82,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
 
     // ✅ Track active chat to suppress notifications
     NotificationService.currentChatId = widget.chatId;
+    NotificationService.clearBadge(); // ✅ Clear badge on entering chat
 
     _scrollController.addListener(() {
       if (_scrollController.hasClients) {
