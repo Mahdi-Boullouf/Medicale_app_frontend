@@ -8,6 +8,7 @@ import '../../../services/socket_service.dart';
 import '../../../services/agora_service.dart';
 import '../../../services/agora_chat_service.dart';
 import '../../../services/active_call_state.dart';
+import '../../../services/notification_service.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 
 class VideoCallScreen extends StatefulWidget {
@@ -31,10 +32,9 @@ class VideoCallScreen extends StatefulWidget {
 }
 
 class _VideoCallScreenState extends State<VideoCallScreen> {
-  // Agora Service
   final AgoraService _agoraService = AgoraService.instance;
 
-  int? _remoteUid; // Track the remote user's Agora UID
+  int? _remoteUid;
 
   bool _isMuted = false;
   bool _isVideoOff = false;
@@ -43,13 +43,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   String _callStatus = 'Connecting...';
   String? _currentUserId;
   bool _isDisposed = false;
-  bool _channelJoined = false; // ✅ Prevents duplicate join attempts
+  bool _channelJoined = false;
 
   Timer? _callTimer;
   int _callDurationSeconds = 0;
   String _callDuration = '00:00';
-
-  // ✅ Unanswered call timeout (30 seconds)
   Timer? _unansweredTimer;
 
   @override
@@ -62,15 +60,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   Future<void> _loadCurrentUserIdAndInitialize() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // ignore: unused_local_variable
       final userDataString = prefs.getString('user_data');
 
       final profileResult = await ApiService.getUserProfile();
       if (profileResult['success'] == true) {
         _currentUserId = profileResult['data']['_id']?.toString();
         debugPrint('✅ Current user ID loaded: $_currentUserId');
-
-        // Initialize Call
         await _initializeCall();
       } else {
         throw Exception('Failed to load user profile');
@@ -89,7 +84,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     try {
       setState(() => _callStatus = 'Setting up video...');
 
-      // ✅ Save active call state for restore on app reopen
       await ActiveCallState.saveActiveCall(
         chatId: widget.chatId,
         userName: widget.userName,
@@ -99,10 +93,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         callType: 'video',
       );
 
-      // 1. Initialize Agora
       await _agoraService.initialize();
 
-      // 2. Setup Agora Listeners
       _agoraService.onUserJoined = (uid, elapsed) {
         if (mounted) {
           debugPrint('✅ Remote user joined: $uid');
@@ -118,8 +110,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       _agoraService.onUserOffline = (uid, reason) {
         if (mounted) {
           debugPrint('Remote user offline: $reason');
-          // Optional: Don't end call immediately if it's just a temporary drop, but for now we end it or show waiting
-          // _endCall();
           setState(() {
             _remoteUid = null;
             _callStatus = 'User Offline';
@@ -150,16 +140,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         });
       };
 
-      // 3. Setup Socket Listeners (for strict signaling like End Call)
-      
-      // ✅ Ensure Socket is Connected (Critical for receiving call:accepted)
       if (_currentUserId != null) {
         if (!SocketService.instance.isConnected) {
           debugPrint('⚠️ Socket disconnected in VideoCallScreen - Reconnecting...');
           await SocketService.instance.connect(_currentUserId!);
         } else {
-           // Ensure we are in the user room (idempotent)
-           SocketService.instance.socket?.emit('joinUserRoom', _currentUserId!);
+          SocketService.instance.socket?.emit('joinUserRoom', _currentUserId!);
         }
       }
 
@@ -169,19 +155,15 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         _isInitializing = false;
       });
 
-      // 4. Join Channel
       if (widget.isInitiator) {
         setState(() => _callStatus = 'Calling...');
-        // ✅ Start 30-second unanswered timer
         _unansweredTimer = Timer(const Duration(seconds: 30), () {
           if (mounted && !_isCallConnected) {
             debugPrint('⏱️ Call not answered in 30 seconds, auto-ending...');
             _showError('No answer');
           }
         });
-        // Wait for 'call:accepted' event before joining to avoid joining empty channel
       } else {
-        // Receiver joins immediately
         debugPrint('📥 Receiver joining channel immediately...');
         await _joinAgoraChannel();
       }
@@ -192,7 +174,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   Future<void> _joinAgoraChannel() async {
-    // ✅ Prevent duplicate join attempts (call:accepted fires multiple times)
     if (_channelJoined) {
       debugPrint('⚠️ Already joined/joining channel — skipping duplicate');
       return;
@@ -202,19 +183,24 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     try {
       setState(() => _callStatus = 'Securing connection...');
 
-      // ✅ Fetch Dynamic Token
-      final result = await ApiService.getAgoraToken(channelName: widget.chatId);
-      final String? token = (result['success'] == true)
-          ? result['data']['token']
-          : null;
+      // ✅ FIX: আগে cached token check করো — timeout এড়াতে
+      String? token = NotificationService.consumeCachedAgoraToken();
+
+      if (token != null) {
+        debugPrint('✅ Using pre-fetched Agora token — no API delay!');
+      } else {
+        // Cache নেই — API থেকে আনো
+        debugPrint('🔄 No cached token, fetching from API...');
+        final result = await ApiService.getAgoraToken(channelName: widget.chatId);
+        token = (result['success'] == true) ? result['data']['token'] : null;
+      }
 
       if (token == null) {
         if (mounted) _showError('Connection security failed');
         return;
       }
-      debugPrint('🔐 Call Token Secured');
+      debugPrint('🔐 Call Token Ready');
 
-      // Use chatId as channel name
       if (_currentUserId != null) {
         await _agoraService.joinChannelWithUserAccount(
           channelName: widget.chatId,
@@ -228,7 +214,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           channelName: widget.chatId,
           uid: 0,
           isVideo: true,
-          token: token, // Pass dynamic token
+          token: token,
         );
         debugPrint('⚠️ Joined Agora channel with UID 0 (Fallback)');
       }
@@ -243,7 +229,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     final socket = SocketService.instance.socket;
     if (socket == null) return;
 
-    // Cleanup first
     socket.off('call:accepted');
     socket.off('call:ended');
     socket.off('call:rejected');
@@ -252,7 +237,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       debugPrint('📥 Received call:accepted event');
       if (data['chatId'] == widget.chatId && !_channelJoined) {
         debugPrint('✅ Call accepted, joining Agora channel...');
-        // ✅ Cancel unanswered timer
         _unansweredTimer?.cancel();
         _unansweredTimer = null;
         setState(() => _callStatus = 'Connecting...');
@@ -275,7 +259,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
     socket.on('call:switch_request', (data) {
       if (data['chatId'] == widget.chatId && mounted) {
-        // Handle switch request if needed (e.g. audio to video)
+        // Handle switch request if needed
       }
     });
   }
@@ -287,14 +271,10 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       if (mounted) {
         setState(() {
           _callDurationSeconds++;
-          final minutes = (_callDurationSeconds ~/ 60).toString().padLeft(
-            2,
-            '0',
-          );
-          final seconds = (_callDurationSeconds % 60).toString().padLeft(
-            2,
-            '0',
-          );
+          final minutes =
+              (_callDurationSeconds ~/ 60).toString().padLeft(2, '0');
+          final seconds =
+              (_callDurationSeconds % 60).toString().padLeft(2, '0');
           _callDuration = '$minutes:$seconds';
         });
       } else {
@@ -322,10 +302,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _isDisposed = true;
     _callTimer?.cancel();
 
-    // ✅ Clear active call state
     await ActiveCallState.clearActiveCall();
 
-    // ✅ Log Call to Chat (Initiator Only to prevent duplicates)
     try {
       if (widget.otherUserId.isNotEmpty && widget.isInitiator) {
         String status = _isCallConnected ? 'ended' : 'cancelled';
@@ -334,24 +312,21 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           callType: 'video',
           status: status,
           duration: _isCallConnected ? _callDuration : '',
-          backendChatId: widget.chatId, // ✅ Trigger notification
+          backendChatId: widget.chatId,
         );
       }
     } catch (e) {
       debugPrint('⚠️ Failed to send call log: $e');
     }
 
-    // ✅ Clear CallKit state
     await FlutterCallkitIncoming.endAllCalls();
 
-    // Notify server
     SocketService.instance.emit('call:end', {
       'chatId': widget.chatId,
       'toUserId': widget.otherUserId,
       'fromUserId': _currentUserId,
     });
 
-    // Leave Agora
     await _agoraService.leaveChannel();
 
     if (mounted) {
@@ -378,8 +353,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _callTimer?.cancel();
     _unansweredTimer?.cancel();
 
-    // ✅ If _endCall() was NOT called (e.g., app killed during call),
-    // perform minimal cleanup: leave channel, notify server, clear state.
     if (!_isDisposed) {
       debugPrint('⚠️ VideoCallScreen disposed without _endCall — cleaning up');
       _isDisposed = true;
@@ -393,7 +366,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       });
     }
 
-    // Clear callbacks to avoid calling setState on disposed widget
     _agoraService.onUserJoined = null;
     _agoraService.onUserOffline = null;
 
@@ -424,7 +396,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                 ),
               )
             else
-              // Waiting for remote user
               Container(
                 color: const Color(0xFF1B2C49),
                 child: Center(
@@ -433,8 +404,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                     children: [
                       CircleAvatar(
                         radius: 60,
-                        backgroundImage:
-                            widget.userAvatar != null &&
+                        backgroundImage: widget.userAvatar != null &&
                                 widget.userAvatar!.isNotEmpty
                             ? NetworkImage(widget.userAvatar!)
                             : const AssetImage('assets/images/doctor1.png')
@@ -469,7 +439,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                 ),
               ),
 
-            // Local Video (Small View) - Only if video is ON
+            // Local Video (Small View)
             if (!_isVideoOff && _agoraService.engine != null)
               Positioned(
                 top: 50,
@@ -493,7 +463,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                     child: AgoraVideoView(
                       controller: VideoViewController(
                         rtcEngine: _agoraService.engine!,
-                        canvas: const VideoCanvas(uid: 0), // 0 for local view
+                        canvas: const VideoCanvas(uid: 0),
                       ),
                     ),
                   ),
@@ -518,8 +488,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                     children: [
                       CircleAvatar(
                         radius: 16,
-                        backgroundImage:
-                            widget.userAvatar != null &&
+                        backgroundImage: widget.userAvatar != null &&
                                 widget.userAvatar!.isNotEmpty
                             ? NetworkImage(widget.userAvatar!)
                             : const AssetImage('assets/images/doctor1.png')
@@ -571,7 +540,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                         color: _isMuted ? Colors.red : Colors.white,
                       ),
                       _buildControlButton(
-                        icon: _isVideoOff ? Icons.videocam_off : Icons.videocam,
+                        icon: _isVideoOff
+                            ? Icons.videocam_off
+                            : Icons.videocam,
                         label: _isVideoOff ? 'Cam Off' : 'Cam On',
                         onPressed: _toggleVideo,
                         color: _isVideoOff ? Colors.red : Colors.white,
@@ -624,7 +595,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
+        Text(label,
+            style: const TextStyle(color: Colors.white, fontSize: 12)),
       ],
     );
   }

@@ -6,6 +6,7 @@ import 'package:docmobi/screens/common/calls/audio_call_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import 'package:docmobi/services/notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CallManager {
   static final CallManager _instance = CallManager._internal();
@@ -23,19 +24,15 @@ class CallManager {
 
     if (_isListening) {
       debugPrint('⚠️ CallManager already listening - updating context');
-      // No need to cleanup and re-setup if already listening,
-      // but ensure we have the latest context
       return;
     }
 
     _setupCallListeners();
     _isListening = true;
 
-    // Listen for reconnection to re-setup listeners if needed
     _connectionSubscription?.cancel();
-    _connectionSubscription = SocketService.instance.connectionStream.listen((
-      connected,
-    ) {
+    _connectionSubscription =
+        SocketService.instance.connectionStream.listen((connected) {
       if (connected) {
         debugPrint('📡 CallManager: Socket connected - ensuring listeners');
         _setupCallListeners();
@@ -43,7 +40,8 @@ class CallManager {
     });
 
     _reconnectSubscription?.cancel();
-    _reconnectSubscription = SocketService.instance.reconnectStream.listen((_) {
+    _reconnectSubscription =
+        SocketService.instance.reconnectStream.listen((_) {
       debugPrint('🔄 CallManager: Socket reconnected - ensuring listeners');
       _setupCallListeners();
     });
@@ -83,7 +81,6 @@ class CallManager {
         '╚═══════════════════════════════════════════════════════════╝',
       );
       debugPrint('   • Raw data: $data');
-      debugPrint('   • Data type: ${data.runtimeType}');
 
       Map<String, dynamic> callData;
       if (data is Map<String, dynamic>) {
@@ -99,12 +96,6 @@ class CallManager {
       debugPrint('   • Chat: ${callData['chatId']}');
       debugPrint('   • Type: ${callData['isVideo'] ? "VIDEO 📹" : "AUDIO 📞"}');
       debugPrint('   • Context: ${_context != null ? "Available" : "NULL"}');
-      debugPrint('   • Mounted: ${_context?.mounted}');
-
-      // Check availability before proceeding
-      final available = _isDoctorAvailableForCalls();
-      debugPrint('   • Doctor Available: ${available ? "YES ✅" : "NO 🚫"}');
-      debugPrint('');
 
       if (_context != null && _context!.mounted) {
         _handleIncomingCall(callData);
@@ -125,9 +116,22 @@ class CallManager {
     debugPrint('👂 Listening: call:incoming, call:accepted, call:rejected');
   }
 
-  void _handleIncomingCall(Map<String, dynamic> data) {
+  void _handleIncomingCall(Map<String, dynamic> data) async {
     if (_context == null || !_context!.mounted) {
       debugPrint('⚠️ Context not available');
+      return;
+    }
+
+    // ✅ FIX: Login check — not logged in হলে socket call ও ignore করবো
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final authToken = prefs.getString('auth_token');
+      if (authToken == null || authToken.isEmpty) {
+        debugPrint('⚠️ [CallManager] User not logged in — ignoring socket call');
+        return;
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CallManager] Could not check auth: $e');
       return;
     }
 
@@ -159,13 +163,11 @@ class CallManager {
       return;
     }
 
-    debugPrint('📱 Doctor available - Incoming call UI will be handled by CallKit');
-    
-    // ✅ TRIGGER CALLKIT UI
-    debugPrint('🚀 Triggering NotificationService.showIncomingCall from Socket Event');
-    
+    debugPrint(
+        '📱 User available - Triggering CallKit UI from Socket Event');
+
     NotificationService.showIncomingCall({
-      'uuid': data['uuid'], // Use backend UUID if available
+      'uuid': data['uuid'],
       'callerId': fromUserId,
       'callerName': callerName,
       'callerAvatar': callerAvatar,
@@ -192,7 +194,6 @@ class CallManager {
         return false;
       }
 
-      // Check if user is a doctor and their call availability
       final isDoctor = user.role == 'doctor';
       final isAvailableForCalls = user.isVideoCallAvailable;
 
@@ -201,7 +202,6 @@ class CallManager {
       debugPrint('   • Is Doctor: $isDoctor');
       debugPrint('   • Call Available: $isAvailableForCalls');
 
-      // Only apply availability check for doctors
       // Patients should always be able to receive calls
       return !isDoctor || isAvailableForCalls;
     } catch (e) {
@@ -219,18 +219,19 @@ class CallManager {
     final callerName = callData['callerName']?.toString() ?? 'Unknown User';
 
     debugPrint('');
-    debugPrint('╔═══════════════════════════════════════════════════════════╗');
-    debugPrint('║              🚫 AUTO-REJECTING CALL                    ║');
-    debugPrint('╚═══════════════════════════════════════════════════════════╝');
     debugPrint(
-      '   • Reason: Doctor is not available for ${isVideo ? "video" : "audio"} calls',
-    );
+        '╔═══════════════════════════════════════════════════════════╗');
+    debugPrint(
+        '║              🚫 AUTO-REJECTING CALL                    ║');
+    debugPrint(
+        '╚═══════════════════════════════════════════════════════════╝');
+    debugPrint(
+        '   • Reason: Doctor is not available for ${isVideo ? "video" : "audio"} calls');
     debugPrint('   • From: $callerName ($fromUserId)');
     debugPrint('   • Chat: $chatId');
 
     if (fromUserId != null && chatId != null) {
       try {
-        // Send reject event with reason
         SocketService.instance.emit('call:reject', {
           'chatId': chatId,
           'toUserId': fromUserId,
@@ -238,7 +239,6 @@ class CallManager {
           'isAutoRejected': true,
         });
 
-        // Send call end event
         SocketService.instance.emit('call:end', {
           'chatId': chatId,
           'toUserId': fromUserId,
@@ -247,7 +247,6 @@ class CallManager {
         });
 
         debugPrint('✅ Auto-reject events sent to caller');
-        debugPrint('');
       } catch (e) {
         debugPrint('❌ Error sending auto-reject: $e');
       }
@@ -312,9 +311,6 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
     super.initState();
 
     debugPrint('🎬 IncomingCallDialog initialized');
-    debugPrint('   • From: ${widget.fromUserId}');
-    debugPrint('   • Chat: ${widget.chatId}');
-    debugPrint('   • Type: ${widget.isVideo ? "VIDEO" : "AUDIO"}');
 
     Future.delayed(const Duration(seconds: 60), () {
       if (mounted && !_isProcessing) {
@@ -383,22 +379,18 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                   size: 48,
                 ),
               ),
-
               const SizedBox(height: 24),
-
               CircleAvatar(
                 radius: 40,
                 backgroundColor: Colors.white.withValues(alpha: 0.2),
-                backgroundImage:
-                    widget.callerAvatar != null &&
+                backgroundImage: widget.callerAvatar != null &&
                         widget.callerAvatar!.isNotEmpty &&
                         widget.callerAvatar != 'file:///' &&
                         (widget.callerAvatar!.startsWith('http://') ||
                             widget.callerAvatar!.startsWith('https://'))
                     ? NetworkImage(widget.callerAvatar!)
                     : null,
-                child:
-                    widget.callerAvatar == null ||
+                child: widget.callerAvatar == null ||
                         widget.callerAvatar!.isEmpty ||
                         widget.callerAvatar == 'file:///' ||
                         (!widget.callerAvatar!.startsWith('http://') &&
@@ -413,9 +405,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                       )
                     : null,
               ),
-
               const SizedBox(height: 16),
-
               Text(
                 widget.callerName,
                 style: const TextStyle(
@@ -427,7 +417,6 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-
               Text(
                 'Incoming ${widget.isVideo ? "Video" : "Audio"} Call',
                 style: TextStyle(
@@ -435,9 +424,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                   color: Colors.white.withValues(alpha: 0.9),
                 ),
               ),
-
               const SizedBox(height: 32),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -447,7 +434,6 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                     color: Colors.red,
                     onPressed: _isProcessing ? null : _rejectCall,
                   ),
-
                   _buildActionButton(
                     icon: widget.isVideo ? Icons.videocam : Icons.phone,
                     label: _isProcessing ? 'Connecting...' : 'Accept',
@@ -500,9 +486,8 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
         Text(
           label,
           style: TextStyle(
-            color: isDisabled
-                ? Colors.white.withValues(alpha: 0.5)
-                : Colors.white,
+            color:
+                isDisabled ? Colors.white.withValues(alpha: 0.5) : Colors.white,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -524,8 +509,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
     try {
       await SocketService.instance.emit('call:accept', {
         'chatId': widget.chatId,
-        'fromUserId': widget
-            .fromUserId, // ✅ FIXED: Backend expects 'fromUserId' as target
+        'fromUserId': widget.fromUserId,
         'isVideo': widget.isVideo,
       });
 

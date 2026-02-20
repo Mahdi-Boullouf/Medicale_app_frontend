@@ -21,29 +21,34 @@ import 'package:docmobi/providers/locale_provider.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  
+
+  // ✅ FIX: Login check — not logged in হলে call দেখাবো না
+  final prefs = await SharedPreferences.getInstance();
+  final authToken = prefs.getString('auth_token');
+
+  if (authToken == null || authToken.isEmpty) {
+    debugPrint(
+        '⚠️ [BACKGROUND] User not logged in — ignoring FCM notification');
+    return;
+  }
+
   debugPrint('');
   debugPrint('═══════════════════════════════════════════════════════');
   debugPrint('🌙 [MAIN.DART BACKGROUND] FCM Message Received');
   debugPrint('═══════════════════════════════════════════════════════');
   debugPrint('📩 Message ID: ${message.messageId}');
-  debugPrint('📩 Title: ${message.notification?.title}');
-  debugPrint('📩 Body: ${message.notification?.body}');
   debugPrint('📩 Data: ${message.data}');
   debugPrint('═══════════════════════════════════════════════════════');
   debugPrint('');
-  
+
   if (message.data['type'] == 'incoming_call') {
     debugPrint('📞 [BACKGROUND] Triggering CallKit for incoming call...');
-    
-    // ✅ Cancel the system notification (FCM auto-displayed it) 
-    // so only CallKit full-screen UI shows
     try {
       final FlutterLocalNotificationsPlugin localNotifications =
           FlutterLocalNotificationsPlugin();
       const AndroidInitializationSettings initAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
-      const InitializationSettings initSettings = 
+      const InitializationSettings initSettings =
           InitializationSettings(android: initAndroid);
       await localNotifications.initialize(initSettings);
       await localNotifications.cancelAll();
@@ -51,7 +56,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     } catch (e) {
       debugPrint('⚠️ [BACKGROUND] Could not cancel system notification: $e');
     }
-    
+
     await NotificationService.showIncomingCall(message.data);
   } else if (message.data['type'] == 'cancel_call') {
     debugPrint('📴 [BACKGROUND] Call cancelled by caller');
@@ -85,7 +90,7 @@ void main() async {
   try {
     await Firebase.initializeApp();
     debugPrint('✅ Firebase initialized');
-    
+
     // 2. Register background handler IMMEDIATELY after Firebase init
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     debugPrint('✅ Background message handler registered');
@@ -114,10 +119,14 @@ void main() async {
       ],
       child: legacy_provider.MultiProvider(
         providers: [
-          legacy_provider.ChangeNotifierProvider(create: (_) => UserProvider()),
-          legacy_provider.ChangeNotifierProvider(create: (_) => AppointmentProvider()),
-          legacy_provider.ChangeNotifierProvider(create: (_) => DoctorProvider()),
-          legacy_provider.ChangeNotifierProvider(create: (_) => DependentProvider()),
+          legacy_provider.ChangeNotifierProvider(
+              create: (_) => UserProvider()),
+          legacy_provider.ChangeNotifierProvider(
+              create: (_) => AppointmentProvider()),
+          legacy_provider.ChangeNotifierProvider(
+              create: (_) => DoctorProvider()),
+          legacy_provider.ChangeNotifierProvider(
+              create: (_) => DependentProvider()),
         ],
         child: const MyApp(),
       ),
@@ -141,27 +150,6 @@ void main() async {
 Future<void> _initNotificationService() async {
   try {
     await NotificationService.init();
-    
-    // ✅ Load cached user profile immediately for instant UI
-    final container = ProviderScope.containerOf(navigatorKey!.currentContext!);
-    // We can't easily access Riverpod container here without context or a global ref.
-    // But wait, UserProvider is a legacy ChangeNotifierProvider in MultiProvider (line 117).
-    // So we can access it via context if we had one, or we just trust `fetchUserProfile` 
-    // to be called by the UI. 
-    
-    // Actually, `ApiService.init()` is called, but `UserProvider` needs to load data.
-    // The `HomeScreen` likely calls `fetchUserProfile`. 
-    // Let's modify `UserProvider` to be more proactive or just rely on the fact 
-    // that `fetchUserProfile` now checks cache? No, `fetchUserProfile` hits API.
-    
-    // The previous implementation of `UserProvider` had `fetchUserProfile` doing API call.
-    // I added `loadFromCache`. Who calls it?
-    // I should call it in `UserProvider` constructor? No, acts async.
-    
-    // Best place: `_initChatAndSocketServices` or similar, but those are deferred.
-    // If I want INSTANT UI, I need to call it early.
-    // But `UserProvider` is created in `runApp`.
-    
     debugPrint('✅ Notification Service ready');
   } catch (e) {
     debugPrint('❌ Notification Service Error: $e');

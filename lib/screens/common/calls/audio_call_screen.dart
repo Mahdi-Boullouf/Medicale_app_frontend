@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +7,7 @@ import '../../../services/socket_service.dart';
 import '../../../services/agora_service.dart';
 import '../../../services/agora_chat_service.dart';
 import '../../../services/active_call_state.dart';
+import '../../../services/notification_service.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 
 class AudioCallScreen extends StatefulWidget {
@@ -40,12 +40,10 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   String _callStatus = 'Connecting...';
   String? _currentUserId;
   bool _isDisposed = false;
-  bool _channelJoined = false; // ✅ Prevents duplicate join attempts
+  bool _channelJoined = false;
 
   Timer? _timer;
   int _callDuration = 0;
-
-  // ✅ Unanswered call timeout (30 seconds)
   Timer? _unansweredTimer;
 
   @override
@@ -58,7 +56,6 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   Future<void> _loadCurrentUserIdAndInitialize() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // ignore: unused_local_variable
       final userDataString = prefs.getString('user_data');
 
       final profileResult = await ApiService.getUserProfile();
@@ -79,18 +76,15 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
     try {
       setState(() => _callStatus = 'Setting up audio...');
 
-      // ✅ Ensure Socket is Connected (Critical for receiving call:accepted)
       if (_currentUserId != null) {
         if (!SocketService.instance.isConnected) {
           debugPrint('⚠️ Socket disconnected in AudioCallScreen - Reconnecting...');
           await SocketService.instance.connect(_currentUserId!);
         } else {
-           // Ensure we are in the user room (idempotent)
-           SocketService.instance.socket?.emit('joinUserRoom', _currentUserId!);
+          SocketService.instance.socket?.emit('joinUserRoom', _currentUserId!);
         }
       }
 
-      // ✅ Save active call state for restore on app reopen
       await ActiveCallState.saveActiveCall(
         chatId: widget.chatId,
         userName: widget.userName,
@@ -102,7 +96,6 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
       await _agoraService.initialize();
 
-      // Events
       _agoraService.onUserJoined = (uid, elapsed) {
         if (mounted) {
           setState(() {
@@ -120,18 +113,16 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
         }
       };
 
-      _setupSocketListeners(); // Now safe to call
+      _setupSocketListeners();
 
       if (widget.isInitiator) {
         setState(() => _callStatus = 'Calling...');
-        // ✅ Start 30-second unanswered timer
         _unansweredTimer = Timer(const Duration(seconds: 30), () {
           if (mounted && !_callConnected) {
             debugPrint('⏱️ Audio call not answered in 30 seconds, auto-ending...');
             _showError('No answer');
           }
         });
-        // Wait for accept
       } else {
         await _joinAgoraChannel();
       }
@@ -141,7 +132,6 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   }
 
   Future<void> _joinAgoraChannel() async {
-    // ✅ Prevent duplicate join attempts (call:accepted fires multiple times)
     if (_channelJoined) {
       debugPrint('⚠️ Already joined/joining channel — skipping duplicate');
       return;
@@ -151,18 +141,23 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
     try {
       setState(() => _callStatus = 'Securing connection...');
 
-      // ✅ Fetch Dynamic Token
-      final result = await ApiService.getAgoraToken(channelName: widget.chatId);
-      final String? token = (result['success'] == true)
-          ? result['data']['token']
-          : null;
+      // ✅ FIX: আগে cached token check করো — timeout এড়াতে
+      String? token = NotificationService.consumeCachedAgoraToken();
+
+      if (token != null) {
+        debugPrint('✅ Using pre-fetched Agora token — no API delay!');
+      } else {
+        // Cache নেই — API থেকে আনো
+        debugPrint('🔄 No cached token, fetching from API...');
+        final result = await ApiService.getAgoraToken(channelName: widget.chatId);
+        token = (result['success'] == true) ? result['data']['token'] : null;
+      }
 
       if (token == null) {
         if (mounted) _showError('Connection security failed');
         return;
       }
 
-      // isVideo: false for audio only
       if (_currentUserId != null) {
         await _agoraService.joinChannelWithUserAccount(
           channelName: widget.chatId,
@@ -170,9 +165,8 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
           isVideo: false,
           token: token,
         );
-        debugPrint('✅ Joined Agora channel (Audio Mode) with User Account: $_currentUserId');
+        debugPrint('✅ Joined Agora channel (Audio) with User Account: $_currentUserId');
       } else {
-        // Fallback to integer UID if no user ID (should not happen if logged in)
         await _agoraService.joinChannel(
           channelName: widget.chatId,
           uid: 0,
@@ -197,7 +191,6 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
     socket.on('call:accepted', (data) async {
       if (data['chatId'] == widget.chatId && !_channelJoined) {
-        // ✅ Cancel unanswered timer
         _unansweredTimer?.cancel();
         _unansweredTimer = null;
         setState(() => _callStatus = 'Connecting...');
@@ -236,7 +229,6 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
   void _toggleSpeaker() async {
     setState(() => _isSpeakerOn = !_isSpeakerOn);
-    // Use Agora engine to set speaker
     await _agoraService.engine?.setEnableSpeakerphone(_isSpeakerOn);
   }
 
@@ -246,10 +238,8 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
     _timer?.cancel();
 
-    // ✅ Clear active call state
     await ActiveCallState.clearActiveCall();
 
-    // ✅ Log Call to Chat (Initiator Only to prevent duplicates)
     try {
       if (widget.otherUserId.isNotEmpty && widget.isInitiator) {
         String status = _callConnected ? 'ended' : 'cancelled';
@@ -258,14 +248,13 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
           callType: 'audio',
           status: status,
           duration: _callConnected ? _formatDuration(_callDuration) : '',
-          backendChatId: widget.chatId, // ✅ Trigger notification
+          backendChatId: widget.chatId,
         );
       }
     } catch (e) {
       debugPrint('⚠️ Failed to send call log: $e');
     }
 
-    // ✅ Clear CallKit state
     await FlutterCallkitIncoming.endAllCalls();
 
     SocketService.instance.emit('call:end', {
@@ -302,8 +291,6 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
     _unansweredTimer?.cancel();
     _timer?.cancel();
 
-    // ✅ If _endCall() was NOT called (e.g., app killed during call),
-    // perform minimal cleanup: leave channel, notify server, clear state.
     if (!_isDisposed) {
       debugPrint('⚠️ AudioCallScreen disposed without _endCall — cleaning up');
       _isDisposed = true;
@@ -317,7 +304,6 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
       });
     }
 
-    // Clear callbacks to avoid calling setState on disposed widget
     _agoraService.onUserJoined = null;
     _agoraService.onUserOffline = null;
 
@@ -370,8 +356,6 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
                   ),
                 ),
                 const Spacer(),
-
-                // Controls
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   child: Row(
@@ -398,7 +382,6 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 40),
                 IconButton(
                   iconSize: 60,
