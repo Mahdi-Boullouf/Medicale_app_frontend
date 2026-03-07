@@ -2,126 +2,55 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>We need access to your microphone for audio calls.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>We need access to your camera for video calls.</string>
-
-	<!-- ================= BASIC APP INFO ================= -->
-
-	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
-
-	<key>CFBundleDisplayName</key>
-	<string>Docmobi</string>
-
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-
-	<key>CFBundleName</key>
-	<string>docmobi</string>
-
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
-
-	<key>CFBundleSignature</key>
-	<string>????</string>
-
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-
-	<!-- ================= UI SETTINGS ================= -->
-
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
-
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
-
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-
-	<!-- ================= GOOGLE MAPS API KEY ================= -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Docmobi</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>docmobi</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GMSApiKey</key>
 	<string>AIzaSyDwpV4RKu-t9aThomHv7SPcbY0uAj80dek</string>
-
-	<!-- ================= LOCATION PERMISSIONS ================= -->
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>We need your location to show nearby doctors and provide location-based services.</string>
-
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>We need your location to show nearby doctors and provide location-based services.</string>
-
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>We need your location to show nearby doctors even when the app is in background.</string>
-
-	<!-- ================= CALL PERMISSIONS ================= -->
-	<key>NSCameraUsageDescription</key>
-	<string>Camera access is required for video calls with doctors and recording medical content.</string>
-
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Microphone access is required for audio and video calls with healthcare providers.</string>
-
-	<!-- ================= MEDIA PERMISSIONS ================= -->
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>We need access to your photo library to select and upload medical reels</string>
-	
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>We need access to save videos to your photo library</string>
-	
-	<key>NSMotionUsageDescription</key>
-	<string>We use motion data to enhance video recording quality</string>
-	
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>We need access to local network for API communication during development</string>
-	
-	<!-- ================= APP TRANSPORT SECURITY ================= -->
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
-	
-	<!-- ================= BACKGROUND MODES ================= -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
-		<string>voip</string>
-		<string>fetch</string>
-		<string>remote-notification</string>
-	</array>
-	
-	<!-- ================= iOS 17+ Privacy Manifest ================= -->
+	<key>NSCameraUsageDescription</key>
+	<string>Camera access is required for video calls with doctors and recording medical content.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>We need access to local network for API communication during development</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>We need your location to show nearby doctors and provide location-based services.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>We need your location to show nearby doctors even when the app is in background.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need your location to show nearby doctors and provide location-based services.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is required for audio and video calls with healthcare providers.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>We use motion data to enhance video recording quality</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need access to save videos to your photo library</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need access to your photo library to select and upload medical reels</string>
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<dict>
@@ -141,6 +70,22 @@
 			</array>
 		</dict>
 	</array>
-	
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>voip</string>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
 </dict>
 </plist>
