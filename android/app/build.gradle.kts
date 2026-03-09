@@ -54,13 +54,8 @@ android {
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
-<<<<<<< HEAD
             signingConfig = signingConfigs.getByName("release")
             
-=======
-            signingConfig = signingConfigs.getByName("debug")
-
->>>>>>> 21a08275b4d83e6d66dbf6330e9244f2116f93f6
             // Enable ProGuard/R8 and use custom rules
             isMinifyEnabled = true
             isShrinkResources = true
