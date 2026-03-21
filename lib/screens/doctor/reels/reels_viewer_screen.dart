@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:docmobi/l10n/app_localizations.dart';
 import 'package:docmobi/services/api_service.dart';
 import 'reel_comments_sheet.dart';
+import '../../../widgets/report_block_sheet.dart';
 
 class ReelsViewerScreen extends StatefulWidget {
   final List<Map<String, dynamic>> reelsList;
@@ -576,6 +577,29 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
                         icon: Icons.comment,
                         label: _formatCount(widget.commentsCount),
                         onTap: widget.onComment,
+                      ),
+                      const SizedBox(height: 20),
+                      _ActionButton(
+                        icon: Icons.more_vert,
+                        label: '',
+                        onTap: () {
+                          widget.controller?.pause();
+                          ReportBlockSheet.show(
+                            context,
+                            reportedUserId: author?['_id'] ?? '',
+                            itemType: 'Reel',
+                            itemId: widget.reel['_id'] ?? '',
+                            onBlocked: () {
+                              if (mounted) {
+                                Navigator.pop(context, true);
+                              }
+                            },
+                          ).then((_) {
+                            if (mounted) {
+                              widget.controller?.play();
+                            }
+                          });
+                        },
                       ),
                       const SizedBox(height: 20),
                       // _ActionButton(

@@ -8,6 +8,7 @@ import 'package:docmobi/providers/user_provider.dart';
 // import 'package:share_plus/share_plus.dart';
 import 'package:docmobi/widgets/custom_image.dart';
 import 'package:docmobi/widgets/full_screen_image_viewer.dart';
+import 'package:docmobi/widgets/report_block_sheet.dart'; // ✅ UGC Safety
 
 class PostCard extends StatefulWidget {
   final PostModel post;
@@ -31,6 +32,7 @@ class _PostCardState extends State<PostCard> {
   bool _isVideoInitialized = false;
   bool _isLiking = false;
   bool _isMuted = true;
+  bool _isVisible = true; // ✅ Set to false instantly after blocking
 
   @override
   void initState() {
@@ -113,6 +115,21 @@ class _PostCardState extends State<PostCard> {
     final currentUser = Provider.of<UserProvider>(context, listen: false).user;
     final isOwnPost = currentUser?.id == _currentPost.author.id;
 
+    if (!isOwnPost) {
+      // ✅ For other users' posts: use the Report/Block sheet
+      ReportBlockSheet.show(
+        context,
+        reportedUserId: _currentPost.author.id,
+        itemType: 'Post',
+        itemId: _currentPost.id,
+        onBlocked: () {
+          // Instantly hide this card from the feed
+          if (mounted) setState(() => _isVisible = false);
+        },
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -124,34 +141,18 @@ class _PostCardState extends State<PostCard> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (isOwnPost) ...[
-                ListTile(
-                  leading: const Icon(Icons.delete, color: Colors.red),
-                  title: Text(
-                    AppLocalizations.of(context)!.deletePost,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _confirmDelete();
-                  },
+              // Own post: only show Delete
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: Text(
+                  AppLocalizations.of(context)!.deletePost,
+                  style: const TextStyle(color: Colors.red),
                 ),
-              ] else ...[
-                ListTile(
-                  leading: const Icon(Icons.report),
-                  title: Text(AppLocalizations.of(context)!.reportPost),
-                  onTap: () {
-                    Navigator.pop(context);
-                    final l10n = AppLocalizations.of(context)!;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(l10n.reportComingSoon),
-                        backgroundColor: Colors.orange,
-                      ),
-                    );
-                  },
-                ),
-              ],
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDelete();
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.cancel),
                 title: Text(AppLocalizations.of(context)!.cancel),
@@ -242,6 +243,9 @@ class _PostCardState extends State<PostCard> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Instantly hide this card if user was blocked
+    if (!_isVisible) return const SizedBox.shrink();
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(

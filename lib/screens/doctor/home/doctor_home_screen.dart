@@ -3,7 +3,9 @@ import 'package:docmobi/screens/doctor/home/notifications/doctor_notifications.d
 import 'package:docmobi/screens/doctor/messages/doctor_messages_list_screen.dart';
 import 'package:docmobi/screens/doctor/posts/doctor_create_post_screen.dart';
 import 'package:docmobi/screens/doctor/profile/doctor_profile_screen.dart';
+import 'package:docmobi/widgets/doctor_card.dart';
 import 'package:docmobi/widgets/post_card.dart';
+import '../../../widgets/report_block_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart' as legacy_provider;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1258,37 +1260,65 @@ class DoctorInfoBottomSheet extends StatelessWidget {
               ),
             const SizedBox(height: 24),
 
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          DoctorMessagesListScreen(initialDoctorId: doctorId),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                DoctorMessagesListScreen(initialDoctorId: doctorId),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.message_outlined),
+                      label: Text(
+                        l10n.message,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1664CD),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
                     ),
-                  );
-                },
-                icon: const Icon(Icons.message_outlined),
-                label: Text(
-                  l10n.message,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1664CD),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
+                const SizedBox(width: 16),
+                Container(
+                  height: 50,
+                  width: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 2,
+                  child: IconButton(
+                    onPressed: () {
+                      ReportBlockSheet.show(
+                        context,
+                        reportedUserId: doctorId,
+                        itemType: 'User',
+                        itemId: doctorId,
+                        onBlocked: () {
+                          if (context.mounted) Navigator.pop(context);
+                        },
+                      );
+                    },
+                    icon: const Icon(Icons.more_vert, color: Colors.black54),
+                  ),
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 16),
           ],

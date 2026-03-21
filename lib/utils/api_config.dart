@@ -158,6 +158,11 @@ class ApiConfig {
   // Dependent Endpoints
   static const String dependents = '/api/v1/user/me/dependents';
 
+  // Block / Report Endpoints (UGC Safety - Apple Guideline 1.2)
+  static const String blockUser = '/api/v1/user/block';
+  static const String blockedUsers = '/api/v1/user/blocked';
+  static const String reportContent = '/api/v1/report';
+
   // ═══════════════════════════════════════════════════════════════
   // 🔧 HELPER METHODS
   // ═══════════════════════════════════════════════════════════════

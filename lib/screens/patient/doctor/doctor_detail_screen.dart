@@ -5,6 +5,7 @@ import 'package:docmobi/services/api_service.dart';
 import 'package:docmobi/services/doctor_service.dart';
 import 'package:docmobi/screens/patient/messages/patient_chat_screen.dart';
 import 'book_appointment_screen.dart';
+import '../../../widgets/report_block_sheet.dart';
 
 class DoctorDetailsScreen extends StatefulWidget {
   final Doctor doctor;
@@ -229,9 +230,27 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
                         ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 35),
-                      onPressed: () => Navigator.pop(context),
+                    Column(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 35),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.more_vert, size: 30),
+                          onPressed: () {
+                            ReportBlockSheet.show(
+                              context,
+                              reportedUserId: widget.doctor.id,
+                              itemType: 'User',
+                              itemId: widget.doctor.id,
+                              onBlocked: () {
+                                if (mounted) Navigator.pop(context);
+                              },
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),

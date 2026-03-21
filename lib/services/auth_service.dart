@@ -512,4 +512,87 @@ class AuthService {
       return {'success': false, 'message': 'Connection error: ${e.toString()}'};
     }
   }
+
+  // ✅ Block a user (UGC Safety - Apple Guideline 1.2)
+  Future<Map<String, dynamic>> blockUser(String targetUserId) async {
+    try {
+      final headers = await _getHeaders();
+      debugPrint('🚫 POST: $baseUrl${ApiConfig.blockUser}/$targetUserId');
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl${ApiConfig.blockUser}/$targetUserId'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = json.decode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        'message': data['message'] ?? 'User blocked',
+      };
+    } catch (e) {
+      debugPrint('❌ Block user error: $e');
+      return {'success': false, 'message': 'Connection error: ${e.toString()}'};
+    }
+  }
+
+  // ✅ Unblock a user
+  Future<Map<String, dynamic>> unblockUser(String targetUserId) async {
+    try {
+      final headers = await _getHeaders();
+      debugPrint('✅ DELETE: $baseUrl${ApiConfig.blockUser}/$targetUserId');
+
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl${ApiConfig.blockUser}/$targetUserId'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = json.decode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        'message': data['message'] ?? 'User unblocked',
+      };
+    } catch (e) {
+      debugPrint('❌ Unblock user error: $e');
+      return {'success': false, 'message': 'Connection error: ${e.toString()}'};
+    }
+  }
+
+  // ✅ Report content / user (UGC Safety - Apple Guideline 1.2)
+  Future<Map<String, dynamic>> reportContent({
+    required String reportedUserId,
+    required String itemType, // "Post", "Reel", "Comment", "User"
+    required String itemId,
+    required String reason,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      debugPrint('⚠️ POST: $baseUrl${ApiConfig.reportContent}');
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl${ApiConfig.reportContent}'),
+            headers: headers,
+            body: json.encode({
+              'reportedUserId': reportedUserId,
+              'itemType': itemType,
+              'itemId': itemId,
+              'reason': reason,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = json.decode(response.body);
+      return {
+        'success': response.statusCode == 200 || response.statusCode == 201,
+        'message': data['message'] ?? 'Report submitted',
+      };
+    } catch (e) {
+      debugPrint('❌ Report content error: $e');
+      return {'success': false, 'message': 'Connection error: ${e.toString()}'};
+    }
+  }
 }

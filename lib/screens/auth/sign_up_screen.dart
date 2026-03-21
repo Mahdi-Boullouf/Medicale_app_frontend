@@ -31,6 +31,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+  bool _agreedToTerms = false; // ✅ EULA: user must agree before registering
 
   // Specialty options (Fetched from backend)
   List<String> _specialties = [];
@@ -143,6 +144,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     }
 
+    // ✅ EULA: enforce agreement before submitting
+    if (!_agreedToTerms) {
+      _showSnackBar(
+        'You must agree to the Terms of Service to continue.',
+        isError: true,
+      );
+      return false;
+    }
+
     return true;
   }
 
@@ -239,6 +249,116 @@ class _SignUpScreenState extends State<SignUpScreen> {
         behavior: SnackBarBehavior.floating,
         duration: Duration(seconds: isError ? 4 : 2),
       ),
+    );
+  }
+
+  /// ✅ Show EULA / Terms of Service Dialog
+  void _showEulaDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.gavel_rounded, color: Color(0xFF1664CD)),
+              SizedBox(width: 10),
+              Text(
+                'Terms of Service',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Color(0xFF0B3267),
+                ),
+              ),
+            ],
+          ),
+          content: const SingleChildScrollView(
+            child: ListBody(
+              children: [
+                Text(
+                  'By accepting, you agree to our Terms of Service and End User License Agreement (EULA).',
+                  style: TextStyle(fontSize: 14, color: Colors.black87),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Safety & Conduct Policy:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.redAccent,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '• We have zero tolerance for objectionable content or abusive users.',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '• You may not post defamatory, obscene, pornographic, or illegal content.',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '• Violators will be ejected and their content removed within 24 hours.',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'User Features:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1664CD),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '• You can report content or block users at any time via the (...) menu.',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() => _agreedToTerms = false);
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() => _agreedToTerms = true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1664CD),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                'Accept',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -577,7 +697,66 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   },
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 16),
+
+                // ✅ EULA / Terms of Service Checkbox
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Checkbox(
+                      value: _agreedToTerms,
+                      activeColor: const Color(0xFF1664CD),
+                      onChanged: (val) {
+                        if (val == true) {
+                          _showEulaDialog();
+                        } else {
+                          setState(() => _agreedToTerms = false);
+                        }
+                      },
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          if (!_agreedToTerms) {
+                            _showEulaDialog();
+                          } else {
+                            setState(() => _agreedToTerms = false);
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: RichText(
+                            text: const TextSpan(
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.black87,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text:
+                                      'I agree to the Terms of Service and confirm that I understand there is  ',
+                                ),
+                                TextSpan(
+                                  text: 'zero tolerance',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text:
+                                      ' for objectionable content or abusive users.',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
 
                 // Sign Up Button
                 _isLoading
