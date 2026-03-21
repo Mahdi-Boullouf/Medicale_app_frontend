@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../models/notification_model.dart';
 import '../services/api_service.dart';
@@ -352,7 +353,41 @@ class NotificationService {
     // 8. Token Refresh Listener
     _fcm.onTokenRefresh.listen((token) => _saveToken(token));
 
+    // 9. VoIP Token Listener (iOS only)
+    if (Platform.isIOS) {
+      const MethodChannel voipChannel = MethodChannel('com.docmobi.app/voip');
+      voipChannel.setMethodCallHandler((call) async {
+        if (call.method == 'onVoIPTokenUpdate') {
+          final String? voipToken = call.arguments as String?;
+          if (voipToken != null) {
+            debugPrint('📞 [VoIP] Received VoIP token from native: $voipToken');
+            await _saveVoIPToken(voipToken);
+          }
+        }
+      });
+      debugPrint(' VoIP token listener registered');
+    }
+
     debugPrint('[NOTIFICATION SERVICE] Initialization complete');
+  }
+
+  /// Save VoIP Token to Backend
+  static Future<void> _saveVoIPToken(String token) async {
+    try {
+      if (ApiService.isLoggedIn) {
+        await ApiService.registerFCMToken(
+          token: token,
+          platform: 'ios',
+          tokenType: 'voip',
+        );
+        debugPrint(' VoIP Token registered with backend');
+      } else {
+        debugPrint(' User not logged in - storing VoIP token for later');
+        // Optional: Save to SharedPreferences if needed
+      }
+    } catch (e) {
+      debugPrint(' Error saving VoIP token: $e');
+    }
   }
 
   static Future<void> checkInitialMessage() async {

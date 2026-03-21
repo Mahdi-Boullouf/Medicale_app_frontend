@@ -746,10 +746,12 @@ class ApiService {
   static Future<Map<String, dynamic>> registerFCMToken({
     required String token,
     required String platform,
+    String tokenType = 'standard',
   }) async {
     return await post('/api/v1/user/fcm-token', {
       'token': token,
       'platform': platform,
+      'tokenType': tokenType,
     }, requiresAuth: true);
   }
 
