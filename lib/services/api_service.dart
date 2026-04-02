@@ -1,10 +1,13 @@
+import 'package:docmobi/services/push_notification_service.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/api_config.dart'; 
-import '../services/notification_service.dart'; // Ensure token gets registered
+import '../services/push_notification_service.dart';
+import '../services/callkit_service.dart';
+import '../services/notification_api_service.dart'; // Ensure token gets registered
 
 class ApiService {
   static String? _token;
@@ -423,7 +426,7 @@ class ApiService {
 
         // ✅ CRITICAL BUG FIX: Register device AFTER login so tokens go to backend!
         try {
-          await NotificationService.registerUserDevice();
+          await PushNotificationService.registerUserDevice();
           debugPrint('Device registered post-login');
         } catch (e) {
           debugPrint('Error triggering token registration post-login: $e');

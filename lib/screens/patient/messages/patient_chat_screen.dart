@@ -1,9 +1,10 @@
+import 'package:docmobi/services/push_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/l10n/app_localizations.dart';
 import 'package:docmobi/services/agora_chat_service.dart';
 import 'package:docmobi/services/socket_service.dart';
 import 'package:docmobi/services/api_service.dart';
-import 'package:docmobi/services/notification_service.dart';
+
 import 'package:docmobi/screens/common/calls/video_call_screen.dart';
 import 'package:docmobi/screens/common/calls/audio_call_screen.dart';
 import 'package:agora_chat_sdk/agora_chat_sdk.dart';
@@ -76,8 +77,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       }
     });
 
-    NotificationService.currentChatId = widget.chatId;
-    NotificationService.clearBadge();
+    PushNotificationService.currentChatId = widget.chatId;
+    PushNotificationService.clearBadge();
 
     _scrollController.addListener(() {
       if (_scrollController.hasClients) {
@@ -832,8 +833,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     SocketService.instance.off('user:offline');
 
     //  Clear active chat
-    if (NotificationService.currentChatId == widget.chatId) {
-      NotificationService.currentChatId = null;
+    if (PushNotificationService.currentChatId == widget.chatId) {
+      PushNotificationService.currentChatId = null;
     }
     super.dispose();
   }

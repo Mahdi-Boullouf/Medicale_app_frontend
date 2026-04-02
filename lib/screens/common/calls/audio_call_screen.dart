@@ -1,3 +1,4 @@
+import 'package:docmobi/services/callkit_service.dart';
 // UPDATED - uses SharedPreferences for userId instead of API call
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -8,7 +9,9 @@ import '../../../services/socket_service.dart';
 import '../../../services/agora_service.dart';
 import '../../../services/agora_chat_service.dart';
 import '../../../services/active_call_state.dart';
-import '../../../services/notification_service.dart';
+import '../../../services/push_notification_service.dart';
+import '../../../services/callkit_service.dart';
+import '../../../services/notification_api_service.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 
 class AudioCallScreen extends StatefulWidget {
@@ -156,7 +159,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
     try {
       setState(() => _callStatus = 'Securing connection...');
 
-      String? token = NotificationService.consumeCachedAgoraToken();
+      String? token = CallKitService.consumeCachedAgoraToken();
 
       if (token != null) {
         debugPrint(' Using pre-fetched Agora token — no API delay!');

@@ -1,8 +1,9 @@
+import 'package:docmobi/services/push_notification_service.dart';
 import 'package:agora_chat_sdk/agora_chat_sdk.dart';
 import 'package:flutter/foundation.dart';
 import 'package:docmobi/config/agora_config.dart';
 import 'package:docmobi/services/api_service.dart';
-import 'package:docmobi/services/notification_service.dart';
+
 import 'dart:io';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -594,7 +595,7 @@ class AgoraChatService {
         debugPrint(
           '🔔 Triggering Local Notification for $senderName in chat $backendChatId',
         );
-        NotificationService.showLocalNotificationForChat(
+        PushNotificationService.showLocalNotificationForChat(
           senderName: senderName,
           content: content,
           chatId: backendChatId,

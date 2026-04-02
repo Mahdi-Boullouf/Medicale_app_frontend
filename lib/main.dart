@@ -1,3 +1,4 @@
+import 'package:docmobi/services/push_notification_service.dart';
 import 'package:docmobi/app.dart';
 import 'package:docmobi/providers/user_provider.dart';
 import 'package:docmobi/providers/dependent_provider.dart';
@@ -7,7 +8,7 @@ import 'package:docmobi/services/agora_chat_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-import 'package:docmobi/services/notification_service.dart';
+
 import 'package:flutter/material.dart';
 import 'package:docmobi/providers/appointment_provider.dart';
 import 'package:provider/provider.dart' as legacy_provider;
@@ -95,7 +96,7 @@ void main() async {
 
 Future<void> _initNotificationService() async {
   try {
-    await NotificationService.init();
+    await PushNotificationService.init();
     debugPrint(' Notification Service ready');
   } catch (e) {
     debugPrint(' Notification Service Error: $e');

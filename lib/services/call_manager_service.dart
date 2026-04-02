@@ -1,3 +1,4 @@
+import 'package:docmobi/services/callkit_service.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:docmobi/services/socket_service.dart';
@@ -5,7 +6,7 @@ import 'package:docmobi/screens/common/calls/video_call_screen.dart';
 import 'package:docmobi/screens/common/calls/audio_call_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
-import 'package:docmobi/services/notification_service.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CallManager {
@@ -163,7 +164,7 @@ class CallManager {
 
     debugPrint('📱 User available - Triggering CallKit UI from Socket Event');
 
-    NotificationService.showIncomingCall({
+    CallKitService.showCallKitIncoming({
       'uuid': data['uuid'],
       'callerId': fromUserId,
       'callerName': callerName,

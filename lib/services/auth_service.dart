@@ -6,6 +6,7 @@ import 'package:docmobi/utils/api_config.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:docmobi/services/api_service.dart';
 import 'package:docmobi/services/notification_poller.dart';
+import 'package:docmobi/services/push_notification_service.dart';
 
 class AuthService {
   // Use ApiConfig for base URL
@@ -132,6 +133,14 @@ class AuthService {
           }
 
           debugPrint(' Login successful - Token and role saved');
+          
+          //  Sync tokens immediately — fixes user switching routing conflict
+          try {
+             await ApiService.init(); // Refresh ApiService with new token
+             PushNotificationService.registerUserDevice();
+          } catch(e) {
+            debugPrint('Error triggering notification sync: $e');
+          }
         }
 
         return {

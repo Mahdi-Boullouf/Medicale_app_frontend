@@ -1,6 +1,9 @@
+import 'package:docmobi/services/notification_api_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/notification_model.dart';
-import '../services/notification_service.dart';
+import '../services/push_notification_service.dart';
+import '../services/callkit_service.dart';
+import '../services/notification_api_service.dart';
 import '../services/notification_poller.dart';
 
 /// Notifier for the list of notifications
@@ -17,7 +20,7 @@ class NotificationListNotifier extends AsyncNotifier<List<NotificationModel>> {
 
   Future<List<NotificationModel>> _fetch() async {
     // 1. Fetch latest from backend
-    final backendNotifications = await NotificationService.getNotifications();
+    final backendNotifications = await NotificationApiService.getNotifications();
 
     // 2. Update the poller's internal state
     NotificationPoller().setPolledNotifications(backendNotifications);

@@ -1,4 +1,5 @@
-import 'package:docmobi/services/notification_service.dart';
+import 'package:docmobi/services/push_notification_service.dart';
+
 import 'package:docmobi/screens/onboarding/profile/select_profile_screen.dart';
 import 'package:docmobi/services/socket_service.dart';
 import 'package:flutter/material.dart';
@@ -87,7 +88,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
       
           try {
-            await NotificationService.init();
+            await PushNotificationService.init();
             debugPrint('FCM Token registered after login');
           } catch (e) {
             debugPrint('FCM registration error: $e');

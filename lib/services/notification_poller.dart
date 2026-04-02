@@ -1,10 +1,13 @@
+import 'package:docmobi/services/notification_api_service.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/notification_model.dart';
-import '../services/notification_service.dart';
+import '../services/push_notification_service.dart';
+import '../services/callkit_service.dart';
+import '../services/notification_api_service.dart';
 
 class NotificationPoller {
   static final NotificationPoller _instance = NotificationPoller._internal();
@@ -167,7 +170,7 @@ class NotificationPoller {
       final lastNotificationId = prefs.getString(_lastNotificationIdKey);
 
       // Get notifications from API Service
-      final notifications = await NotificationService.getNotifications();
+      final notifications = await NotificationApiService.getNotifications();
       _polledNotifications = notifications;
 
       if (notifications.isNotEmpty) {
@@ -360,7 +363,7 @@ class NotificationPoller {
       // (We check _polledNotifications to see if it came from backend)
       final isBackend = _polledNotifications.any((n) => n.id == id);
       if (isBackend) {
-        await NotificationService.deleteNotification(id);
+        await NotificationApiService.deleteNotification(id);
       }
     } catch (e) {
       debugPrint('Error deleting notification: $e');
@@ -395,7 +398,7 @@ class NotificationPoller {
       }
 
       // If it's a backend notification
-      await NotificationService.markAsRead(notificationId);
+      await NotificationApiService.markAsRead(notificationId);
       await refreshNotifications(); // Refresh to update unread count
     } catch (e) {
       debugPrint('Error marking notification as read: $e');
@@ -422,7 +425,7 @@ class NotificationPoller {
       await _savePersistentData();
 
       // Mark backend ones as read
-      await NotificationService.markAllAsRead();
+      await NotificationApiService.markAllAsRead();
       await refreshNotifications(); // Refresh to update unread count
     } catch (e) {
       debugPrint('Error marking all notifications as read: $e');
