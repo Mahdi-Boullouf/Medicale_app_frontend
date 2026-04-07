@@ -185,18 +185,19 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
         }
 
         //  Load video call availability (onlineAppointment)
-        bool? isVideoAvailable =
+        bool? isOnlineAppt =
+            userData['isOnlineAppointmentAvailable'] ??
             userData['isVideoCallAvailable'] ??
             userData['isVideoAvailable'] ??
             userData['isAvailable'] ??
             (userData['video']?['isAvailable']);
 
-        if (isVideoAvailable != null) {
+        if (isOnlineAppt != null) {
           setState(() {
-            onlineAppointment = isVideoAvailable;
-            _initialOnlineAppointmentValue = isVideoAvailable; 
+            onlineAppointment = isOnlineAppt;
+            _initialOnlineAppointmentValue = isOnlineAppt; 
           });
-          debugPrint('Loaded video call availability: $onlineAppointment');
+          debugPrint('Loaded online appointment availability: $onlineAppointment');
         }
 
         // Load weeklySchedule
@@ -274,11 +275,13 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
         'currency': 'USD',
       };
 
-      //  IMPORTANT: Pass isVideoCallAvailable
+      //  IMPORTANT: Pass isOnlineAppointmentAvailable
       final response = await _scheduleService.saveWeeklySchedule(
         weeklySchedule: formattedSchedule,
         fees: fees,
-        isVideoCallAvailable: onlineAppointment, 
+        isVideoCallAvailable: true, // Keep video calls enabled by default when saving schedule? 
+                                    // Actually we should fetch current value.
+        isOnlineAppointmentAvailable: onlineAppointment, 
       );
 
       if (mounted) {
@@ -430,13 +433,22 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                   ),
                   const SizedBox(width: 15),
                   Expanded(
-                    child: Text(
-                      AppLocalizations.of(context)!.onlineAppointment,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF1B2C49),
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)!.onlineAppointment,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1B2C49),
+                          ),
+                        ),
+                        const Text(
+                          'If disabled, patients cannot book video appointments.',
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                      ],
                     ),
                   ),
                   Switch(

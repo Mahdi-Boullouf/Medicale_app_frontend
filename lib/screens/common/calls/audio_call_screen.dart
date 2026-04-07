@@ -20,6 +20,7 @@ class AudioCallScreen extends StatefulWidget {
   final String? userAvatar;
   final String otherUserId;
   final bool isInitiator;
+  final String? uuid; // Added UUID for precise termination
 
   const AudioCallScreen({
     super.key,
@@ -28,6 +29,7 @@ class AudioCallScreen extends StatefulWidget {
     this.userAvatar,
     required this.otherUserId,
     required this.isInitiator,
+    this.uuid,
   });
 
   @override
@@ -232,7 +234,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
         );
         debugPrint(' Joined Agora channel with UID 0 (Fallback)');
       }
-      
+
       if (mounted) {
         setState(() {
           _callStatus = 'Connected';
@@ -325,6 +327,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
           status: status,
           duration: _callConnected ? _formatDuration(_callDuration) : '',
           backendChatId: widget.chatId,
+          uuid: widget.uuid, // ✅ Pass UUID for CallKit sync
         );
       }
     } catch (e) {
@@ -338,6 +341,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
       await ApiService.endCall(
         chatId: widget.chatId,
         toUserId: widget.otherUserId,
+        uuid: widget.uuid, // Pass UUID back to backend
       );
     } catch (e) {
       debugPrint(' API endCall error, falling back to socket: $e');
@@ -345,6 +349,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
         'chatId': widget.chatId,
         'toUserId': widget.otherUserId,
         'fromUserId': _currentUserId,
+        'uuid': widget.uuid, // Also add to socket emit
       });
     }
 
@@ -386,6 +391,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
         'chatId': widget.chatId,
         'toUserId': widget.otherUserId,
         'fromUserId': _currentUserId,
+        'uuid': widget.uuid,
       });
     }
 

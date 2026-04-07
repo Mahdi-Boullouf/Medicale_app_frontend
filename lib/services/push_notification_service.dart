@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../services/api_service.dart';
+import '../services/socket_service.dart';
 import '../services/callkit_service.dart';
 import '../screens/doctor/messages/doctor_chat_screen.dart';
 import '../screens/patient/messages/patient_chat_screen.dart';
@@ -252,8 +253,13 @@ class PushNotificationService {
 
         await _localNotifications.cancelAll();
         await CallKitService.showCallKitIncoming(message.data);
-      } else if (message.data['type'] == 'cancel_call') {
-        final uuid = message.data['uuid'];
+      } else if (message.data['type'] == 'cancel_call' || 
+                 message.data['status'] == 'cancelled' || 
+                 message.data['type'] == 'call_log') {
+        // ✅ SMART DETECTION: Even if it's a call_log or a general notification,
+        // if status is 'cancelled', we immediately tell CallKit to stop ringing.
+        debugPrint(' 📴 [FCM] Call cancel signal matched via smart detection');
+        final uuid = message.data['uuid'] ?? message.data['id'];
         if (uuid != null && uuid.toString().isNotEmpty) {
           await FlutterCallkitIncoming.endCall(uuid.toString());
         } else {
@@ -282,6 +288,55 @@ class PushNotificationService {
         }
       });
     }
+
+    // ✅ GLOBAL SOCKET LISTENERS for Call Cancellation
+    // This handles the foreground case where the user is not yet on the call screen
+    SocketService.instance.on('call:ended', (data) async {
+      debugPrint(' 📴 [GLOBAL SOCKET] Call ended signal received');
+      final uuid = data != null ? (data['uuid'] ?? data['id']) : null;
+      final status = data != null ? data['status'] : null;
+
+      if (uuid != null && uuid.toString().isNotEmpty) {
+        await FlutterCallkitIncoming.endCall(uuid.toString());
+      } else if (status == 'cancelled' || status == 'ended' || status == 'rejected') {
+        await FlutterCallkitIncoming.endAllCalls();
+      } else {
+        await FlutterCallkitIncoming.endAllCalls(); // Fallback for all ended signals
+      }
+    });
+
+    SocketService.instance.on('call:end', (data) async {
+      debugPrint(' 📴 [GLOBAL SOCKET] Call end signal received');
+      final uuid = data != null ? (data['uuid'] ?? data['id']) : null;
+      final status = data != null ? data['status'] : null;
+
+      if (uuid != null && uuid.toString().isNotEmpty) {
+        await FlutterCallkitIncoming.endCall(uuid.toString());
+      } else if (status == 'cancelled' || status == 'ended') {
+        await FlutterCallkitIncoming.endAllCalls();
+      } else {
+        await FlutterCallkitIncoming.endAllCalls();
+      }
+    });
+
+    SocketService.instance.on('call:cancel', (data) async {
+      debugPrint(' 📴 [GLOBAL SOCKET] Call cancel signal received');
+      final uuid = data != null ? (data['uuid'] ?? data['id']) : null;
+      final status = data != null ? data['status'] : null;
+
+      if (uuid != null && uuid.toString().isNotEmpty) {
+        await FlutterCallkitIncoming.endCall(uuid.toString());
+      } else if (status == 'cancelled' || status == 'ended') {
+        await FlutterCallkitIncoming.endAllCalls();
+      } else {
+        await FlutterCallkitIncoming.endAllCalls();
+      }
+    });
+
+    SocketService.instance.on('call:rejected', (data) async {
+      debugPrint(' 📴 [GLOBAL SOCKET] Call reject signal received');
+      await FlutterCallkitIncoming.endAllCalls();
+    });
 
     debugPrint('[PUSH NOTIFICATION SERVICE] Initialization complete');
   }

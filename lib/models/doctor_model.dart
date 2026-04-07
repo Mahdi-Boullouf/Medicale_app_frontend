@@ -21,6 +21,7 @@ class Doctor {
 
   final String? bio;
   final bool isVideoCallAvailable;
+  final bool isOnlineAppointmentAvailable;
   final String? visitingHoursText;
   final List<String> degrees; // ✅ Added degrees field
 
@@ -43,6 +44,7 @@ class Doctor {
     this.address,
     this.bio,
     this.isVideoCallAvailable = false,
+    this.isOnlineAppointmentAvailable = true,
     this.visitingHoursText,
     this.degrees = const [], 
   });
@@ -150,6 +152,7 @@ class Doctor {
   
       bio: json['bio'],
       isVideoCallAvailable: json['isVideoCallAvailable'] ?? false,
+      isOnlineAppointmentAvailable: json['isOnlineAppointmentAvailable'] ?? true,
       visitingHoursText: json['visitingHoursText'],
       degrees: (json['degrees'] as List<dynamic>?)
               ?.map((e) => e.toString())
@@ -187,6 +190,7 @@ class Doctor {
       // Dynamic fields
       if (bio != null) 'bio': bio,
       'isVideoCallAvailable': isVideoCallAvailable,
+      'isOnlineAppointmentAvailable': isOnlineAppointmentAvailable,
       if (visitingHoursText != null) 'visitingHoursText': visitingHoursText,
       'degrees': degrees,
       if (weeklySchedule != null)

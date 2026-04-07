@@ -53,8 +53,14 @@ android {
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("release")
+            // Signing with the debug keys if `key.properties` is missing, so `flutter build apk --release` works for testing.
+            
+            val isSigningConfigured = signingConfigs.getByName("release").storeFile != null
+            signingConfig = if (isSigningConfigured) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             
             // Enable ProGuard/R8 and use custom rules
             isMinifyEnabled = true

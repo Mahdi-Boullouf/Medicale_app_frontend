@@ -8,18 +8,21 @@ class DoctorScheduleService {
     required List<Map<String, dynamic>> weeklySchedule,
     required Map<String, dynamic> fees,
     required bool isVideoCallAvailable,
-    bool isAvailable = true, 
+    bool isAvailable = true,
+    bool? isOnlineAppointmentAvailable, 
   }) async {
     try {
-
-
       final body = {
         'weeklySchedule': weeklySchedule,
         'fees': fees,
-        'isVideoCallAvailable': isVideoCallAvailable, 
-        'isVideoAvailable': isVideoCallAvailable, 
-        'isAvailable': isAvailable, 
+        'isVideoCallAvailable': isVideoCallAvailable,
+        'isVideoAvailable': isVideoCallAvailable,
+        'isAvailable': isAvailable,
       };
+
+      if (isOnlineAppointmentAvailable != null) {
+        body['isOnlineAppointmentAvailable'] = isOnlineAppointmentAvailable;
+      }
 
       debugPrint(' Sending to backend:');
       debugPrint('   - weeklySchedule: ${weeklySchedule.length} days');

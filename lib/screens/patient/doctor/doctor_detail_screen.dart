@@ -4,6 +4,8 @@ import 'package:docmobi/models/doctor_model.dart';
 import 'package:docmobi/services/api_service.dart';
 import 'package:docmobi/services/doctor_service.dart';
 import 'package:docmobi/screens/patient/messages/patient_chat_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:docmobi/providers/user_provider.dart';
 import 'book_appointment_screen.dart';
 import '../../../widgets/report_block_sheet.dart';
 
@@ -86,6 +88,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
     final l10n = AppLocalizations.of(context)!;
     final bool hasVideoCall =
         widget.doctor.isVideoCallAvailable; 
+    final String? currentUserRole = Provider.of<UserProvider>(context, listen: false).user?.role;
 
     debugPrint(' Details Screen: ${widget.doctor.fullName}');
     debugPrint('   - isVideoCallAvailable: $hasVideoCall');
@@ -333,72 +336,95 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
                 const SizedBox(height: 30),
 
                 // Message Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: OutlinedButton.icon(
-                    onPressed: () => _openChatWithDoctor(context),
-                    icon: const Icon(
-                      Icons.message_outlined,
-                      color: Color(0xFF6C5CE7),
+                if (widget.doctor.id != Provider.of<UserProvider>(context, listen: false).user?.id)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openChatWithDoctor(context),
+                      icon: const Icon(
+                        Icons.message_outlined,
+                        color: Color(0xFF6C5CE7),
+                      ),
+                      label: Text(
+                        l10n.messageDoctor,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF6C5CE7),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(
+                          color: Color(0xFF6C5CE7),
+                          width: 2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
                     ),
-                    label: Text(
-                      l10n.messageDoctor,
-                      style: const TextStyle(
+                  )
+                else
+                  Container(
+                    width: double.infinity,
+                    height: 55,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.grey[300]!, width: 2),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'Your Profile',
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF6C5CE7),
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(
-                        color: Color(0xFF6C5CE7),
-                        width: 2,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
+                        color: Colors.grey,
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 15),
 
-                // Book Now Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 65,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (widget.doctor.id.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l10n.invalidDoctor)),
+                if (currentUserRole != 'doctor' && widget.doctor.id != Provider.of<UserProvider>(context, listen: false).user?.id) ...[
+                  const SizedBox(height: 15),
+
+                  // Book Now Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 65,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (widget.doctor.id.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l10n.invalidDoctor)),
+                          );
+                          return;
+                        }
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                BookAppointmentScreen(doctor: widget.doctor),
+                          ),
                         );
-                        return;
-                      }
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              BookAppointmentScreen(doctor: widget.doctor),
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D53C1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D53C1),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
                       ),
-                    ),
-                    child: Text(
-                      l10n.bookNow,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                      child: Text(
+                        l10n.bookNow,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 20),
               ],
             ),

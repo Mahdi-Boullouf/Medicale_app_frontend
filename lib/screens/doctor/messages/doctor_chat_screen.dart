@@ -534,6 +534,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         if (mounted) {
           final String stableChatId =
               result['data']?['chatId']?.toString() ?? widget.chatId;
+          final String? callUuid = result['data']?['uuid']?.toString();
 
           Navigator.push(
             context,
@@ -545,6 +546,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                       userAvatar: _actualUserAvatar ?? widget.userAvatar,
                       otherUserId: targetUserId,
                       isInitiator: true,
+                      uuid: callUuid,
                     )
                   : AudioCallScreen(
                       chatId: stableChatId,
@@ -552,6 +554,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                       userAvatar: _actualUserAvatar ?? widget.userAvatar,
                       otherUserId: targetUserId,
                       isInitiator: true,
+                      uuid: callUuid,
                     ),
             ),
           );

@@ -61,6 +61,7 @@ class UserService {
     double? latitude, 
     double? longitude,
     bool? isVideoCallAvailable, 
+    bool? isOnlineAppointmentAvailable, 
   }) async {
     try {
       debugPrint(' Updating user profile...');
@@ -115,6 +116,11 @@ class UserService {
       if (isVideoCallAvailable != null) {
         body['isVideoCallAvailable'] = isVideoCallAvailable;
         debugPrint(' Adding isVideoCallAvailable: $isVideoCallAvailable');
+      }
+
+      if (isOnlineAppointmentAvailable != null) {
+        body['isOnlineAppointmentAvailable'] = isOnlineAppointmentAvailable;
+        debugPrint(' Adding isOnlineAppointmentAvailable: $isOnlineAppointmentAvailable');
       }
 
       // ADDED: Location fields formatted for Backend

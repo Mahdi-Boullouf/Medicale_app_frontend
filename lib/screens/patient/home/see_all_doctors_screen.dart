@@ -7,6 +7,10 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:math' show cos, sqrt;
 import 'package:docmobi/models/doctor_model.dart';
 import 'package:docmobi/screens/patient/doctor/doctor_detail_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:docmobi/providers/user_provider.dart';
+import 'package:docmobi/screens/patient/messages/patient_chat_screen.dart';
+import 'package:docmobi/l10n/app_localizations.dart';
 
 class SeeAllDoctorsScreen extends StatefulWidget {
   final LatLng? userPosition;
@@ -44,9 +48,10 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
       if (result['success'] == true) {
         final doctorsData = result['data'] as List? ?? [];
 
+        final currentUser = Provider.of<UserProvider>(context, listen: false).user;
         List<Doctor> loadedDoctors = doctorsData.map((json) {
           return Doctor.fromJson(json);
-        }).toList();
+        }).where((doctor) => doctor.id != currentUser?.id).toList();
 
         // If user position is provided, calculate distance and sort
         if (widget.userPosition != null) {
@@ -486,40 +491,84 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
 
             Row(
               children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: isAvailable
-                        ? () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    DoctorDetailsScreen(doctor: doctor),
-                              ),
-                            );
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isAvailable
-                          ? const Color(0xFF0D47A1)
-                          : Colors.grey[300],
-                      foregroundColor: Colors.white,
+                if (Provider.of<UserProvider>(context, listen: false).user?.role !=
+                    'doctor')
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: isAvailable
+                          ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      DoctorDetailsScreen(doctor: doctor),
+                                ),
+                              );
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isAvailable
+                            ? const Color(0xFF0D47A1)
+                            : Colors.grey[300],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        isAvailable ? 'Book Now' : 'Not Available',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isAvailable ? Colors.white : Colors.grey[600],
+                        ),
+                      ),
+                    ),
+                  )
+                else if (doctor.id != Provider.of<UserProvider>(context, listen: false).user?.id)
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _openChatWithDoctor(context, doctor),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6C5CE7),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Message',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      isAvailable ? 'Book Now' : 'Not Available',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isAvailable ? Colors.white : Colors.grey[600],
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'Your Profile',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
                       ),
                     ),
                   ),
-                ),
                 const SizedBox(width: 12),
 
                 Container(
@@ -548,5 +597,99 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
         ),
       ),
     );
+  }
+
+  void _openChatWithDoctor(BuildContext context, Doctor doctor) async {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) =>
+          const Center(child: CircularProgressIndicator()),
+    );
+
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    try {
+      final doctorId = doctor.id;
+
+      if (doctorId.isEmpty) {
+        if (mounted) navigator.pop();
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(l10n.doctorIdNotFound),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final result = await ApiService.createOrGetChat(userId: doctorId);
+
+      if (mounted) navigator.pop();
+
+      if (result['success'] == true) {
+        final chatData = result['data'];
+        final chatId = chatData['_id']?.toString();
+
+        if (chatId == null || chatId.isEmpty) {
+          scaffoldMessenger.showSnackBar(
+            SnackBar(
+              content: Text(l10n.failedCreateChat),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        final participants = chatData['participants'] as List?;
+        String? doctorAvatar;
+
+        if (participants != null) {
+          final doctorParticipant = participants.firstWhere(
+            (p) => p['_id'] == doctorId,
+            orElse: () => null,
+          );
+
+          if (doctorParticipant != null) {
+            doctorAvatar = doctorParticipant['avatar']?['url'];
+          }
+        }
+
+        if (context.mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatDetailScreen(
+                chatId: chatId,
+                doctorName: doctor.fullName,
+                doctorAvatar:
+                    doctorAvatar ??
+                    (doctor.image.startsWith('http') ? doctor.image : null),
+                doctorId: doctorId,
+              ),
+            ),
+          );
+        }
+      } else {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message'] ??
+                  l10n.failedOpenChat ??
+                  'Failed to open chat',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) navigator.pop();
+      debugPrint(' Error opening chat: $e');
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 }

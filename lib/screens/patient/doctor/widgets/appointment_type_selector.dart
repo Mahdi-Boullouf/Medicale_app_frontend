@@ -5,12 +5,14 @@ class AppointmentTypeSelector extends StatelessWidget {
   final String selectedType;
   final ValueChanged<String> onTypeSelected;
   final String title;
+  final bool isVideoDisabled;
 
   const AppointmentTypeSelector({
     super.key,
     required this.selectedType,
     required this.onTypeSelected,
     required this.title,
+    this.isVideoDisabled = false,
   });
 
   @override
@@ -29,20 +31,53 @@ class AppointmentTypeSelector extends StatelessWidget {
           Row(
             children: [
               _buildTypeOption(
+                context,
                 'assets/icons/physical_visit.png',
                 "Physical Visit",
                 l10n.physicalVisit,
                 l10n.payAtClinic,
+                false,
               ),
               const SizedBox(width: 15),
               _buildTypeOption(
+                context,
                 'assets/icons/video_call.png',
                 "Video Call",
                 l10n.videoCall,
-                l10n.onlinePayment,
+                isVideoDisabled
+                    ? "UNAVAILABLE"
+                    : l10n.onlinePayment,
+                isVideoDisabled,
               ),
             ],
           ),
+          if (isVideoDisabled) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.orange.shade900),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Video consultations are currently unavailable for this doctor.",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange.shade900,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -66,48 +101,66 @@ class AppointmentTypeSelector extends StatelessWidget {
   );
 
   Widget _buildTypeOption(
+    BuildContext context,
     String image,
     String typeKey,
     String displayTitle,
     String displaySubtitle,
+    bool isDisabled,
   ) {
     bool isSelected = selectedType == typeKey;
     return Expanded(
       child: GestureDetector(
-        onTap: () => onTypeSelected(typeKey),
+        onTap: isDisabled
+            ? () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("This consultation type is currently unavailable."),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              }
+            : () => onTypeSelected(typeKey),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDisabled ? Colors.grey.shade50 : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected
                   ? const Color(0xFF0D53C1)
-                  : Colors.grey.shade300,
+                  : (isDisabled ? Colors.grey.shade200 : Colors.grey.shade300),
               width: isSelected ? 2 : 1,
             ),
           ),
-          child: Column(
-            children: [
-              Image.asset(
-                image,
-                color: isSelected ? const Color(0xFF0D53C1) : Colors.black54,
-                width: 30,
-                height: 30,
-              ),
-              const SizedBox(height: 5),
-              Text(
-                displayTitle,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? const Color(0xFF0D53C1) : Colors.black87,
+          child: Opacity(
+            opacity: isDisabled ? 0.5 : 1.0,
+            child: Column(
+              children: [
+                Image.asset(
+                  image,
+                  color: isSelected ? const Color(0xFF0D53C1) : Colors.black54,
+                  width: 30,
+                  height: 30,
                 ),
-              ),
-              Text(
-                displaySubtitle,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-            ],
+                const SizedBox(height: 5),
+                Text(
+                  displayTitle,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? const Color(0xFF0D53C1) : Colors.black87,
+                  ),
+                ),
+                Text(
+                  displaySubtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDisabled ? Colors.red.shade700 : Colors.grey,
+                    fontWeight: isDisabled ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

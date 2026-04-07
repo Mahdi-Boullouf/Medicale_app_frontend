@@ -20,6 +20,7 @@ class VideoCallScreen extends StatefulWidget {
   final String? userAvatar;
   final String otherUserId;
   final bool isInitiator;
+  final String? uuid; // Added for precise termination
 
   const VideoCallScreen({
     super.key,
@@ -28,6 +29,7 @@ class VideoCallScreen extends StatefulWidget {
     this.userAvatar,
     required this.otherUserId,
     required this.isInitiator,
+    this.uuid,
   });
 
   @override
@@ -244,20 +246,22 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
       // ✅ CHECK FOR BACKGROUND CONNECTION (iOS Lock Screen Fix)
       if (_agoraService.currentChannel == widget.chatId) {
-        debugPrint(' [Video] App foregrounded — upgrading audio-only background connection to Video');
+        debugPrint(
+          ' [Video] App foregrounded — upgrading audio-only background connection to Video',
+        );
         await _agoraService.engine?.enableVideo();
         await _agoraService.engine?.startPreview();
-        
+
         if (mounted) {
           setState(() {
             // ✅ Pick up remote user if they already joined in the background
             if (_agoraService.remoteUids.isNotEmpty) {
-               _remoteUid = _agoraService.remoteUids.first;
-               _isCallConnected = true;
-               _callStatus = 'Connected';
+              _remoteUid = _agoraService.remoteUids.first;
+              _isCallConnected = true;
+              _callStatus = 'Connected';
             } else {
-               _callStatus = 'Connected';
-               _isCallConnected = true;
+              _callStatus = 'Connected';
+              _isCallConnected = true;
             }
           });
           if (_isCallConnected) _startCallTimer();
@@ -397,6 +401,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           status: status,
           duration: _isCallConnected ? _callDuration : '',
           backendChatId: widget.chatId,
+          uuid: widget.uuid, // ✅ Pass UUID for CallKit sync
         );
       }
     } catch (e) {
@@ -410,6 +415,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       await ApiService.endCall(
         chatId: widget.chatId,
         toUserId: widget.otherUserId,
+        uuid: widget.uuid, // Pass UUID to backend
       );
     } catch (e) {
       debugPrint(' API endCall error, falling back to socket: $e');
@@ -417,6 +423,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         'chatId': widget.chatId,
         'toUserId': widget.otherUserId,
         'fromUserId': _currentUserId,
+        'uuid': widget.uuid, // Pass UUID to socket
       });
     }
 
@@ -456,6 +463,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         'chatId': widget.chatId,
         'toUserId': widget.otherUserId,
         'fromUserId': _currentUserId,
+        'uuid': widget.uuid,
       });
     }
 

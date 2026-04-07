@@ -67,6 +67,31 @@ import flutter_callkit_incoming
       return
     }
 
+    // 📴 Handle Call Cancellation
+    let dict = userInfo as? [String: AnyObject] ?? [:]
+    let type = (dict["type"] as? String) ?? ""
+    
+    if (type == "cancel_call" || String(describing: dict["type"] ?? "" as AnyObject).contains("cancel_call")) {
+        let uuid = (dict["id"] as? String) ?? (dict["uuid"] as? String) ?? ""
+        print("📴 [iOS] VoIP Cancel Call received for UUID: \(uuid)")
+        
+        if (!uuid.isEmpty) {
+            let cancelCallData = flutter_callkit_incoming.Data(
+                id: uuid,
+                nameCaller: "Call Cancelled",
+                handle: "Call Cancelled",
+                type: 0
+            )
+            SwiftFlutterCallkitIncomingPlugin.sharedInstance?.endCall(cancelCallData)
+        }
+        
+        // Always ensure all calls are ended for a 'cancel_call' type push
+        SwiftFlutterCallkitIncomingPlugin.sharedInstance?.endAllCalls()
+        
+        completion()
+        return
+    }
+
     let id = (userInfo["id"] as? String)
       ?? (userInfo["uuid"] as? String)
       ?? UUID().uuidString

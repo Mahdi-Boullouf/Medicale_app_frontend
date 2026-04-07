@@ -129,20 +129,31 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   void _prefillStaticData() {
     final appt = widget.existingAppointment!;
 
- 
+    // 1. Appointment Type
     if (appt.appointmentType?.toLowerCase() == 'video') {
       selectedType = "Video Call";
     } else {
       selectedType = "Physical Visit";
     }
 
-   
+    // 2. Symptoms
     if (appt.symptoms != null && appt.symptoms!.isNotEmpty) {
       _symptomsController.text = appt.symptoms!;
     }
 
-
+    // 3. Date & Time Selection Logic
     selectedDate = appt.appointmentDate;
+
+    // 4. Validate Video Selection against Doctor Settings
+    final doc = doctorObject;
+    if (doc != null &&
+        !doc.isOnlineAppointmentAvailable &&
+        selectedType == "Video Call") {
+      debugPrint(
+        '⚠️ Reschedule: Video Call disabled by doctor. Resetting to Physical Visit.',
+      );
+      selectedType = "Physical Visit";
+    }
 
     debugPrint('   Date set to: $selectedDate');
   }
@@ -157,6 +168,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       if (response['success'] == true && mounted) {
         setState(() {
           _fetchedDoctor = Doctor.fromJson(response['data']);
+          
+          // NEW: If we just fetched settings and video is disabled, enforce it
+          if (_fetchedDoctor != null && 
+              !_fetchedDoctor!.isOnlineAppointmentAvailable && 
+              selectedType == "Video Call") {
+            selectedType = "Physical Visit";
+          }
         });
         debugPrint(
           ' Full doctor details fetched. Has Schedule: ${_fetchedDoctor?.weeklySchedule?.isNotEmpty}',
@@ -706,6 +724,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             AppointmentTypeSelector(
               title: l10n.appointmentTypeLabel,
               selectedType: selectedType,
+              isVideoDisabled: doctorObject?.isOnlineAppointmentAvailable == false,
               onTypeSelected: (type) => setState(() => selectedType = type),
             ),
             const SizedBox(height: 16),

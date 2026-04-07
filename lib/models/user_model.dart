@@ -22,6 +22,7 @@ class UserModel {
   final String? visitingHoursText;
 
   final bool isVideoCallAvailable;
+  final bool isOnlineAppointmentAvailable;
 
 
   final double? feesAmount;
@@ -59,6 +60,7 @@ class UserModel {
     this.medicalLicenseNumber,
     this.visitingHoursText,
     this.isVideoCallAvailable = false, 
+    this.isOnlineAppointmentAvailable = true,
     this.feesAmount,
     this.feesCurrency,
     this.degrees,
@@ -97,6 +99,7 @@ class UserModel {
           json['isVideoAvailable'] ??
           json['isAvailable'] ??
           (json['video']?['isAvailable'] ?? false),
+      isOnlineAppointmentAvailable: json['isOnlineAppointmentAvailable'] ?? true,
 
       feesAmount: json['fees']?['amount']?.toDouble() ?? 0.0,
       feesCurrency: json['fees']?['currency'] ?? 'DZD',
@@ -148,6 +151,7 @@ class UserModel {
       'medicalLicenseNumber': medicalLicenseNumber,
       'visitingHoursText': visitingHoursText,
       'isVideoCallAvailable': isVideoCallAvailable, 
+      'isOnlineAppointmentAvailable': isOnlineAppointmentAvailable,
       'fees': {'amount': feesAmount, 'currency': feesCurrency},
       'degrees': degrees?.map((d) => d.toJson()).toList(),
       'weeklySchedule': weeklySchedule?.map((d) => d.toJson()).toList(),
@@ -175,6 +179,7 @@ class UserModel {
     String? medicalLicenseNumber,
     String? visitingHoursText,
     bool? isVideoCallAvailable, 
+    bool? isOnlineAppointmentAvailable,
     double? feesAmount,
     String? feesCurrency,
     List<Degree>? degrees,
@@ -202,6 +207,8 @@ class UserModel {
       visitingHoursText: visitingHoursText ?? this.visitingHoursText,
       isVideoCallAvailable:
           isVideoCallAvailable ?? this.isVideoCallAvailable,
+      isOnlineAppointmentAvailable:
+          isOnlineAppointmentAvailable ?? this.isOnlineAppointmentAvailable,
       feesAmount: feesAmount ?? this.feesAmount,
       feesCurrency: feesCurrency ?? this.feesCurrency,
       degrees: degrees ?? this.degrees,

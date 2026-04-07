@@ -1,5 +1,6 @@
 import 'package:docmobi/services/push_notification_service.dart';
 import 'package:agora_chat_sdk/agora_chat_sdk.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter/foundation.dart';
 import 'package:docmobi/config/agora_config.dart';
 import 'package:docmobi/services/api_service.dart';
@@ -437,12 +438,14 @@ class AgoraChatService {
     required String status, // 'missed', 'declined', 'ended', 'cancelled'
     String duration = '',
     String? backendChatId, // ✅ Added for notification sync
+    String? uuid, // ✅ Added for CallKit sync
   }) async {
     final attributes = {
       'type': 'call_log',
       'call_type': callType,
       'status': status,
       'duration': duration,
+      'uuid': uuid, // ✅ New parameter for CallKit sync
     };
 
     String content = '';
@@ -559,6 +562,20 @@ class AgoraChatService {
 
             // ✅ Trigger local notification if not in this chat
             _triggerLocalNotification(msg);
+
+            // ✅ SMART SIGNALING: Intercept call_log messages to stop ringing
+            if (msg.attributes?['type'] == 'call_log') {
+              final status = msg.attributes?['status'];
+              if (status == 'cancelled' || status == 'ended' || status == 'declined') {
+                debugPrint(' 📴 [AGORA LOG] Call cancel signal matched via chat log');
+                final uuid = msg.attributes?['uuid'];
+                if (uuid != null && uuid.toString().isNotEmpty) {
+                  FlutterCallkitIncoming.endCall(uuid.toString());
+                } else {
+                  FlutterCallkitIncoming.endAllCalls();
+                }
+              }
+            }
           }
         },
       ),

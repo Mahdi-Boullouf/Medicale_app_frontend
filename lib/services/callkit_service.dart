@@ -321,6 +321,7 @@ class CallKitService {
                       userAvatar: finalData['callerAvatar'],
                       otherUserId: callerId ?? '',
                       isInitiator: false,
+                      uuid: finalData['uuid']?.toString() ?? finalData['id']?.toString(),
                     )
                 : (context, animation, secondaryAnimation) => AudioCallScreen(
                       chatId: chatId ?? '',
@@ -328,6 +329,7 @@ class CallKitService {
                       userAvatar: finalData['callerAvatar'],
                       otherUserId: callerId ?? '',
                       isInitiator: false,
+                      uuid: finalData['uuid']?.toString() ?? finalData['id']?.toString(),
                     );
 
             navigatorKey!.currentState?.push(PageRouteBuilder(

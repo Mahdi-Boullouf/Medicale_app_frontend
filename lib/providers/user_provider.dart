@@ -151,6 +151,61 @@ class UserProvider with ChangeNotifier {
     }
   }
 
+  /// Update online appointment availability
+  Future<bool> updateOnlineAppointmentAvailability(bool isAvailable) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      debugPrint(
+        'Updating online appointment availability via Schedule Service: $isAvailable',
+      );
+
+      final scheduleService = DoctorScheduleService();
+
+      final currentFees = _user?.fees ?? {'amount': 0, 'currency': 'USD'};
+      final currentSchedule =
+          _user?.weeklySchedule?.map((d) => d.toJson()).toList() ?? [];
+
+      final response = await scheduleService.saveWeeklySchedule(
+        weeklySchedule: currentSchedule,
+        fees: currentFees,
+        isVideoCallAvailable: _user?.isVideoCallAvailable ?? true,
+        isOnlineAppointmentAvailable: isAvailable,
+      );
+
+      if (response['success'] == true) {
+        debugPrint('Server confirmed update. Refreshing profile...');
+
+        if (_user != null) {
+          _user = _user!.copyWith(isOnlineAppointmentAvailable: isAvailable);
+          notifyListeners();
+        }
+
+        await fetchUserProfile();
+
+        if (_user != null && _user!.isOnlineAppointmentAvailable != isAvailable) {
+          _user = _user!.copyWith(isOnlineAppointmentAvailable: isAvailable);
+          notifyListeners();
+        }
+
+        _isLoading = false;
+        return true;
+      } else {
+        _error = response['message'] ?? 'Failed to update appointment setting';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _error = 'Error: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Update user profile (with image and location support)
   Future<bool> updateUserProfile({
     String? fullName,
@@ -174,6 +229,7 @@ class UserProvider with ChangeNotifier {
     double? latitude,
     double? longitude,
     bool? isVideoCallAvailable, 
+    bool? isOnlineAppointmentAvailable, 
   }) async {
     _isLoading = true;
     _error = null;
@@ -189,6 +245,7 @@ class UserProvider with ChangeNotifier {
       debugPrint('   - latitude: $latitude');
       debugPrint('   - longitude: $longitude');
       debugPrint(' Adding isVideoCallAvailable: $isVideoCallAvailable');
+      debugPrint(' Adding isOnlineAppointmentAvailable: $isOnlineAppointmentAvailable');
 
       debugPrint('   - profileImage: ${profileImage != null ? "Yes" : "No"}');
 
@@ -239,6 +296,7 @@ class UserProvider with ChangeNotifier {
         latitude: currentLat, // Use persisted latitude
         longitude: currentLng, // Use persisted longitude
         isVideoCallAvailable: isVideoCallAvailable,
+        isOnlineAppointmentAvailable: isOnlineAppointmentAvailable,
       );
 
       if (response['success'] == true && response['data'] != null) {
@@ -253,6 +311,14 @@ class UserProvider with ChangeNotifier {
           );
           updatedUser = updatedUser.copyWith(
             isVideoCallAvailable: isVideoCallAvailable,
+          );
+        }
+
+        if (isOnlineAppointmentAvailable != null &&
+            updatedUser.isOnlineAppointmentAvailable !=
+                isOnlineAppointmentAvailable) {
+          updatedUser = updatedUser.copyWith(
+            isOnlineAppointmentAvailable: isOnlineAppointmentAvailable,
           );
         }
 
