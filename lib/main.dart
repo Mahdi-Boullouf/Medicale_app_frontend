@@ -1,3 +1,4 @@
+import 'package:docmobi/providers/login_provider.dart';
 import 'package:docmobi/services/push_notification_service.dart';
 import 'package:docmobi/app.dart';
 import 'package:docmobi/providers/user_provider.dart';
@@ -8,7 +9,6 @@ import 'package:docmobi/services/agora_chat_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-
 import 'package:flutter/material.dart';
 import 'package:docmobi/providers/appointment_provider.dart';
 import 'package:provider/provider.dart' as legacy_provider;
@@ -16,8 +16,6 @@ import 'package:docmobi/providers/doctor_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:docmobi/providers/locale_provider.dart';
-
-
 
 bool _chatSocketInitializing = false;
 bool _chatSocketInitialized = false;
@@ -64,6 +62,10 @@ void main() async {
       ],
       child: legacy_provider.MultiProvider(
         providers: [
+          legacy_provider.ChangeNotifierProvider(
+            create: (_) => LoginProvider(),
+          ),
+
           legacy_provider.ChangeNotifierProvider(create: (_) => UserProvider()),
           legacy_provider.ChangeNotifierProvider(
             create: (_) => AppointmentProvider(),

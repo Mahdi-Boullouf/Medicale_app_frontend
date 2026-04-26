@@ -37,6 +37,8 @@ class CustomTextField extends StatelessWidget {
       ),
       child: TextFormField(
         // TextField এর বদলে TextFormField ব্যবহার করা হয়েছে
+        autocorrect: false,
+        enableSuggestions: false,
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
