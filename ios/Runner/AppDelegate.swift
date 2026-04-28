@@ -100,8 +100,14 @@ import flutter_callkit_incoming
       ?? "Unknown"
     let handle = (userInfo["handle"] as? String)
       ?? "Docmobi Call"
-    let isVideo = (userInfo["isVideo"] as? Bool)
-      ?? ((userInfo["isVideo"] as? NSString)?.boolValue ?? false)
+
+    // Fix: isVideo can arrive as Bool (NSNumber), String "true"/"false", or Int 1/0
+    let isVideo: Bool = {
+      if let b = userInfo["isVideo"] as? Bool { return b }
+      if let n = userInfo["isVideo"] as? NSNumber { return n.boolValue }
+      if let s = userInfo["isVideo"] as? String { return s == "true" || s == "1" }
+      return false
+    }()
 
     let data = flutter_callkit_incoming.Data(
       id: id,
@@ -110,12 +116,20 @@ import flutter_callkit_incoming
       type: isVideo ? 1 : 0
     )
     data.avatar = userInfo["callerAvatar"] as? String ?? ""
-    data.extra = userInfo as NSDictionary
+
+    // Ensure ALL push payload keys are in extra so Dart can read chatId, callerId, etc.
+    var extra = userInfo as? [String: Any] ?? [:]
+    // Normalise key aliases so handleCallKitAction always finds them
+    if extra["callerName"] == nil { extra["callerName"] = nameCaller }
+    if extra["callerId"]   == nil { extra["callerId"]   = extra["fromUserId"] }
+    if extra["uuid"]       == nil { extra["uuid"]       = id }
+    data.extra = extra as NSDictionary
 
     SwiftFlutterCallkitIncomingPlugin.sharedInstance?.showCallkitIncoming(data, fromPushKit: true) {
       completion()
     }
   }
+
 
   func pushRegistry(_ registry: PKPushRegistry, didInvalidatePushCredentialsFor type: PKPushType) {
     print("⚠️ [iOS] VoIP Token invalidated")

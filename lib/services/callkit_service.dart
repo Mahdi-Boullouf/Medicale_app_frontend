@@ -72,13 +72,17 @@ class CallKitService {
             final diff = DateTime.now().difference(callTime).inMinutes;
 
             if (diff > 2) {
-              debugPrint(' [STARTUP] Found STALE call (Age: $diff min) - Clearing.');
+              debugPrint(
+                ' [STARTUP] Found STALE call (Age: $diff min) - Clearing.',
+              );
               await FlutterCallkitIncoming.endAllCalls();
               return;
             }
           }
 
-          debugPrint('[STARTUP] Found VALID active call - Navigating to call screen');
+          debugPrint(
+            '[STARTUP] Found VALID active call - Navigating to call screen',
+          );
           handleCallKitAction({'extra': data}, accept: true);
         }
       }
@@ -90,7 +94,9 @@ class CallKitService {
   /// Consume pending call data and navigate directly to call screen
   static bool consumePendingCallData() {
     if (pendingCallData != null && navigatorKey?.currentState != null) {
-      debugPrint(' Consuming pending call data — navigating directly to call screen');
+      debugPrint(
+        ' Consuming pending call data — navigating directly to call screen',
+      );
       final data = pendingCallData!;
       pendingCallData = null;
       handleCallKitAction({'extra': data}, accept: true);
@@ -125,7 +131,9 @@ class CallKitService {
       final bool isVideo = data['isVideo'] == 'true' || data['isVideo'] == true;
 
       debugPrint(' [CallKit] Preparing to show call screen');
-      debugPrint('   - Caller: $callerName | Video: $isVideo | Chat ID: ${data['chatId']} | Caller ID: $callerId');
+      debugPrint(
+        '   - Caller: $callerName | Video: $isVideo | Chat ID: ${data['chatId']} | Caller ID: $callerId',
+      );
 
       final CallKitParams params = CallKitParams(
         id: uuid,
@@ -215,13 +223,17 @@ class CallKitService {
 
       final chatId = finalData['chatId']?.toString();
       // ✅ Handle both callerId (FCM) and fromUserId (Socket/Old APNs)
-      final rawCallerId = (finalData['callerId'] ?? finalData['fromUserId'])?.toString();
+      final rawCallerId = (finalData['callerId'] ?? finalData['fromUserId'])
+          ?.toString();
       final callerId = rawCallerId?.split('/').first;
       final callerName = finalData['callerName'] ?? 'Unknown';
-      final isVideo = finalData['isVideo'] == 'true' || finalData['isVideo'] == true;
+      final isVideo =
+          finalData['isVideo'] == 'true' || finalData['isVideo'] == true;
 
       debugPrint(' [CallKit Action] ${accept ? 'ACCEPT' : 'DECLINE'}');
-      debugPrint('   - ChatId: $chatId | CallerId: $callerId | Video: $isVideo');
+      debugPrint(
+        '   - ChatId: $chatId | CallerId: $callerId | Video: $isVideo',
+      );
 
       if (accept) {
         if (chatId != null && callerId != null) {
@@ -229,10 +241,14 @@ class CallKitService {
 
           // 1. Pre-fetch Agora Token if possible
           String? fetchedToken;
-          debugPrint(' [CallKit] Pre-fetching Agora token for channel: $normalizedChatId');
+          debugPrint(
+            ' [CallKit] Pre-fetching Agora token for channel: $normalizedChatId',
+          );
           for (int retry = 0; retry < 2; retry++) {
             try {
-              final tokenResponse = await ApiService.getAgoraToken(channelName: normalizedChatId).timeout(const Duration(seconds: 8));
+              final tokenResponse = await ApiService.getAgoraToken(
+                channelName: normalizedChatId,
+              ).timeout(const Duration(seconds: 8));
               fetchedToken = tokenResponse['data']?['token'];
               if (fetchedToken != null) {
                 _cachedAgoraToken = fetchedToken;
@@ -240,26 +256,49 @@ class CallKitService {
                 break;
               }
             } catch (e) {
-              debugPrint(' [CallKit] Token pre-fetch attempt ${retry + 1} failed: $e');
+              debugPrint(
+                ' [CallKit] Token pre-fetch attempt ${retry + 1} failed: $e',
+              );
               if (retry == 0) await Future.delayed(const Duration(seconds: 1));
             }
           }
 
           // 2. Signal Accept to Backend
           ApiService.acceptCall({
-            'chatId': normalizedChatId,
-            'fromUserId': callerId,
-          }).then((_) => debugPrint(' [CallKit] API: Call accepted signal sent'))
-            .catchError((e) => debugPrint(' [CallKit] API: Call accept failed: $e'));
+                'chatId': normalizedChatId,
+                'fromUserId': callerId,
+              })
+              .then(
+                (_) => debugPrint(' [CallKit] API: Call accepted signal sent'),
+              )
+              .catchError(
+                (e) => debugPrint(' [CallKit] API: Call accept failed: $e'),
+              );
 
           // 3. Socket Signal (Best effort)
+          // Fix: explicitly connect with userId so socket is ready on cold-start
           try {
-            final connected = await SocketService.instance.ensureConnected().timeout(const Duration(seconds: 5), onTimeout: () => false);
+            final socketUserId = prefs.getString('user_id');
+            bool connected = false;
+            if (socketUserId != null && socketUserId.isNotEmpty) {
+              connected = await SocketService.instance
+                  .connect(socketUserId)
+                  .timeout(const Duration(seconds: 6), onTimeout: () => false);
+            } else {
+              connected = await SocketService.instance
+                  .ensureConnected()
+                  .timeout(const Duration(seconds: 6), onTimeout: () => false);
+            }
             if (connected) {
               SocketService.instance.emit('call:accept', {
                 'chatId': normalizedChatId,
                 'fromUserId': callerId,
               });
+              debugPrint(' [CallKit] Socket: call:accept emitted');
+            } else {
+              debugPrint(
+                ' [CallKit] Socket not connected — accept signal sent via API only',
+              );
             }
           } catch (e) {
             debugPrint(' [CallKit] Socket connection failed: $e');
@@ -272,24 +311,34 @@ class CallKitService {
             final currentUserId = prefs.getString('user_id');
             if (currentUserId != null && currentUserId.isNotEmpty) {
               final agora = AgoraService.instance;
-              
+
               // Skip permissions if we are likely on the lock screen (background)
-              final bool isAppForeground = WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
-              
-              debugPrint(' [CallKit] Attempting Background Agora Join (Foreground: $isAppForeground)...');
-              
+              final bool isAppForeground =
+                  WidgetsBinding.instance.lifecycleState ==
+                  AppLifecycleState.resumed;
+
+              debugPrint(
+                ' [CallKit] Attempting Background Agora Join (Foreground: $isAppForeground)...',
+              );
+
               // Use the fetched token or cached token
               final tokenToUse = fetchedToken ?? _cachedAgoraToken;
-              
+
               if (tokenToUse != null) {
-                // Join as Audio-Only if it's an audio call or if we're in the background
+                final joinAsVideo = isVideo && isAppForeground;
+                // Join as Audio-Only if background; full video if foreground
                 await agora.joinChannelWithUserAccount(
                   channelName: normalizedChatId,
                   userAccount: currentUserId,
-                  isVideo: isVideo && isAppForeground, // Only enable camera if in foreground
+                  isVideo: joinAsVideo,
                   token: tokenToUse,
                 );
-                debugPrint(' [CallKit] Background Agora join SUCCESSFUL');
+                // Keep _cachedAgoraToken so CallProvider can consume it
+                // (it checks currentChannel == chatId and returns early anyway,
+                // but having the token avoids an extra API round-trip on slow networks)
+                debugPrint(
+                  ' [CallKit] Background Agora join SUCCESSFUL (video: $joinAsVideo)',
+                );
               }
             }
           } catch (e) {
@@ -302,70 +351,100 @@ class CallKitService {
         // we retry for up to 15 seconds to give the user time to finalize FaceID/Passcode.
         bool navigated = false;
         final int maxAttempts = Platform.isIOS ? 60 : 20; // 60 * 250ms = 15s
-        
+
         for (int i = 0; i < maxAttempts; i++) {
           final currentLifecycle = WidgetsBinding.instance.lifecycleState;
-          
+
           // On iOS, we can sometimes navigate while "inactive" (during transition)
           // But "resumed" is the most stable. We allow BOTH for faster response.
-          final bool isReadyForNav = !Platform.isIOS || 
-                                   currentLifecycle == AppLifecycleState.resumed ||
-                                   currentLifecycle == AppLifecycleState.inactive;
-          
+          final bool isReadyForNav =
+              !Platform.isIOS ||
+              currentLifecycle == AppLifecycleState.resumed ||
+              currentLifecycle == AppLifecycleState.inactive;
+
           if (navigatorKey?.currentState != null && isReadyForNav) {
-            debugPrint(' [CallKit] App state ($currentLifecycle) and Navigator READY! (Attempt ${i + 1})');
+            debugPrint(
+              ' [CallKit] App state ($currentLifecycle) and Navigator READY! (Attempt ${i + 1})',
+            );
             final pageBuilder = isVideo
                 ? (context, animation, secondaryAnimation) => VideoCallScreen(
-                      chatId: chatId ?? '',
-                      userName: callerName,
-                      userAvatar: finalData['callerAvatar'],
-                      otherUserId: callerId ?? '',
-                      isInitiator: false,
-                      uuid: finalData['uuid']?.toString() ?? finalData['id']?.toString(),
-                    )
+                    chatId: chatId ?? '',
+                    userName: callerName,
+                    userAvatar: finalData['callerAvatar'],
+                    otherUserId: callerId ?? '',
+                    isInitiator: false,
+                    uuid:
+                        finalData['uuid']?.toString() ??
+                        finalData['id']?.toString(),
+                  )
                 : (context, animation, secondaryAnimation) => AudioCallScreen(
-                      chatId: chatId ?? '',
-                      userName: callerName,
-                      userAvatar: finalData['callerAvatar'],
-                      otherUserId: callerId ?? '',
-                      isInitiator: false,
-                      uuid: finalData['uuid']?.toString() ?? finalData['id']?.toString(),
-                    );
+                    chatId: chatId ?? '',
+                    userName: callerName,
+                    userAvatar: finalData['callerAvatar'],
+                    otherUserId: callerId ?? '',
+                    isInitiator: false,
+                    uuid:
+                        finalData['uuid']?.toString() ??
+                        finalData['id']?.toString(),
+                  );
 
-            navigatorKey!.currentState?.push(PageRouteBuilder(
-              pageBuilder: pageBuilder as Widget Function(BuildContext, Animation<double>, Animation<double>),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ));
+            navigatorKey!.currentState?.push(
+              PageRouteBuilder(
+                pageBuilder:
+                    pageBuilder
+                        as Widget Function(
+                          BuildContext,
+                          Animation<double>,
+                          Animation<double>,
+                        ),
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
+              ),
+            );
             navigated = true;
             break;
           } else {
-            final String reason = (navigatorKey?.currentState == null) ? "Navigator NULL" : "App State $currentLifecycle";
-            if (i % 4 == 0) debugPrint(' [CallKit] Waiting to push call screen: $reason... (Attempt ${i + 1})');
+            final String reason = (navigatorKey?.currentState == null)
+                ? "Navigator NULL"
+                : "App State $currentLifecycle";
+            if (i % 4 == 0)
+              debugPrint(
+                ' [CallKit] Waiting to push call screen: $reason... (Attempt ${i + 1})',
+              );
             await Future.delayed(const Duration(milliseconds: 250));
           }
         }
 
         if (!navigated) {
-          debugPrint(' [CallKit] ❌ Failed to navigate after ${maxAttempts/2} seconds. Storing in pendingCallData.');
+          debugPrint(
+            ' [CallKit] ❌ Failed to navigate after ${maxAttempts / 2} seconds. Storing in pendingCallData.',
+          );
           pendingCallData = finalData;
         }
       } else {
-        debugPrint(' [CallKit] Call declined, sending rejection via API (Background Safe)...');
+        debugPrint(
+          ' [CallKit] Call declined, sending rejection via API (Background Safe)...',
+        );
         if (chatId != null && callerId != null) {
           ApiService.rejectCall({
-            'chatId': chatId.toString(),
-            'toUserId': callerId.toString(),
-          }).then((_) => debugPrint(' [CallKit] API: Reject signal sent to caller'))
-            .catchError((e) => debugPrint(' [CallKit] API: Reject signal failed: $e'));
-          
+                'chatId': chatId.toString(),
+                'toUserId': callerId.toString(),
+              })
+              .then(
+                (_) =>
+                    debugPrint(' [CallKit] API: Reject signal sent to caller'),
+              )
+              .catchError(
+                (e) => debugPrint(' [CallKit] API: Reject signal failed: $e'),
+              );
+
           // Socket attempt too (if app is in foreground)
           SocketService.instance.emit('call:reject', {
             'chatId': chatId.toString(),
-            'toUserId': callerId.toString()
+            'toUserId': callerId.toString(),
           });
         }
-        
+
         if (finalData['id'] != null) {
           await FlutterCallkitIncoming.endCall(finalData['id'] as String);
         }

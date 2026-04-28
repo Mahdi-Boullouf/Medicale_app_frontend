@@ -266,6 +266,7 @@ class CallManager {
     socket?.off('call:incoming');
     socket?.off('call:accepted');
     socket?.off('call:rejected');
+    socket?.off('call:end'); // Bug #9 fix: include call:end in cleanup
 
     _connectionSubscription?.cancel();
     _reconnectSubscription?.cancel();
@@ -301,6 +302,8 @@ class IncomingCallDialog extends StatefulWidget {
 
 class _IncomingCallDialogState extends State<IncomingCallDialog> {
   bool _isProcessing = false;
+  // Bug #7 fix: keep a reference to the callback so only this listener is removed
+  Function(dynamic)? _callEndListener;
 
   @override
   void initState() {
@@ -321,13 +324,14 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
   void _setupCallEndListener() {
     final socket = SocketService.instance.socket;
     if (socket != null) {
-      socket.on('call:end', (data) {
+      _callEndListener = (data) {
         final endChatId = data is Map ? data['chatId']?.toString() : null;
         if (endChatId == widget.chatId && mounted && !_isProcessing) {
           debugPrint('📞 Call ended by caller');
           Navigator.of(context).pop();
         }
-      });
+      };
+      socket.on('call:end', _callEndListener!);
     }
   }
 
@@ -586,7 +590,10 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
 
   @override
   void dispose() {
-    SocketService.instance.socket?.off('call:end');
+    // Bug #7 fix: remove only this dialog's call:end listener, not all listeners
+    if (_callEndListener != null) {
+      SocketService.instance.socket?.off('call:end', _callEndListener!);
+    }
     super.dispose();
   }
 }

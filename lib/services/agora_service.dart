@@ -25,12 +25,15 @@ class AgoraService {
   Function(int uid, bool muted)? onUserMuteAudio;
   Function(int uid, bool muted)? onUserMuteVideo;
   Function(ConnectionStateType state, ConnectionChangedReasonType reason)?
-      onConnectionStateChanged;
+  onConnectionStateChanged;
 
   /// Initialize the Agora engine ONCE. Reused across all calls.
   /// The engine is a native singleton — releasing and recreating it
   /// in quick succession causes AgoraRtcException(-17).
-  Future<void> initialize({bool skipPermissions = false}) async {
+  Future<void> initialize({
+    bool skipPermissions = false,
+    bool isVideo = true,
+  }) async {
     //  If engine is already initialized and healthy, reuse it
     if (_isInitialized && _engine != null) {
       debugPrint("Agora Engine already initialized — reusing");
@@ -40,7 +43,9 @@ class AgoraService {
     // Clean up bad state (engine exists but not initialized)
     if (_engine != null) {
       debugPrint(" Engine in bad state — force releasing before re-init");
-      try { await _engine!.release(); } catch (_) {}
+      try {
+        await _engine!.release();
+      } catch (_) {}
       _engine = null;
       // Add delay to let native singleton fully release
       await Future.delayed(const Duration(milliseconds: 500));
@@ -52,7 +57,9 @@ class AgoraService {
       if (!skipPermissions) {
         await [Permission.microphone, Permission.camera].request();
       } else {
-        debugPrint(" [Agora] Skipping permission request for background initialization");
+        debugPrint(
+          " [Agora] Skipping permission request for background initialization",
+        );
       }
 
       // 2. Create and initialize engine
@@ -100,34 +107,50 @@ class AgoraService {
             _remoteUids.add(remoteUid); // ✅ Track user
             onUserJoined?.call(remoteUid, elapsed);
           },
-          onUserOffline: (RtcConnection connection, int remoteUid, UserOfflineReasonType reason) {
-            debugPrint(" Remote user $remoteUid left channel: $reason");
-            _remoteUids.remove(remoteUid); // ✅ Untrack user
-            onUserOffline?.call(remoteUid, reason);
-          },
+          onUserOffline:
+              (
+                RtcConnection connection,
+                int remoteUid,
+                UserOfflineReasonType reason,
+              ) {
+                debugPrint(" Remote user $remoteUid left channel: $reason");
+                _remoteUids.remove(remoteUid); // ✅ Untrack user
+                onUserOffline?.call(remoteUid, reason);
+              },
           onLeaveChannel: (RtcConnection connection, RtcStats stats) {
             debugPrint("Left channel");
             _remoteUids.clear(); // ✅ Clear on leave
             onLeaveChannel?.call(stats);
           },
-          onUserMuteAudio: (RtcConnection connection, int remoteUid, bool muted) {
-            debugPrint(" Remote user $remoteUid audio muted: $muted");
-            onUserMuteAudio?.call(remoteUid, muted);
-          },
-          onUserMuteVideo: (RtcConnection connection, int remoteUid, bool muted) {
-            debugPrint(" Remote user $remoteUid video muted: $muted");
-            onUserMuteVideo?.call(remoteUid, muted);
-          },
-          onConnectionStateChanged: (RtcConnection connection, ConnectionStateType state, ConnectionChangedReasonType reason) {
-            debugPrint(" Connection state changed: $state, reason: $reason");
-            onConnectionStateChanged?.call(state, reason);
-          },
+          onUserMuteAudio:
+              (RtcConnection connection, int remoteUid, bool muted) {
+                debugPrint(" Remote user $remoteUid audio muted: $muted");
+                onUserMuteAudio?.call(remoteUid, muted);
+              },
+          onUserMuteVideo:
+              (RtcConnection connection, int remoteUid, bool muted) {
+                debugPrint(" Remote user $remoteUid video muted: $muted");
+                onUserMuteVideo?.call(remoteUid, muted);
+              },
+          onConnectionStateChanged:
+              (
+                RtcConnection connection,
+                ConnectionStateType state,
+                ConnectionChangedReasonType reason,
+              ) {
+                debugPrint(
+                  " Connection state changed: $state, reason: $reason",
+                );
+                onConnectionStateChanged?.call(state, reason);
+              },
         ),
       );
 
-      // 7. Enable audio/video
-      await _engine!.enableVideo();
-      await _engine!.startPreview();
+      // 7. Enable audio/video — Bug #5 fix: skip camera for audio-only calls
+      if (isVideo) {
+        await _engine!.enableVideo();
+        await _engine!.startPreview();
+      }
 
       _isInitialized = true;
       debugPrint(" Agora Engine Initialized Successfully");
@@ -148,6 +171,11 @@ class AgoraService {
     if (!_isInitialized) await initialize();
 
     try {
+      if (_currentChannel == channelName) {
+        debugPrint(" [Agora] Already in channel: $channelName — skipping join");
+        return;
+      }
+
       //  Always leave any existing channel first to prevent error -17
       try {
         await _engine!.leaveChannel();
@@ -183,9 +211,16 @@ class AgoraService {
     bool isVideo = true,
     String? token,
   }) async {
-    if (!_isInitialized) await initialize(skipPermissions: !isVideo);
+    if (!_isInitialized)
+      await initialize(skipPermissions: !isVideo, isVideo: isVideo);
 
     try {
+      // ✅ Early exit if already in the channel to prevent redundant joins and Agora -17 errors
+      if (_currentChannel == channelName) {
+        debugPrint(" [Agora] Already in channel: $channelName — skipping join");
+        return;
+      }
+
       // Always leave any existing channel first to prevent error -17
       if (_currentChannel != null && _currentChannel != channelName) {
         try {
@@ -209,7 +244,9 @@ class AgoraService {
         ),
       );
       _currentChannel = channelName; // ✅ Set current channel
-      debugPrint(" Joining channel with User Account: $userAccount in $channelName");
+      debugPrint(
+        " Joining channel with User Account: $userAccount in $channelName",
+      );
     } catch (e) {
       debugPrint(" Error joining channel with user account: $e");
       rethrow;
@@ -230,8 +267,11 @@ class AgoraService {
     } catch (e) {
       debugPrint(" Error leaving channel (may not have been in one): $e");
       // If leaving fails badly, force reinit on next call
-      if (e.toString().contains('release') || e.toString().contains('destroy')) {
-        try { await _engine?.release(); } catch (_) {}
+      if (e.toString().contains('release') ||
+          e.toString().contains('destroy')) {
+        try {
+          await _engine?.release();
+        } catch (_) {}
         _engine = null;
         _isInitialized = false;
       }

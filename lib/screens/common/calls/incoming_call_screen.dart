@@ -58,7 +58,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
               conversationId: widget.callerId,
               callType: widget.isVideoCall ? 'video' : 'audio',
               status: 'missed',
-              backendChatId: widget.chatId, 
+              backendChatId: widget.chatId,
             );
           } catch (e) {
             debugPrint('Failed to log missed call: $e');
@@ -80,9 +80,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
         if (mounted) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Call failed: ${data['message']}')),
-              );
+              // ScaffoldMessenger.of(context).showSnackBar(
+              //   SnackBar(content: Text('Call failed: ${data['message']}')),
+              // );
               Navigator.pop(context);
             }
           });
@@ -107,7 +107,6 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     debugPrint('Is Video: ${widget.isVideoCall}');
 
     try {
-   
       SocketService.instance.emit('call:accept', {
         'chatId': widget.chatId,
         'fromUserId': widget.callerId,
@@ -115,7 +114,6 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
 
       debugPrint(' Call accept event sent');
 
- 
       await Future.delayed(const Duration(milliseconds: 300));
 
       // Navigate to appropriate call screen
@@ -130,14 +128,14 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                   userName: widget.callerName,
                   userAvatar: widget.callerAvatar,
                   otherUserId: widget.callerId,
-                  isInitiator: false, 
+                  isInitiator: false,
                 )
               : AudioCallScreen(
                   chatId: widget.chatId,
                   userName: widget.callerName,
                   userAvatar: widget.callerAvatar,
                   otherUserId: widget.callerId,
-                  isInitiator: false, 
+                  isInitiator: false,
                 ),
         ),
       );
@@ -160,13 +158,12 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     debugPrint(' Caller ID: ${widget.callerId}');
 
     try {
-     
       try {
         await AgoraChatService.instance.sendCallLog(
           conversationId: widget.callerId,
           callType: widget.isVideoCall ? 'video' : 'audio',
           status: 'declined',
-          backendChatId: widget.chatId, 
+          backendChatId: widget.chatId,
         );
       } catch (e) {
         debugPrint(' Failed to log declined call: $e');
@@ -206,7 +203,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-     
+
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -218,10 +215,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 const SizedBox(width: 6),
                 Text(
                   'Incoming ${widget.isVideoCall ? 'Video' : 'Voice'} call',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 15,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 15),
                 ),
               ],
             ),
@@ -234,10 +228,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 height: 140,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white24,
-                    width: 3,
-                  ),
+                  border: Border.all(color: Colors.white24, width: 3),
                 ),
                 child: CircleAvatar(
                   radius: 70,
@@ -296,9 +287,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                               ),
                             )
                           : Icon(
-                              widget.isVideoCall
-                                  ? Icons.videocam
-                                  : Icons.phone,
+                              widget.isVideoCall ? Icons.videocam : Icons.phone,
                               color: Colors.white,
                               size: 32,
                             ),

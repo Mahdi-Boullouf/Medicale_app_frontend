@@ -119,7 +119,7 @@ class CallProvider extends ChangeNotifier {
         callType: isVideoCall ? 'video' : 'audio',
       );
 
-      await _agoraService.initialize(skipPermissions: !isVideoCall);
+      await _agoraService.initialize(skipPermissions: !isVideoCall, isVideo: isVideoCall);
 
       // Map Agora events
       _agoraService.onUserJoined = (uid, elapsed) {
@@ -161,6 +161,13 @@ class CallProvider extends ChangeNotifier {
         _remoteUid = _agoraService.remoteUids.first;
         _isCallConnected = true;
         _callStatus = 'Connected';
+        // Bug #4 fix: Restore elapsed time from persisted state
+        final activeCall = await ActiveCallState.getActiveCall();
+        if (activeCall != null && activeCall['startTime'] != null) {
+          final startTime = DateTime.parse(activeCall['startTime']);
+          _callDurationSeconds = DateTime.now().difference(startTime).inSeconds;
+          _callDuration = _formatDuration(_callDurationSeconds);
+        }
         _startCallTimer();
       }
 
@@ -187,6 +194,15 @@ class CallProvider extends ChangeNotifier {
             endCall();
           }
         });
+        // Bug #10 fix: If call:accepted was received before listeners registered,
+        // join the channel now since the event was missed.
+        Future.delayed(const Duration(milliseconds: 600), () async {
+          if (!_isDisposed && !_channelJoined &&
+              _agoraService.currentChannel == chatId) {
+            debugPrint('[CallProvider] Missed call:accepted — joining late');
+            await _joinAgoraChannel();
+          }
+        });
       } else {
         await _joinAgoraChannel();
       }
@@ -197,6 +213,31 @@ class CallProvider extends ChangeNotifier {
   }
 
   Future<void> _joinAgoraChannel() async {
+    // ✅ CRITICAL FIX: Check if we are already in the channel (from CallKit background join)
+    // BEFORE setting "Securing connection..." status or fetching tokens.
+    if (_agoraService.currentChannel == chatId) {
+      debugPrint('[CallProvider] Already in channel $chatId — synchronizing state');
+      _channelJoined = true;
+
+      // Upgrade background audio to video if foregrounded
+      if (isVideoCall) {
+        await _agoraService.engine?.enableVideo();
+        await _agoraService.engine?.startPreview();
+      }
+
+      if (_agoraService.remoteUids.isNotEmpty) {
+        _remoteUid = _agoraService.remoteUids.first;
+        _isCallConnected = true;
+        _callStatus = 'Connected';
+      } else {
+        _callStatus = 'Waiting for other user...';
+      }
+
+      notifyListeners();
+      if (_isCallConnected) _startCallTimer();
+      return;
+    }
+
     if (_channelJoined) return;
     _channelJoined = true;
 
@@ -225,22 +266,7 @@ class CallProvider extends ChangeNotifier {
 
       if (token == null) {
         _showError('Connection security failed');
-        return;
-      }
-
-      // Upgrade background audio to video if foregrounded
-      if (_agoraService.currentChannel == chatId) {
-        if (isVideoCall) {
-          await _agoraService.engine?.enableVideo();
-          await _agoraService.engine?.startPreview();
-        }
-        if (_agoraService.remoteUids.isNotEmpty) {
-          _remoteUid = _agoraService.remoteUids.first;
-          _isCallConnected = true;
-        }
-        _callStatus = 'Connected';
-        notifyListeners();
-        if (_isCallConnected) _startCallTimer();
+        endCall(); // Fix: Call endCall if we can't get a token
         return;
       }
 
@@ -265,10 +291,10 @@ class CallProvider extends ChangeNotifier {
         await _agoraService.setSpeakerphone(false);
       }
 
-      _callStatus = 'Connected';
-      _isCallConnected = true;
+      // Bug #1 fix: Do NOT set _isCallConnected here.
+      // onUserJoined callback handles connected state & timer once remote joins.
+      _callStatus = 'Waiting for other user...';
       notifyListeners();
-      _startCallTimer();
     } catch (e) {
       _showError('Failed to connect to call');
     }
@@ -302,7 +328,7 @@ class CallProvider extends ChangeNotifier {
 
     socket.on('call:rejected', (data) {
       if (data['chatId'] == chatId) {
-        _showError('Call declined');
+        // _showError('Call declined');
         Future.delayed(const Duration(seconds: 1), endCall);
       }
     });
@@ -313,11 +339,8 @@ class CallProvider extends ChangeNotifier {
 
     _callTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _callDurationSeconds++;
-      final minutes = (_callDurationSeconds ~/ 60).toString().padLeft(2, '0');
-      final seconds = (_callDurationSeconds % 60).toString().padLeft(2, '0');
-      _callDuration = isVideoCall
-          ? '$minutes:$seconds'
-          : _formatDuration(_callDurationSeconds);
+      // Bug #8 fix: Use _formatDuration for both call types
+      _callDuration = _formatDuration(_callDurationSeconds);
       notifyListeners();
     });
   }
@@ -387,13 +410,15 @@ class CallProvider extends ChangeNotifier {
       debugPrint('API endCall error, falling back to socket: $e');
     }
 
-    // Always notify socket to be safe
-    SocketService.instance.emit('call:end', {
-      'chatId': chatId,
-      'toUserId': otherUserId,
-      'fromUserId': _currentUserId,
-      'uuid': uuid,
-    });
+    // Bug #2 fix: Guard emit — fromUserId must not be null
+    if (_currentUserId != null) {
+      SocketService.instance.emit('call:end', {
+        'chatId': chatId,
+        'toUserId': otherUserId,
+        'fromUserId': _currentUserId,
+        'uuid': uuid,
+      });
+    }
 
     await _agoraService.leaveChannel();
     _agoraService.onUserJoined = null;
@@ -423,12 +448,15 @@ class CallProvider extends ChangeNotifier {
       ActiveCallState.clearActiveCall();
       _agoraService.leaveChannel();
       FlutterCallkitIncoming.endAllCalls();
-      SocketService.instance.emit('call:end', {
-        'chatId': chatId,
-        'toUserId': otherUserId,
-        'fromUserId': _currentUserId,
-        'uuid': uuid,
-      });
+      // Bug #3 fix: late fields may be uninitialized if disposed before initCall
+      if (_currentUserId != null) {
+        SocketService.instance.emit('call:end', {
+          'chatId': chatId,
+          'toUserId': otherUserId,
+          'fromUserId': _currentUserId,
+          'uuid': uuid,
+        });
+      }
       _agoraService.onUserJoined = null;
       _agoraService.onUserOffline = null;
       _agoraService.onConnectionStateChanged = null;
