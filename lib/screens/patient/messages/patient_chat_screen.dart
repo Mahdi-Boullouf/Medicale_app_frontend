@@ -59,6 +59,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _isAutoScrollEnabled = true;
   final Set<String> _selectedMessageIds = {};
   bool _isSelectionMode = false;
+  bool _isInitiatingCall = false;
 
   @override
   void initState() {
@@ -527,13 +528,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   /// Initiate call
   Future<void> _initiateCall({required bool isVideo}) async {
-    if (widget.doctorId == null) {
-      debugPrint('❌ Cannot initiate call: doctorId is null');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: Cannot initiate call')),
+    if (widget.doctorId == null || _isInitiatingCall) {
+      debugPrint(
+        '❌ Cannot initiate call: doctorId is null or already initiating',
       );
       return;
     }
+
+    setState(() => _isInitiatingCall = true);
 
     try {
       debugPrint(' Initiating ${isVideo ? 'video' : 'audio'} call...');
@@ -607,6 +609,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isInitiatingCall = false);
     }
   }
 

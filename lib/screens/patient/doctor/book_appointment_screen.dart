@@ -11,7 +11,7 @@ import 'package:docmobi/models/dependent_model.dart';
 import 'package:docmobi/models/appointment_model.dart';
 import 'package:docmobi/providers/appointment_provider.dart';
 import 'package:docmobi/providers/dependent_provider.dart';
-import 'package:docmobi/services/doctor_service.dart'; 
+import 'package:docmobi/services/doctor_service.dart';
 import 'package:docmobi/utils/api_config.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 
@@ -55,11 +55,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   List<TimeSlot> availableSlots = [];
 
   final ImagePicker _picker = ImagePicker();
-  Doctor? _fetchedDoctor; 
+  Doctor? _fetchedDoctor;
 
   Doctor? get doctorObject {
     if (_fetchedDoctor != null) {
-      return _fetchedDoctor; 
+      return _fetchedDoctor;
     }
     if (widget.doctor is Doctor) return widget.doctor as Doctor;
     if (widget.doctor is Map<String, dynamic>) {
@@ -111,20 +111,15 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     });
   }
 
- 
   Future<void> _initializeRescheduleFlow() async {
-   
     _prefillStaticData();
 
-    
     await _fetchFullDoctorDetails();
 
-  
     if (selectedDate != null && mounted) {
       _fetchAvailableSlots(selectedDate!);
     }
   }
-
 
   void _prefillStaticData() {
     final appt = widget.existingAppointment!;
@@ -158,7 +153,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     debugPrint('   Date set to: $selectedDate');
   }
 
- 
   Future<void> _fetchFullDoctorDetails() async {
     try {
       debugPrint(' Fetching full doctor details for: $doctorId');
@@ -168,10 +162,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       if (response['success'] == true && mounted) {
         setState(() {
           _fetchedDoctor = Doctor.fromJson(response['data']);
-          
+
           // NEW: If we just fetched settings and video is disabled, enforce it
-          if (_fetchedDoctor != null && 
-              !_fetchedDoctor!.isOnlineAppointmentAvailable && 
+          if (_fetchedDoctor != null &&
+              !_fetchedDoctor!.isOnlineAppointmentAvailable &&
               selectedType == "Video Call") {
             selectedType = "Physical Visit";
           }
@@ -283,7 +277,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
     if (doctor == null ||
         doctor.weeklySchedule == null ||
-        doctor.weeklySchedule!.isEmpty) {
+        doctor.weeklySchedule!.isEmpty ||
+        doctor.appointmentsDisabled) {
       setState(() => availableSlots = []);
       return;
     }
@@ -525,9 +520,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         return; // Stop here. Old appointment remains active.
       }
 
-      debugPrint(
-        'New appointment created. Now cancelling old appointment...',
-      );
+      debugPrint('New appointment created. Now cancelling old appointment...');
 
       //  Cancel Old Appointment
       final prefs = await SharedPreferences.getInstance();
@@ -545,9 +538,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       );
 
       if (cancelResponse.statusCode < 200 || cancelResponse.statusCode >= 300) {
-        debugPrint(
-          ' Failed to cancel old appointment: ${cancelResponse.body}',
-        );
+        debugPrint(' Failed to cancel old appointment: ${cancelResponse.body}');
 
         // Show WARNING message to user
         if (mounted) {
@@ -611,8 +602,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       final XFile? result = await FlutterImageCompress.compressAndGetFile(
         path,
         targetPath,
-        quality: 88, 
-        minWidth: 2048, 
+        quality: 88,
+        minWidth: 2048,
         minHeight: 2048,
       );
 
@@ -724,7 +715,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             AppointmentTypeSelector(
               title: l10n.appointmentTypeLabel,
               selectedType: selectedType,
-              isVideoDisabled: doctorObject?.isOnlineAppointmentAvailable == false,
+              isVideoDisabled:
+                  doctorObject?.isOnlineAppointmentAvailable == false,
               onTypeSelected: (type) => setState(() => selectedType = type),
             ),
             const SizedBox(height: 16),

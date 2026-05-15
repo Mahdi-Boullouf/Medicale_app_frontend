@@ -3,6 +3,7 @@ import 'package:docmobi/l10n/app_localizations.dart';
 
 import 'package:docmobi/screens/patient/home/full_map_screen.dart';
 import 'package:docmobi/screens/patient/home/upcoming_appointment_card.dart';
+import 'package:docmobi/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart' as legacy_provider;
@@ -19,7 +20,7 @@ import 'package:docmobi/screens/patient/doctor/book_appointment_screen.dart';
 import 'package:docmobi/screens/patient/notification/patient_notification_screen.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../services/location_service.dart';
-import '../../../services/directions_service.dart'; 
+import '../../../services/directions_service.dart';
 import '../../../utils/marker_factory.dart';
 import 'package:docmobi/screens/patient/profile/patient_profile_screen.dart';
 import '../../../widgets/custom_image.dart';
@@ -35,11 +36,14 @@ class PatientHomeScreen extends ConsumerStatefulWidget {
 class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
   final LocationService _locationService = LocationService();
   final MarkerFactory _markerFactory = MarkerFactory();
-  final DirectionsService _directionsService = DirectionsService(); 
+  final DirectionsService _directionsService = DirectionsService();
 
   final TextEditingController _searchController = TextEditingController();
   GoogleMapController? _mapController;
 
+  // Specialty options (Fetched from backend)
+  List<String> specialties = [];
+  bool isLoadingCategories = true;
 
   LatLng _currentPosition = const LatLng(23.8103, 90.4125);
   bool _isLoadingLocation = true;
@@ -48,9 +52,9 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
   Set<Polyline> _polylines = {};
   final Set<Polyline> _directionPolylines = {};
 
-  Timer? _refreshTimer; 
-  bool _isScreenInitialized = false; 
-
+  Timer? _refreshTimer;
+  bool _isScreenInitialized = false;
+  String? selectedSpeciality;
   @override
   void initState() {
     super.initState();
@@ -59,11 +63,10 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
       if (!_isScreenInitialized) {
         _isScreenInitialized = true;
         _initializeScreen();
-        _startAutoRefresh(); 
+        _startAutoRefresh();
       }
     });
   }
-
 
   void _startAutoRefresh() {
     _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
@@ -74,7 +77,27 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
     });
   }
 
- Future<void> _initializeScreen() async {
+  Future<void> _fetchCategories() async {
+    try {
+      final response = await ApiService.getAllCategories();
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> categoryData = response['data'];
+        setState(() {
+          specialties = categoryData
+              .map((c) => c['speciality_name'] as String)
+              .toList();
+          isLoadingCategories = false;
+        });
+      } else {
+        setState(() => isLoadingCategories = false);
+      }
+    } catch (e) {
+      debugPrint('Error fetching categories: $e');
+      setState(() => isLoadingCategories = false);
+    }
+  }
+
+  Future<void> _initializeScreen() async {
     try {
       final userProvider = legacy_provider.Provider.of<UserProvider>(
         context,
@@ -84,18 +107,16 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
         context,
         listen: false,
       );
-      final appointmentProvider = legacy_provider.Provider.of<AppointmentProvider>(
-        context,
-        listen: false,
-      );
+      final appointmentProvider = legacy_provider
+          .Provider.of<AppointmentProvider>(context, listen: false);
 
-    
       await Future.wait([
         if (userProvider.user == null) userProvider.loadFromCache(),
-        if (appointmentProvider.appointments.isEmpty) appointmentProvider.loadFromCache(),
-        if (doctorProvider.nearbyDoctors.isEmpty) doctorProvider.loadFromCache(),
+        if (appointmentProvider.appointments.isEmpty)
+          appointmentProvider.loadFromCache(),
+        if (doctorProvider.nearbyDoctors.isEmpty)
+          doctorProvider.loadFromCache(),
       ]);
-
 
       // User profile
       userProvider.fetchUserProfile().then(
@@ -105,6 +126,7 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
           return false;
         },
       );
+      _fetchCategories();
 
       // Appointments
       appointmentProvider.fetchAppointments().then(
@@ -114,7 +136,6 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
           return false;
         },
       );
-
 
       _getCurrentLocation()
           .then((_) {
@@ -154,7 +175,7 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
 
   @override
   void dispose() {
-    _refreshTimer?.cancel(); 
+    _refreshTimer?.cancel();
     _searchController.dispose();
     _mapController?.dispose();
     super.dispose();
@@ -210,10 +231,9 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
         });
       }
 
-  
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.medium,
-        timeLimit: const Duration(seconds: 5), 
+        timeLimit: const Duration(seconds: 5),
       );
 
       debugPrint(
@@ -312,7 +332,6 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
     );
   }
 
-
   Future<void> _printCurrentLocation() async {
     if (!_locationPermissionGranted) {
       debugPrint('Location permission নাই');
@@ -341,13 +360,13 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
 
   Color _getRouteColor(double distanceKm) {
     if (distanceKm <= 5) {
-      return Colors.green; 
+      return Colors.green;
     } else if (distanceKm <= 10) {
-      return Colors.lightGreen; 
+      return Colors.lightGreen;
     } else if (distanceKm <= 15) {
-      return Colors.orange; 
+      return Colors.orange;
     } else {
-      return Colors.red; 
+      return Colors.red;
     }
   }
 
@@ -368,11 +387,9 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
       for (int i = 0; i < doctors.length; i++) {
         final doctor = doctors[i];
 
-       
         if (doctor.latitude != null && doctor.longitude != null) {
           final doctorLocation = LatLng(doctor.latitude!, doctor.longitude!);
 
-    
           double distanceKm = _locationService.calculateDistanceInKm(
             _currentPosition,
             doctorLocation,
@@ -387,7 +404,6 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
           );
           markers.add(marker);
 
-      
           Color routeColor = _getRouteColor(distanceKm);
 
           polylines.add(
@@ -694,7 +710,7 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
     final l10n = AppLocalizations.of(context)!;
     final userProvider = legacy_provider.Provider.of<UserProvider>(context);
     final generalUnreadCountValue = ref.watch(generalUnreadCountProvider);
-
+    print(specialties);
     return Scaffold(
       backgroundColor: const Color(0xFFF1F6FF),
       body: SafeArea(
@@ -960,7 +976,7 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
                                       polylines: {
                                         ..._polylines,
                                         ..._directionPolylines,
-                                      }, 
+                                      },
                                       myLocationEnabled:
                                           _locationPermissionGranted,
                                       myLocationButtonEnabled: false,
@@ -1234,8 +1250,68 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 15),
-
+                    SizedBox(
+                      height: 48,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: specialties.length + 1,
+                        itemBuilder: (c, i) {
+                          if (i == 0) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    selectedSpeciality = null;
+                                  });
+                                },
+                                child: Chip(
+                                  backgroundColor: selectedSpeciality == null
+                                      ? Colors.blue
+                                      : Colors.white,
+                                  label: Text(
+                                    "all",
+                                    style: TextStyle(
+                                      color: selectedSpeciality == null
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  selectedSpeciality = specialties[i - 1];
+                                });
+                              },
+                              child: Chip(
+                                backgroundColor:
+                                    selectedSpeciality == specialties[i - 1]
+                                    ? Colors.blue
+                                    : Colors.white,
+                                label: Text(
+                                  specialties[i - 1],
+                                  style: TextStyle(
+                                    color:
+                                        selectedSpeciality == specialties[i - 1]
+                                        ? Colors.white
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        scrollDirection: Axis.horizontal,
+                      ),
+                    ),
                     // Doctors List
                     legacy_provider.Consumer<DoctorProvider>(
                       builder: (context, doctorProvider, child) {
@@ -1280,8 +1356,6 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
                             ),
                           );
                         }
-
-                
                         nearbyDoctors.sort((a, b) {
                           if (a.latitude == null || a.longitude == null) {
                             return 1;
@@ -1301,11 +1375,17 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
 
                           return distA.compareTo(distB);
                         });
-
+                        final categorizedDoctors = nearbyDoctors.where((e) {
+                          if (selectedSpeciality == null ||
+                              selectedSpeciality!.isEmpty) {
+                            return true;
+                          }
+                          return e.specialty == selectedSpeciality;
+                        }).toList();
                         return ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: nearbyDoctors.length,
+                          itemCount: categorizedDoctors.length,
                           itemBuilder: (context, index) {
                             return Padding(
                               padding: const EdgeInsets.only(
@@ -1314,7 +1394,7 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
                                 right: 20,
                               ),
                               child: _buildCustomDoctorCard(
-                                nearbyDoctors[index],
+                                categorizedDoctors[index],
                               ),
                             );
                           },

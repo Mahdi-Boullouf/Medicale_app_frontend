@@ -163,7 +163,7 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
           if (activeCalls is List && activeCalls.isNotEmpty) {
             final firstCall = activeCalls.first;
             var extra = firstCall['extra'];
-            
+
             if (extra != null) {
               Map<String, dynamic> data = {};
               if (extra is Map) {
@@ -177,15 +177,19 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
               }
 
               final chatId = data['chatId']?.toString();
-              if (chatId != null && chatId.isNotEmpty && data['timestamp'] != null) {
+              if (chatId != null &&
+                  chatId.isNotEmpty &&
+                  data['timestamp'] != null) {
                 final callTime = DateTime.parse(data['timestamp'].toString());
                 final diff = DateTime.now().difference(callTime).inMinutes;
-                
+
                 if (diff <= 2) {
                   //  Valid active call — stay in "Connecting" UI
                   _launchingIntoCall = true;
                   CallKitService.pendingCallData = data;
-                  debugPrint(' [APP] Found VALID active call on startup ($chatId)');
+                  debugPrint(
+                    ' [APP] Found VALID active call on startup ($chatId)',
+                  );
                 } else {
                   await FlutterCallkitIncoming.endAllCalls();
                   debugPrint(' [APP] Stale call ($diff min old) — cleared');
@@ -216,7 +220,7 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
             // If it succeeds, we reset _launchingIntoCall.
             // If it's still waiting for Resume/Navigator, we wait.
             bool callStarted = CallKitService.consumePendingCallData();
-            
+
             if (callStarted) {
               debugPrint(' [APP] Active call consumed successfully');
               if (mounted) setState(() => _launchingIntoCall = false);
@@ -224,7 +228,7 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
               // Standard initial message check
               await PushNotificationService.checkInitialMessage();
               PushNotificationService.consumePendingPayload();
-              
+
               // If we were expecting a call but nothing happened after 5 seconds, reset state
               if (_launchingIntoCall) {
                 Future.delayed(const Duration(seconds: 5), () {

@@ -12,6 +12,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get appTitle => 'دوك موبي';
 
   @override
+  String get commune => 'بلدية';
+
+  @override
+  String get wilaya => 'ولاية';
+
+  @override
+  String get filter => 'تصفية';
+
+  @override
+  String get message => 'رسالة';
+
+  @override
   String get welcome => 'أهلاً بك';
 
   @override
@@ -226,9 +238,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noBioAvailable => 'لا توجد سيرة ذاتية متاحة';
-
-  @override
-  String get message => 'رسالة';
 
   @override
   String get welcomeBack => 'مرحباً بعودتك';
@@ -1595,4 +1604,13 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get deleteAccount => 'حذف حسابك';
+
+  @override
+  String get applyFilter => 'تطبيق التصفية';
+
+  @override
+  String get allDoctors => 'جميع الأطباء';
+
+  @override
+  String get yourProfile => 'ملفك الشخصي';
 }

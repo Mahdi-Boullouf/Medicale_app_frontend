@@ -229,6 +229,14 @@ class _VideoCallScreenBody extends StatelessWidget {
                             color: Colors.white,
                           ),
                           _buildControlButton(
+                            icon: provider.isSpeakerOn
+                                ? Icons.volume_up
+                                : Icons.volume_off,
+                            label: provider.isSpeakerOn ? 'Speaker' : 'Earpiece',
+                            onPressed: provider.toggleSpeaker,
+                            color: provider.isSpeakerOn ? Colors.blue : Colors.white,
+                          ),
+                          _buildControlButton(
                             icon: Icons.call_end,
                             label: 'End',
                             onPressed: provider.endCall,

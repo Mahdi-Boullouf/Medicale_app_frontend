@@ -942,5 +942,11 @@
   "deleteAccount": "Supprimer votre compte",
   "@deleteAccount": {
     "description": "Menu de profil Supprimer votre compte"
-  }
+  },
+  "wilaya": "Wilaya",
+  "filter": "Filtrer",
+  "commune": "Commune",
+  "applyFilter": "Appliquer le filtre",
+  "allDoctors": "Tous les docteurs",
+  "yourProfile": "Votre Profil"
 }

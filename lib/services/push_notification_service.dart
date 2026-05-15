@@ -364,7 +364,21 @@ class PushNotificationService {
 
       String? fcmToken;
       try {
+        if (Platform.isIOS) {
+          debugPrint(' [NOTIF] Waiting for APNs token...');
+          final apnsToken = await _fcm.getAPNSToken();
+          if (apnsToken != null) {
+            debugPrint(' ✅ [NOTIF] APNs token retrieved: $apnsToken');
+          } else {
+            debugPrint(' ⚠️ [NOTIF] APNs token is NULL! Background pushes might fail. Retrying...');
+            await Future.delayed(const Duration(seconds: 2));
+            final retryApns = await _fcm.getAPNSToken();
+            debugPrint(' [NOTIF] APNs token after retry: $retryApns');
+          }
+        }
+        
         fcmToken = await _fcm.getToken().timeout(const Duration(seconds: 10));
+        debugPrint(' [NOTIF] FCM Token retrieved');
       } catch (e) {
         debugPrint(' [NOTIF] ❌ Error fetching FCM token: $e');
       }

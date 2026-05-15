@@ -566,8 +566,12 @@ class AgoraChatService {
             // ✅ SMART SIGNALING: Intercept call_log messages to stop ringing
             if (msg.attributes?['type'] == 'call_log') {
               final status = msg.attributes?['status'];
-              if (status == 'cancelled' || status == 'ended' || status == 'declined') {
-                debugPrint(' 📴 [AGORA LOG] Call cancel signal matched via chat log');
+              if (status == 'cancelled' ||
+                  status == 'ended' ||
+                  status == 'declined') {
+                debugPrint(
+                  ' 📴 [AGORA LOG] Call cancel signal matched via chat log',
+                );
                 final uuid = msg.attributes?['uuid'];
                 if (uuid != null && uuid.toString().isNotEmpty) {
                   FlutterCallkitIncoming.endCall(uuid.toString());
@@ -612,13 +616,13 @@ class AgoraChatService {
         debugPrint(
           '🔔 Triggering Local Notification for $senderName in chat $backendChatId',
         );
-        PushNotificationService.showLocalNotificationForChat(
-          senderName: senderName,
-          content: content,
-          chatId: backendChatId,
-          otherUserId: msg.from ?? '',
-          avatar: avatar,
-        );
+        // PushNotificationService.showLocalNotificationForChat(
+        //   senderName: senderName,
+        //   content: content,
+        //   chatId: backendChatId,
+        //   otherUserId: msg.from ?? '',
+        //   avatar: avatar,
+        // );
       } else {
         debugPrint('⚠️ Skipping local notification: backendChatId is NULL');
       }

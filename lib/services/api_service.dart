@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/api_config.dart'; 
+import '../utils/api_config.dart';
 import '../services/push_notification_service.dart';
 import '../services/callkit_service.dart';
 import '../services/notification_api_service.dart'; // Ensure token gets registered
@@ -12,9 +12,7 @@ import '../services/notification_api_service.dart'; // Ensure token gets registe
 class ApiService {
   static String? _token;
   static String get _baseUrl => ApiConfig.baseUrl;
-  static final Map<String, Map<String, dynamic>> _profileCache =
-      {}; 
-
+  static final Map<String, Map<String, dynamic>> _profileCache = {};
 
   static Future<void> init() async {
     try {
@@ -170,6 +168,7 @@ class ApiService {
     String endpoint,
     Map<String, dynamic> body, {
     bool requiresAuth = true,
+    x,
   }) async {
     try {
       // Token check BEFORE request
@@ -346,7 +345,9 @@ class ApiService {
   }
 
   /// Accept call via REST API (Fallback for slow socket connection)
-  static Future<Map<String, dynamic>> acceptCall(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> acceptCall(
+    Map<String, dynamic> data,
+  ) async {
     try {
       debugPrint(' Accepting call via API: $data');
       return await post('/api/v1/call/accept', data, requiresAuth: true);
@@ -356,7 +357,9 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> rejectCall(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> rejectCall(
+    Map<String, dynamic> data,
+  ) async {
     try {
       debugPrint(' Rejecting call via API: $data');
       return await post('/api/v1/call/reject', data, requiresAuth: true);
@@ -457,6 +460,8 @@ class ApiService {
     required String email,
     required String password,
     required String role,
+    String? wilaya,
+    String? commune,
     String? medicalLicenseNumber,
     String? specialty,
     String? experienceYears,
@@ -468,6 +473,8 @@ class ApiService {
       'password': password,
       'confirmPassword': password, // Backend might require this
       'role': role.toLowerCase(),
+      if (wilaya != null) 'wilaya': wilaya,
+      if (commune != null) 'commune': commune,
     };
 
     // Add doctor-specific fields
@@ -475,6 +482,7 @@ class ApiService {
       if (medicalLicenseNumber != null) {
         body['medicalLicenseNumber'] = medicalLicenseNumber;
       }
+
       if (specialty != null) {
         body['specialty'] = specialty;
       }
@@ -508,8 +516,6 @@ class ApiService {
     return {'success': true, 'message': 'Logged out successfully'};
   }
 
-
-
   /// Get Chat Messages
   static Future<Map<String, dynamic>> getChatMessages({
     required String chatId,
@@ -541,8 +547,12 @@ class ApiService {
   }) async {
     //  Sanitize userId to remove any socket/device suffix (e.g. userId/deviceId)
     final cleanUserId = userId.split('/').first;
-    debugPrint(' Creating/Getting chat with userId: $cleanUserId (Original: $userId)');
-    return await post('/api/v1/chat', {'userId': cleanUserId}, requiresAuth: true);
+    debugPrint(
+      ' Creating/Getting chat with userId: $cleanUserId (Original: $userId)',
+    );
+    return await post('/api/v1/chat', {
+      'userId': cleanUserId,
+    }, requiresAuth: true);
   }
 
   /// Mark Chat as Read
@@ -622,8 +632,6 @@ class ApiService {
     }
   }
 
-
-
   /// Create Post
   static Future<Map<String, dynamic>> createPost({
     required String content,
@@ -681,7 +689,7 @@ class ApiService {
     int limit = 20,
   }) async {
     return await get(
-      '${ApiConfig.posts}?page=$page&limit=$limit', 
+      '${ApiConfig.posts}?page=$page&limit=$limit',
       requiresAuth: true,
     );
   }
@@ -708,7 +716,6 @@ class ApiService {
     }, requiresAuth: true);
   }
 
-
   static Future<Map<String, dynamic>> deletePost(String postId) async {
     try {
       debugPrint('🗑️ Deleting post: $postId');
@@ -723,8 +730,6 @@ class ApiService {
       return {'success': false, 'message': 'Failed to delete post: $e'};
     }
   }
-
-
 
   /// Get User Profile
   static Future<Map<String, dynamic>> getUserProfile({String? userId}) async {
@@ -804,11 +809,13 @@ class ApiService {
       if (!isLoggedIn) return {'success': false, 'message': 'Not logged in'};
       final url = '$_baseUrl/api/v1/user/fcm-token';
       final headers = _getHeaders(requiresAuth: true);
-      final response = await http.delete(
-        Uri.parse(url),
-        headers: headers,
-        body: jsonEncode({'token': token}),
-      ).timeout(const Duration(seconds: 5));
+      final response = await http
+          .delete(
+            Uri.parse(url),
+            headers: headers,
+            body: jsonEncode({'token': token}),
+          )
+          .timeout(const Duration(seconds: 5));
       return _handleResponse(response);
     } catch (e) {
       debugPrint(' FCM token unregister failed: $e');
@@ -816,14 +823,9 @@ class ApiService {
     }
   }
 
-
-
   /// Get Appointments
   static Future<Map<String, dynamic>> getAppointments() async {
-    return await get(
-      ApiConfig.appointments, 
-      requiresAuth: true,
-    );
+    return await get(ApiConfig.appointments, requiresAuth: true);
   }
 
   /// Create Appointment
@@ -857,8 +859,6 @@ class ApiService {
       requiresAuth: true,
     );
   }
-
-
 
   /// Get All Doctors
   static Future<Map<String, dynamic>> getAllDoctors({
@@ -904,8 +904,6 @@ class ApiService {
       requiresAuth: false,
     );
   }
-
-
 
   /// Get Earnings
   static Future<Map<String, dynamic>> getEarnings() async {
@@ -967,10 +965,7 @@ class ApiService {
       // Use 'video' as field name (NOT 'videoFile')
       if (videoFile != null) {
         request.files.add(
-          await http.MultipartFile.fromPath(
-            'video', 
-            videoFile.path,
-          ),
+          await http.MultipartFile.fromPath('video', videoFile.path),
         );
         debugPrint(' Video file added: ${videoFile.path}');
       }
@@ -988,7 +983,6 @@ class ApiService {
       return {'success': false, 'message': 'Failed to upload reel: $e'};
     }
   }
-
 
   static Future<Map<String, dynamic>> getAllReels({
     int page = 1,
@@ -1079,8 +1073,6 @@ class ApiService {
     }
   }
 
-
-
   /// Upload Single File
   static Future<Map<String, dynamic>> uploadFile({
     required String filePath,
@@ -1148,7 +1140,6 @@ class ApiService {
       return {'success': false, 'message': _getErrorMessage(e)};
     }
   }
-
 
   static Future<Map<String, dynamic>> likePost(String postId) async {
     try {

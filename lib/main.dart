@@ -33,6 +33,11 @@ void main() async {
   try {
     await Firebase.initializeApp();
     debugPrint('Firebase initialized');
+    await FirebaseMessaging.instance.requestPermission(
+      sound: true,
+      alert: true,
+      badge: true,
+    );
 
     // 2. Register background handler IMMEDIATELY after Firebase init
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);

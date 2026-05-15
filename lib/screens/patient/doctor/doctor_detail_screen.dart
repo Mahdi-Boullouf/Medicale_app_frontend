@@ -27,7 +27,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchDoctorDetails(); 
+    _fetchDoctorDetails();
     _loadDoctorReviews();
   }
 
@@ -48,7 +48,27 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
     }
   }
 
-  
+  bool isDoctorAvailable(Doctor doctor) {
+    if (doctor.weeklySchedule == null || doctor.weeklySchedule!.isEmpty) {
+      debugPrint(' ${doctor.fullName}: No weeklySchedule');
+      return false;
+    }
+
+    for (var schedule in doctor.weeklySchedule!) {
+      debugPrint(
+        ' ${doctor.fullName} - ${schedule.day}: active=${schedule.isActive}, slots=${schedule.slots.length}',
+      );
+
+      if (schedule.isActive && schedule.slots.isNotEmpty) {
+        debugPrint(' ${doctor.fullName}: Available on ${schedule.day}');
+        return true;
+      }
+    }
+
+    debugPrint(' ${doctor.fullName}: No active days with slots');
+    return false;
+  }
+
   Future<void> _loadDoctorReviews() async {
     // setState(() => _loadingReviews = true);
 
@@ -56,7 +76,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
       debugPrint(' Loading reviews for doctor: ${widget.doctor.id}');
 
       final response = await ApiService.get(
-        '/api/v1/doctor-review/doctor/${widget.doctor.id}', 
+        '/api/v1/doctor-review/doctor/${widget.doctor.id}',
         requiresAuth: false,
       );
 
@@ -86,9 +106,11 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final bool hasVideoCall =
-        widget.doctor.isVideoCallAvailable; 
-    final String? currentUserRole = Provider.of<UserProvider>(context, listen: false).user?.role;
+    final bool hasVideoCall = widget.doctor.isVideoCallAvailable;
+    final String? currentUserRole = Provider.of<UserProvider>(
+      context,
+      listen: false,
+    ).user?.role;
 
     debugPrint(' Details Screen: ${widget.doctor.fullName}');
     debugPrint('   - isVideoCallAvailable: $hasVideoCall');
@@ -336,7 +358,8 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
                 const SizedBox(height: 30),
 
                 // Message Button
-                if (widget.doctor.id != Provider.of<UserProvider>(context, listen: false).user?.id)
+                if (widget.doctor.id !=
+                    Provider.of<UserProvider>(context, listen: false).user?.id)
                   SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -385,7 +408,12 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
                     ),
                   ),
 
-                if (currentUserRole != 'doctor' && widget.doctor.id != Provider.of<UserProvider>(context, listen: false).user?.id) ...[
+                if (currentUserRole != 'doctor' &&
+                    widget.doctor.id !=
+                        Provider.of<UserProvider>(
+                          context,
+                          listen: false,
+                        ).user?.id) ...[
                   const SizedBox(height: 15),
 
                   // Book Now Button
@@ -393,21 +421,24 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
                     width: double.infinity,
                     height: 65,
                     child: ElevatedButton(
-                      onPressed: () {
-                        if (widget.doctor.id.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l10n.invalidDoctor)),
-                          );
-                          return;
-                        }
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                BookAppointmentScreen(doctor: widget.doctor),
-                          ),
-                        );
-                      },
+                      onPressed: !isDoctorAvailable(widget.doctor)
+                          ? null
+                          : () {
+                              if (widget.doctor.id.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(l10n.invalidDoctor)),
+                                );
+                                return;
+                              }
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => BookAppointmentScreen(
+                                    doctor: widget.doctor,
+                                  ),
+                                ),
+                              );
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0D53C1),
                         shape: RoundedRectangleBorder(
@@ -415,7 +446,9 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
                         ),
                       ),
                       child: Text(
-                        l10n.bookNow,
+                        !isDoctorAvailable(widget.doctor)
+                            ? l10n.notAvailable
+                            : l10n.bookNow,
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,

@@ -7,20 +7,36 @@ import '../services/api_service.dart';
 
 class UserService {
   /// Get current user profile and save name/avatar to SharedPreferences
+  static Future<Map<String, dynamic>> updateAppointmentAvailability(
+    bool isDisabled,
+    String userId,
+  ) async {
+    debugPrint(' Updating appointment availability...${ApiService.token}');
+    final response = await ApiService.put(
+      '/api/v1/user/doctor/available-appointments',
+      {'appointmentsDisabled': isDisabled, 'id': userId},
+      requiresAuth: true,
+    );
+    return response;
+  }
+
   static Future<Map<String, dynamic>> getUserProfile() async {
     debugPrint(' Fetching user profile...');
-    final result = await ApiService.get('/api/v1/user/profile', requiresAuth: true);
-    
+    final result = await ApiService.get(
+      '/api/v1/user/profile',
+      requiresAuth: true,
+    );
+
     //  Save profile details for notification attributes
     if (result['success'] == true) {
       try {
         final prefs = await SharedPreferences.getInstance();
         final userData = result['data'] ?? result['user'];
-        
+
         if (userData != null) {
           final fullName = userData['fullName'];
           final avatarUrl = userData['avatar']?['url'];
-          
+
           if (fullName != null) {
             await prefs.setString('user_full_name', fullName.toString());
             debugPrint(' Profile: Saved user_full_name = $fullName');
@@ -34,7 +50,7 @@ class UserService {
         debugPrint('Error saving profile to SharedPreferences: $e');
       }
     }
-    
+
     return result;
   }
 
@@ -58,10 +74,10 @@ class UserService {
     String? visitingHoursText,
     String? medicalLicenseNumber,
     File? profileImage,
-    double? latitude, 
+    double? latitude,
     double? longitude,
-    bool? isVideoCallAvailable, 
-    bool? isOnlineAppointmentAvailable, 
+    bool? isVideoCallAvailable,
+    bool? isOnlineAppointmentAvailable,
   }) async {
     try {
       debugPrint(' Updating user profile...');
@@ -120,7 +136,9 @@ class UserService {
 
       if (isOnlineAppointmentAvailable != null) {
         body['isOnlineAppointmentAvailable'] = isOnlineAppointmentAvailable;
-        debugPrint(' Adding isOnlineAppointmentAvailable: $isOnlineAppointmentAvailable');
+        debugPrint(
+          ' Adding isOnlineAppointmentAvailable: $isOnlineAppointmentAvailable',
+        );
       }
 
       // ADDED: Location fields formatted for Backend

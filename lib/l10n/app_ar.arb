@@ -507,5 +507,11 @@
   "deleteAccount": "حذف حسابك",
   "@deleteAccount": {
     "description": "عنصر قائمة الملف الشخصي لحذف الحساب"
-  }
+  },
+  "wilaya": "ولاية",
+  "filter": "تصفية",
+  "commune": "بلدية",
+  "applyFilter": "تطبيق التصفية",
+  "allDoctors": "جميع الأطباء",
+  "yourProfile": "ملفك الشخصي"
 }

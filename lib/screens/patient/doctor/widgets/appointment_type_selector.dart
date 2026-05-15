@@ -44,9 +44,7 @@ class AppointmentTypeSelector extends StatelessWidget {
                 'assets/icons/video_call.png',
                 "Video Call",
                 l10n.videoCall,
-                isVideoDisabled
-                    ? "UNAVAILABLE"
-                    : l10n.onlinePayment,
+                isVideoDisabled ? "UNAVAILABLE" : l10n.onlinePayment,
                 isVideoDisabled,
               ),
             ],
@@ -62,7 +60,11 @@ class AppointmentTypeSelector extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: Colors.orange.shade900),
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: Colors.orange.shade900,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -115,7 +117,9 @@ class AppointmentTypeSelector extends StatelessWidget {
             ? () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text("This consultation type is currently unavailable."),
+                    content: Text(
+                      "This consultation type is currently unavailable.",
+                    ),
                     backgroundColor: Colors.orange,
                   ),
                 );
@@ -146,17 +150,23 @@ class AppointmentTypeSelector extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   displayTitle,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isSelected ? const Color(0xFF0D53C1) : Colors.black87,
+                    color: isSelected
+                        ? const Color(0xFF0D53C1)
+                        : Colors.black87,
                   ),
                 ),
                 Text(
                   displaySubtitle,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 11,
                     color: isDisabled ? Colors.red.shade700 : Colors.grey,
-                    fontWeight: isDisabled ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: isDisabled
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                 ),
               ],

@@ -1,3 +1,4 @@
+import 'package:docmobi/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/models/doctor_model.dart';
 import 'package:docmobi/screens/patient/doctor/doctor_detail_screen.dart';
@@ -110,8 +111,8 @@ class DoctorCard extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
-                  'Book Now',
+                child: Text(
+                  AppLocalizations.of(context)!.bookNow,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,

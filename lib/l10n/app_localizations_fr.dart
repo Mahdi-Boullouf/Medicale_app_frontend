@@ -12,6 +12,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get appTitle => 'DocMobi';
 
   @override
+  String get commune => 'Commune';
+
+  @override
+  String get wilaya => 'Wilaya';
+
+  @override
+  String get filter => 'Filtrer';
+
+  @override
+  String get message => 'Message';
+
+  @override
   String get welcome => 'Bienvenue';
 
   @override
@@ -232,9 +244,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get noBioAvailable => 'Aucune biographie disponible';
-
-  @override
-  String get message => 'Message';
 
   @override
   String get welcomeBack => 'Bon retour';
@@ -1652,4 +1661,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get deleteAccount => 'Supprimer votre compte';
+
+  @override
+  String get applyFilter => 'Appliquer le filtre';
+
+  @override
+  String get allDoctors => 'Tous les docteurs';
+
+  @override
+  String get yourProfile => 'Votre Profil';
 }

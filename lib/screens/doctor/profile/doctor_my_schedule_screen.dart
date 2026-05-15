@@ -462,6 +462,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                             _feesController.text.isNotEmpty;
                       });
                       debugPrint(' Online appointment changed to: $val (unsaved)');
+                      
                     },
                   ),
                 ],

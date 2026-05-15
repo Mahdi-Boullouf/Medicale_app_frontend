@@ -1,7 +1,7 @@
-import 'dart:convert'; 
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; 
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../services/user_service.dart';
 import '../services/doctor_schedule_service.dart';
@@ -15,6 +15,7 @@ class UserProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isLoggedIn => _user != null;
+  bool isAppointmentsDisabled = false;
 
   ///  Load user from local cache immediately on app start
   Future<void> loadFromCache() async {
@@ -25,6 +26,7 @@ class UserProvider with ChangeNotifier {
         debugPrint(' Loading user profile from CACHE...');
         final Map<String, dynamic> data = jsonDecode(userJson);
         _user = UserModel.fromJson(data);
+        isAppointmentsDisabled = user?.appointmentsDisabled ?? false;
         notifyListeners(); // Update UI immediately
       }
     } catch (e) {
@@ -51,7 +53,7 @@ class UserProvider with ChangeNotifier {
       _isLoading = true;
       notifyListeners();
     }
-    
+
     _error = null;
 
     try {
@@ -60,11 +62,14 @@ class UserProvider with ChangeNotifier {
 
       if (response['success'] == true && response['data'] != null) {
         _user = UserModel.fromJson(response['data']);
-        
+
         //  Cache the fresh data
         _saveToCache(response['data']);
+        isAppointmentsDisabled = user?.appointmentsDisabled ?? false;
 
         debugPrint('User profile loaded: ${_user?.fullName}');
+        debugPrint('User profile loaded: ${_user?.appointmentsDisabled}');
+
         _isLoading = false;
         notifyListeners();
         return true;
@@ -72,19 +77,40 @@ class UserProvider with ChangeNotifier {
         _error = response['message'] ?? 'Failed to fetch profile';
         // Only stop loading if we were loading
         if (_isLoading) {
-           _isLoading = false;
-           notifyListeners();
+          _isLoading = false;
+          notifyListeners();
         }
         return false;
       }
     } catch (e) {
       _error = 'Error: $e';
       if (_isLoading) {
-         _isLoading = false;
-         notifyListeners();
+        _isLoading = false;
+        notifyListeners();
       }
       return false;
     }
+  }
+
+  Future<void> toggleAppointments(bool disable) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    final response = await UserService.updateAppointmentAvailability(
+      disable,
+      user!.id,
+    );
+    if (response['success'] == true) {
+      isAppointmentsDisabled = disable;
+      notifyListeners();
+    } else {
+      _error =
+          response['message'] ?? 'Failed to update appointment availability';
+      notifyListeners();
+    }
+    _isLoading = false;
+    notifyListeners();
   }
 
   /// Update video call availability
@@ -110,7 +136,7 @@ class UserProvider with ChangeNotifier {
         weeklySchedule: currentSchedule,
         fees: currentFees,
         isVideoCallAvailable: isAvailable,
-        isAvailable: isAvailable, 
+        isAvailable: isAvailable,
       );
 
       if (response['success'] == true) {
@@ -185,7 +211,8 @@ class UserProvider with ChangeNotifier {
 
         await fetchUserProfile();
 
-        if (_user != null && _user!.isOnlineAppointmentAvailable != isAvailable) {
+        if (_user != null &&
+            _user!.isOnlineAppointmentAvailable != isAvailable) {
           _user = _user!.copyWith(isOnlineAppointmentAvailable: isAvailable);
           notifyListeners();
         }
@@ -228,8 +255,8 @@ class UserProvider with ChangeNotifier {
     File? profileImage,
     double? latitude,
     double? longitude,
-    bool? isVideoCallAvailable, 
-    bool? isOnlineAppointmentAvailable, 
+    bool? isVideoCallAvailable,
+    bool? isOnlineAppointmentAvailable,
   }) async {
     _isLoading = true;
     _error = null;
@@ -245,11 +272,12 @@ class UserProvider with ChangeNotifier {
       debugPrint('   - latitude: $latitude');
       debugPrint('   - longitude: $longitude');
       debugPrint(' Adding isVideoCallAvailable: $isVideoCallAvailable');
-      debugPrint(' Adding isOnlineAppointmentAvailable: $isOnlineAppointmentAvailable');
+      debugPrint(
+        ' Adding isOnlineAppointmentAvailable: $isOnlineAppointmentAvailable',
+      );
 
       debugPrint('   - profileImage: ${profileImage != null ? "Yes" : "No"}');
 
-      
       final currentFees =
           fees ?? (_user?.role == 'doctor' ? _user?.fees : null);
       final currentSchedule =

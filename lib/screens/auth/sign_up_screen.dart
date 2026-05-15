@@ -1,3 +1,4 @@
+import 'package:docmobi/config/algeria_locations.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/widgets/custom_button.dart';
 import 'package:docmobi/widgets/custom_text_field.dart';
@@ -37,6 +38,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   List<String> _specialties = [];
   bool _isLoadingCategories = true;
 
+  String? selectedWilaya;
+  String? selectedCommune;
   // Referral System Setting
   bool _isReferralSystemEnabled = false;
   bool _isLoadingReferralSetting = true;
@@ -132,6 +135,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
         return false;
       }
 
+      if (selectedWilaya == null || selectedWilaya!.isEmpty) {
+        _showSnackBar("Wilaya is required", isError: true);
+        return false;
+      }
+      if (selectedCommune == null || selectedCommune!.isEmpty) {
+        _showSnackBar("Commune is required", isError: true);
+        return false;
+      }
       if (_experienceController.text.trim().isEmpty) {
         _showSnackBar(l10n.experienceRequired, isError: true);
         return false;
@@ -171,6 +182,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       //  Call ApiService.register with correct parameters
       final result = await ApiService.register(
+        wilaya: selectedWilaya,
+        commune: selectedCommune,
         fullName: _nameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
@@ -332,7 +345,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
               },
               child: const Text(
                 'Cancel',
-                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -594,6 +610,102 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   const SizedBox(height: 15),
 
                   // Experience
+                  Text(
+                    "Wilaya",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0B3267),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: selectedWilaya,
+                        hint: Text("Wilaya"),
+
+                        icon: const Icon(
+                          Icons.arrow_drop_down,
+                          color: Color(0xFF1664CD),
+                        ),
+                        items: wilayas
+                            .map(
+                              (wilaya) => DropdownMenuItem(
+                                value: wilaya['name'] as String,
+                                child: Text(wilaya['name'] as String),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedWilaya = value;
+                            print("wawa $selectedWilaya");
+                          });
+                          setState(() {
+                            selectedCommune = null;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+
+                  if (selectedWilaya != null) const SizedBox(height: 15),
+
+                  if (selectedWilaya != null)
+                    Text(
+                      "Commune",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0B3267),
+                      ),
+                    ),
+                  if (selectedWilaya != null) const SizedBox(height: 8),
+                  if (selectedWilaya != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: selectedCommune,
+                          hint: Text("Commune"),
+                          icon: const Icon(
+                            Icons.arrow_drop_down,
+                            color: Color(0xFF1664CD),
+                          ),
+                          items: communs
+                              .where(
+                                (e) => e["wilaya_name_ascii"] == selectedWilaya,
+                              )
+                              .map(
+                                (commune) => DropdownMenuItem(
+                                  value:
+                                      commune['commune_name_ascii'] as String,
+                                  child: Text(
+                                    commune['commune_name_ascii'] as String,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              selectedCommune = value;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 15),
                   Text(
                     l10n.yearsExperienceStar,
                     style: const TextStyle(

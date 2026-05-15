@@ -73,6 +73,7 @@ class CallProvider extends ChangeNotifier {
     this.isInitiator = isInitiator;
     this.uuid = uuid;
     this.isVideoCall = isVideoCall;
+    _isSpeakerOn = isVideoCall;
 
     WakelockPlus.enable();
     _loadCurrentUserIdAndInitialize();

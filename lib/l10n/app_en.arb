@@ -1,6 +1,10 @@
 {
   "@@locale": "en",
   "appTitle": "DocMobi",
+  "commune": "Commune",
+  "wilaya": "Wilaya",
+  "filter": "Filter",
+  "message": "Message",
   "@appTitle": {
     "description": "The title of the application"
   },
@@ -1407,6 +1411,12 @@
   "deleteAccount": "Delete Your account",
   "@deleteAccount": {
     "description": "Profile menu item for Delete Account"
-  }
+  },
+  "wilaya": "Wilaya",
+  "filter": "Filter",
+  "commune": "Commune",
+  "applyFilter": "Apply Filter",
+  "allDoctors": "All Doctors",
+  "yourProfile": "Your Profile"
 }
 

@@ -2,29 +2,25 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class ApiConfig {
-
-
   /// Production URL (Render) - ALWAYS works
   // static const String prodUrl = 'https://thekingbackend.onrender.com';
   static const String prodUrl = 'https://api.docmobidz.com';
 
   /// Development URLs
-  static const String localhostUrl = 'http://localhost:5005';
+  static const String localhostUrl = 'http://localhost:3000';
   static const String androidEmulatorUrl = 'http://10.0.2.2:5005';
 
   /// Your computer's local IP (for physical device testing on same WiFi)
   /// Find using: ipconfig (Windows) or ifconfig (Mac/Linux)
   /// Example: 'http://192.168.0.105:5005'
-  static const String localNetworkUrl = 'http://192.168.0.XXX:5005';
-
-
+  static const String localNetworkUrl = 'http://localhost:3000';
 
   static const DevMode _currentMode = DevMode.production;
 
-
-
   /// Get base URL based on environment and platform
   static String get baseUrl {
+    return localhostUrl;
+
     if (kReleaseMode || _currentMode == DevMode.production) {
       return prodUrl;
     }
@@ -225,10 +221,4 @@ class ApiConfig {
       baseUrl.contains('192.168');
 }
 
-
-enum DevMode {
-
-  production,
-  localhost,
-  network,
-}
+enum DevMode { production, localhost, network }

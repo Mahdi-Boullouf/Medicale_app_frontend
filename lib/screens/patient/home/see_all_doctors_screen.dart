@@ -1,6 +1,7 @@
 // screens/patient/home/see_all_doctors_screen.dart
 // ✅ COMPLETE CODE with Real-time Availability & Video Badge & Visiting Hours
 
+import 'package:docmobi/config/algeria_locations.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/services/api_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -25,33 +26,57 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  String? selectedWilayaCode;
+  String? selectedCommuneName;
   @override
   void initState() {
     super.initState();
     _loadDoctors();
   }
 
-  Future<void> _loadDoctors() async {
+  Future<void> _loadDoctors({String? wilayaCode, String? communeName}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
+    print('selected wilaya code $selectedWilayaCode');
+    print('selected commune name $communeName');
+    String? getWilayaName(String? wilayaCode) {
+      if (selectedWilayaCode != null) {
+        return wilayas.firstWhere(
+          (e) => e['code'] == selectedWilayaCode,
+        )['name'];
+      }
+      return null;
+    }
+
     try {
-      final result = await ApiService.get(
-        '/api/v1/user/role/doctor',
-        requiresAuth: true,
-      );
+      String baseUrl = "/api/v1/user/role/doctor";
+      if (selectedWilayaCode != null) {
+        baseUrl +=
+            '?wilaya=${getWilayaName(getWilayaName(selectedWilayaCode) ?? '')}';
+      }
+      if (communeName != null) {
+        baseUrl += '?commune=$communeName';
+      }
+      final result = await ApiService.get(baseUrl, requiresAuth: true);
 
       debugPrint(' Doctors API Response: $result');
 
       if (result['success'] == true) {
         final doctorsData = result['data'] as List? ?? [];
 
-        final currentUser = Provider.of<UserProvider>(context, listen: false).user;
-        List<Doctor> loadedDoctors = doctorsData.map((json) {
-          return Doctor.fromJson(json);
-        }).where((doctor) => doctor.id != currentUser?.id).toList();
+        final currentUser = Provider.of<UserProvider>(
+          context,
+          listen: false,
+        ).user;
+        List<Doctor> loadedDoctors = doctorsData
+            .map((json) {
+              return Doctor.fromJson(json);
+            })
+            .where((doctor) => doctor.id != currentUser?.id)
+            .toList();
 
         // If user position is provided, calculate distance and sort
         if (widget.userPosition != null) {
@@ -84,6 +109,7 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
         });
       }
     } catch (e) {
+      rethrow;
       debugPrint('❌ Error loading doctors: $e');
       setState(() {
         _errorMessage = 'Failed to load doctors: $e';
@@ -187,8 +213,21 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "All Doctor's",
+        actions: [
+          IconButton(
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => _bottomSheet(context),
+              );
+            },
+            icon: const Icon(Icons.filter_alt_outlined),
+          ),
+        ],
+        title: Text(
+          AppLocalizations.of(context)!.allDoctors,
           style: TextStyle(
             color: Color(0xFF1B2C49),
             fontSize: 20,
@@ -197,6 +236,127 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
         ),
       ),
       body: _buildBody(),
+    );
+  }
+
+  Container _bottomSheet(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: Colors.white,
+      ),
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        child: SafeArea(
+          top: false,
+          child: StatefulBuilder(
+            builder: (context, setState) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.filter,
+                  style: TextStyle(
+                    color: Color(0xFF1B2C49),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 20),
+                DropdownMenu(
+                  menuHeight: MediaQuery.of(context).size.height * .5,
+                  label: Text(AppLocalizations.of(context)!.wilaya),
+                  inputDecorationTheme: InputDecorationTheme(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  width: double.infinity,
+                  enableSearch: true,
+                  dropdownMenuEntries: [
+                    ...List.generate(
+                      wilayas.length,
+                      (index) => DropdownMenuEntry(
+                        value: wilayas[index]['code'],
+                        label:
+                            wilayas[index]['code'] +
+                            " - " +
+                            wilayas[index]['name'],
+                      ),
+                    ),
+                  ],
+                  onSelected: (value) {
+                    setState(() {
+                      selectedWilayaCode = value as String?;
+                    });
+                    setState(() {});
+                  },
+                ),
+                SizedBox(height: 12),
+                DropdownMenu(
+                  enabled: selectedWilayaCode != null,
+                  menuHeight: MediaQuery.of(context).size.height * .5,
+                  label: Text(AppLocalizations.of(context)!.commune),
+                  inputDecorationTheme: InputDecorationTheme(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  width: double.infinity,
+                  enableSearch: true,
+                  dropdownMenuEntries: [
+                    ...List.generate(
+                      communs
+                          .where((e) => e['wilaya_code'] == selectedWilayaCode)
+                          .length,
+                      (index) => DropdownMenuEntry<String>(
+                        value:
+                            communs
+                                    .where(
+                                      (e) =>
+                                          e['wilaya_code'] ==
+                                          selectedWilayaCode,
+                                    )
+                                    .toList()[index]['commune_name_ascii']
+                                as String,
+                        label:
+                            communs
+                                    .where(
+                                      (e) =>
+                                          e['wilaya_code'] ==
+                                          selectedWilayaCode,
+                                    )
+                                    .toList()[index]['commune_name_ascii']
+                                as String,
+                      ),
+                    ),
+                  ],
+                  onSelected: (value) {
+                    debugPrint(value);
+                    setState(() {
+                      selectedCommuneName = value;
+                    });
+                  },
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _doctors.clear();
+                    });
+                    _loadDoctors();
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1664CD),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text(AppLocalizations.of(context)!.applyFilter),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -223,7 +383,7 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
               ElevatedButton.icon(
                 onPressed: _loadDoctors,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+                label: Text(AppLocalizations.of(context)!.retry),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1664CD),
                   foregroundColor: Colors.white,
@@ -270,7 +430,7 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
 
   Widget _buildDoctorCard(Doctor doctor) {
     final bool isAvailable = _isDoctorAvailable(doctor);
-    final bool hasVideoCall = doctor.isVideoCallAvailable; 
+    final bool hasVideoCall = doctor.isVideoCallAvailable;
     final String visitingHours = _getVisitingHours(doctor);
 
     // Debug
@@ -366,7 +526,9 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
-                              isAvailable ? 'Available' : 'No Schedule',
+                              isAvailable
+                                  ? AppLocalizations.of(context)!.available
+                                  : AppLocalizations.of(context)!.noSchedule,
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -413,8 +575,8 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
                                 color: Color(0xFF1976D2),
                               ),
                               const SizedBox(width: 4),
-                              const Text(
-                                'Video Consultation',
+                              Text(
+                                AppLocalizations.of(context)!.videoConsultation,
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: Color(0xFF1565C0),
@@ -491,7 +653,10 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
 
             Row(
               children: [
-                if (Provider.of<UserProvider>(context, listen: false).user?.role !=
+                if (Provider.of<UserProvider>(
+                      context,
+                      listen: false,
+                    ).user?.role !=
                     'doctor')
                   Expanded(
                     child: ElevatedButton(
@@ -518,7 +683,9 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
                         elevation: 0,
                       ),
                       child: Text(
-                        isAvailable ? 'Book Now' : 'Not Available',
+                        isAvailable
+                            ? AppLocalizations.of(context)!.bookNow
+                            : AppLocalizations.of(context)!.notAvailable,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -527,7 +694,8 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
                       ),
                     ),
                   )
-                else if (doctor.id != Provider.of<UserProvider>(context, listen: false).user?.id)
+                else if (doctor.id !=
+                    Provider.of<UserProvider>(context, listen: false).user?.id)
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => _openChatWithDoctor(context, doctor),
@@ -540,8 +708,8 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Message',
+                      child: Text(
+                        AppLocalizations.of(context)!.message,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -559,8 +727,8 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
-                      child: const Text(
-                        'Your Profile',
+                      child: Text(
+                        AppLocalizations.of(context)!.yourProfile,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -676,9 +844,7 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
         scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(
-              result['message'] ??
-                  l10n.failedOpenChat ??
-                  'Failed to open chat',
+              result['message'] ?? l10n.failedOpenChat ?? 'Failed to open chat',
             ),
             backgroundColor: Colors.red,
           ),

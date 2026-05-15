@@ -21,6 +21,7 @@ class Doctor {
 
   final String? bio;
   final bool isVideoCallAvailable;
+  final bool appointmentsDisabled;
   final bool isOnlineAppointmentAvailable;
   final String? visitingHoursText;
   final List<String> degrees; // ✅ Added degrees field
@@ -32,6 +33,7 @@ class Doctor {
     required this.specialty,
     required this.image,
     required this.rating,
+    required this.appointmentsDisabled,
     required this.reviews,
     required this.experience,
     required this.location,
@@ -46,11 +48,10 @@ class Doctor {
     this.isVideoCallAvailable = false,
     this.isOnlineAppointmentAvailable = true,
     this.visitingHoursText,
-    this.degrees = const [], 
+    this.degrees = const [],
   });
 
   factory Doctor.fromJson(Map<String, dynamic> json) {
- 
     String imageUrl = '';
     final avatar = json['avatar'];
 
@@ -64,7 +65,6 @@ class Doctor {
       imageUrl = 'assets/images/doctor_booking.png';
     }
 
- 
     double ratingValue = 0.0;
     final ratingSummary = json['ratingSummary'];
     if (ratingSummary != null && ratingSummary is Map<String, dynamic>) {
@@ -72,7 +72,6 @@ class Doctor {
     } else if (json['rating'] != null) {
       ratingValue = (json['rating']).toDouble();
     }
-
 
     int reviewsCount = 0;
     if (ratingSummary != null && ratingSummary is Map<String, dynamic>) {
@@ -83,7 +82,6 @@ class Doctor {
 
     double? lat;
     double? lng;
-
 
     if (json['location'] != null && json['location'] is Map) {
       final locationMap = json['location'] as Map<String, dynamic>;
@@ -125,6 +123,7 @@ class Doctor {
       fullName: json['fullName'] ?? '',
       specialty: json['specialty'] ?? '',
       image: imageUrl,
+      appointmentsDisabled: json['appointmentsDisabled'] ?? false,
       rating: ratingValue,
       reviews: reviewsCount,
       experience:
@@ -149,12 +148,13 @@ class Doctor {
       longitude: lng,
       address: json['address'],
 
-  
       bio: json['bio'],
       isVideoCallAvailable: json['isVideoCallAvailable'] ?? false,
-      isOnlineAppointmentAvailable: json['isOnlineAppointmentAvailable'] ?? true,
+      isOnlineAppointmentAvailable:
+          json['isOnlineAppointmentAvailable'] ?? true,
       visitingHoursText: json['visitingHoursText'],
-      degrees: (json['degrees'] as List<dynamic>?)
+      degrees:
+          (json['degrees'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],

@@ -58,6 +58,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   bool _isAutoScrollEnabled = true;
   final Set<String> _selectedMessageIds = {};
   bool _isSelectionMode = false;
+  bool _isInitiatingCall = false;
   bool _isOtherUserTyping = false;
   Timer? _myTypingTimer;
   Timer? _otherUserTypingTimer;
@@ -132,7 +133,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           _currentUserAvatar = profileResult['data']['avatar']?['url']
               ?.toString();
           _currentUserName = profileResult['data']['fullName']?.toString();
-          _actualUserName = profileResult['data']['fullName']?.toString();
         });
 
         debugPrint('Current user profile loaded:');
@@ -482,6 +482,8 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   }
 
   void _initiateCall({required bool isVideo}) async {
+    if (_isInitiatingCall) return;
+
     final targetUserId = _resolvedOtherUserId ?? widget.otherUserId;
 
     if (targetUserId == null) {
@@ -495,6 +497,8 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       }
       return;
     }
+
+    setState(() => _isInitiatingCall = true);
 
     try {
       debugPrint(
@@ -574,6 +578,8 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isInitiatingCall = false);
     }
   }
 
@@ -813,7 +819,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       isSelected: _selectedMessageIds.contains(msgId),
       currentUserAvatar: _currentUserAvatar,
       otherUserAvatar: _actualUserAvatar,
-      otherUserPlaceholder: 'assets/images/doctor1.png',
+      otherUserPlaceholder: 'assets/images/patient.png',
       onTap: _isSelectionMode ? () => _toggleSelection(msgId) : null,
       onLongPress: () => _toggleSelection(msgId),
       formatTime: _formatTime,

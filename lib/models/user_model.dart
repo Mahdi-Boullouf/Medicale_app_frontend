@@ -1,6 +1,5 @@
 // models/user_model.dart
 
-
 class UserModel {
   final String id;
   final String fullName;
@@ -12,7 +11,7 @@ class UserModel {
   final String? bloodGroup;
   final String? address;
   final String? profileImage;
-
+  final bool? appointmentsDisabled;
 
   final String? bio;
   final String? specialty;
@@ -24,7 +23,6 @@ class UserModel {
   final bool isVideoCallAvailable;
   final bool isOnlineAppointmentAvailable;
 
-
   final double? feesAmount;
   final String? feesCurrency;
 
@@ -32,7 +30,6 @@ class UserModel {
 
   final List<DaySchedule>? weeklySchedule;
 
-  
   final double? latitude;
   final double? longitude;
 
@@ -54,12 +51,13 @@ class UserModel {
     this.address,
     this.profileImage,
     this.bio,
+    this.appointmentsDisabled,
     this.specialty,
     this.specialties,
     this.experienceYears,
     this.medicalLicenseNumber,
     this.visitingHoursText,
-    this.isVideoCallAvailable = false, 
+    this.isVideoCallAvailable = false,
     this.isOnlineAppointmentAvailable = true,
     this.feesAmount,
     this.feesCurrency,
@@ -79,10 +77,10 @@ class UserModel {
       phone: json['phone'],
       dateOfBirth: json['dob'],
       gender: json['gender'],
+      appointmentsDisabled: json['appointmentsDisabled'] ?? false,
       bloodGroup: json['bloodGroup'],
       address: json['address'],
 
-   
       profileImage: json['avatar']?['url'] ?? json['profileImage'],
 
       bio: json['bio'],
@@ -99,7 +97,8 @@ class UserModel {
           json['isVideoAvailable'] ??
           json['isAvailable'] ??
           (json['video']?['isAvailable'] ?? false),
-      isOnlineAppointmentAvailable: json['isOnlineAppointmentAvailable'] ?? true,
+      isOnlineAppointmentAvailable:
+          json['isOnlineAppointmentAvailable'] ?? true,
 
       feesAmount: json['fees']?['amount']?.toDouble() ?? 0.0,
       feesCurrency: json['fees']?['currency'] ?? 'DZD',
@@ -107,7 +106,6 @@ class UserModel {
       degrees: json['degrees'] != null
           ? (json['degrees'] as List).map((d) => Degree.fromJson(d)).toList()
           : null,
-
 
       weeklySchedule: json['weeklySchedule'] != null
           ? (json['weeklySchedule'] as List)
@@ -150,7 +148,7 @@ class UserModel {
       'experienceYears': experienceYears,
       'medicalLicenseNumber': medicalLicenseNumber,
       'visitingHoursText': visitingHoursText,
-      'isVideoCallAvailable': isVideoCallAvailable, 
+      'isVideoCallAvailable': isVideoCallAvailable,
       'isOnlineAppointmentAvailable': isOnlineAppointmentAvailable,
       'fees': {'amount': feesAmount, 'currency': feesCurrency},
       'degrees': degrees?.map((d) => d.toJson()).toList(),
@@ -174,11 +172,12 @@ class UserModel {
     String? profileImage,
     String? bio,
     String? specialty,
+    bool? appointmentsDisabled,
     List<String>? specialties,
     int? experienceYears,
     String? medicalLicenseNumber,
     String? visitingHoursText,
-    bool? isVideoCallAvailable, 
+    bool? isVideoCallAvailable,
     bool? isOnlineAppointmentAvailable,
     double? feesAmount,
     String? feesCurrency,
@@ -205,8 +204,7 @@ class UserModel {
       experienceYears: experienceYears ?? this.experienceYears,
       medicalLicenseNumber: medicalLicenseNumber ?? this.medicalLicenseNumber,
       visitingHoursText: visitingHoursText ?? this.visitingHoursText,
-      isVideoCallAvailable:
-          isVideoCallAvailable ?? this.isVideoCallAvailable,
+      isVideoCallAvailable: isVideoCallAvailable ?? this.isVideoCallAvailable,
       isOnlineAppointmentAvailable:
           isOnlineAppointmentAvailable ?? this.isOnlineAppointmentAvailable,
       feesAmount: feesAmount ?? this.feesAmount,
@@ -219,7 +217,6 @@ class UserModel {
     );
   }
 }
-
 
 class Degree {
   final String title;
@@ -240,7 +237,6 @@ class Degree {
     return {'title': title, 'institute': institute, 'year': year};
   }
 }
-
 
 class DaySchedule {
   final String day;
@@ -267,7 +263,6 @@ class DaySchedule {
     };
   }
 }
-
 
 class TimeSlot {
   final String start;

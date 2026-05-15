@@ -76,9 +76,7 @@ class _PatientMessagesListScreenState extends State<PatientMessagesListScreen> {
     try {
       final isLoggedIn = await ChatClient.getInstance.isLoginBefore();
       if (!isLoggedIn && _currentUserId != null) {
-        debugPrint(
-          ' ListScreen: Not logged in. logging in $_currentUserId...',
-        );
+        debugPrint(' ListScreen: Not logged in. logging in $_currentUserId...');
         await AgoraChatService.instance.login(_currentUserId!);
       }
     } catch (e) {
@@ -104,9 +102,9 @@ class _PatientMessagesListScreenState extends State<PatientMessagesListScreen> {
       List<Map<String, dynamic>> tempChats = [];
 
       for (var conv in conversations) {
-        if (conv.id.isEmpty) continue; 
+        if (conv.id.isEmpty) continue;
 
-        final lastMsg = await conv.latestMessage(); 
+        final lastMsg = await conv.latestMessage();
         if (lastMsg == null) continue;
 
         tempChats.add({
@@ -119,92 +117,98 @@ class _PatientMessagesListScreenState extends State<PatientMessagesListScreen> {
       // Sort by time descending
       tempChats.sort((a, b) => (b['time'] as int).compareTo(a['time'] as int));
 
-
       if (!mounted) return;
       final l10n = AppLocalizations.of(context);
-      final List<Map<String, dynamic>> formattedChats = await Future.wait(
-        tempChats.map((item) async {
-          final conv = item['conv'] as ChatConversation;
-          final lastMsg = item['lastMsg'] as ChatMessage;
-          final conversationId = conv.id;
+      final List<Map<String, dynamic>> formattedChats = [];
 
-          String fullName = 'Doctor';
-          String? avatarUrl;
+      for (var item in tempChats) {
+        final conv = item['conv'] as ChatConversation;
+        final lastMsg = item['lastMsg'] as ChatMessage;
+        final conversationId = conv.id;
 
-          try {
-            // Resolve backend chatId and doctor profile
-            final result = await ApiService.createOrGetChat(userId: conversationId);
-            if (result['success'] == true) {
-              final chatData = result['data'];
-              final backendChatId = chatData['_id']?.toString();
-              
-              final participants = chatData['participants'] as List;
-              final otherUser = participants.firstWhere(
-                (p) => p['_id'] != _currentUserId,
-                orElse: () => participants[0],
-              );
-              
-              fullName = otherUser['fullName'] ?? 'Doctor';
-              avatarUrl = otherUser['avatar']?['url'];
+        String fullName = 'Doctor';
+        String? avatarUrl;
 
-              // Format for UI
-              String content = '';
-              if (lastMsg.attributes?['type'] == 'call_log') {
-                final isVideo = lastMsg.attributes?['call_type'] == 'video';
-                content = isVideo
-                    ? (l10n?.videoCall ?? 'Video Call')
-                    : (l10n?.voiceCall ?? 'Voice Call');
-              } else if (lastMsg.body.type == MessageType.TXT) {
-                content = (lastMsg.body as ChatTextMessageBody).content;
-              } else if (lastMsg.body.type == MessageType.IMAGE) {
-                content = l10n?.imageLabel ?? '[Image]';
-              } else if (lastMsg.body.type == MessageType.FILE) {
-                content = l10n?.fileLabel ?? '[File]';
-              } else {
-                content = l10n?.messageLabel ?? '[Message]';
-              }
+        try {
+          // Resolve backend chatId and doctor profile
+          final result = await ApiService.createOrGetChat(
+            userId: conversationId,
+          );
+          if (result['success'] == true) {
+            final chatData = result['data'];
+            final backendChatId = chatData['_id']?.toString();
 
-              // Get unread count from backend instead of Agora
-              int unreadCount = 0;
-              if (backendChatId != null) {
-                try {
-                  final messagesResult = await ApiService.getChatMessages(
-                    chatId: backendChatId,
-                    page: 1,
-                    limit: 100, // Get recent messages to count unread
-                  );
-                  if (messagesResult['success'] == true) {
-                    final messages = messagesResult['data']['items'] as List;
-                    // Count messages where isRead is false
-                    unreadCount = messages.where((msg) => msg['isRead'] == false).length;
-                  }
-                } catch (e) {
-                  debugPrint(' Could not fetch unread count for $backendChatId: $e');
-                  // Fallback to Agora count
-                  unreadCount = await conv.unreadCount();
+            final participants = chatData['participants'] as List;
+            final otherUser = participants.firstWhere(
+              (p) => p['_id'] != _currentUserId,
+              orElse: () => participants[0],
+            );
+
+            fullName = otherUser['fullName'] ?? 'Doctor';
+            avatarUrl = otherUser['avatar']?['url'];
+
+            // Format for UI
+            String content = '';
+            if (lastMsg.attributes?['type'] == 'call_log') {
+              final isVideo = lastMsg.attributes?['call_type'] == 'video';
+              content = isVideo
+                  ? (l10n?.videoCall ?? 'Video Call')
+                  : (l10n?.voiceCall ?? 'Voice Call');
+            } else if (lastMsg.body.type == MessageType.TXT) {
+              content = (lastMsg.body as ChatTextMessageBody).content;
+            } else if (lastMsg.body.type == MessageType.IMAGE) {
+              content = l10n?.imageLabel ?? '[Image]';
+            } else if (lastMsg.body.type == MessageType.FILE) {
+              content = l10n?.fileLabel ?? '[File]';
+            } else {
+              content = l10n?.messageLabel ?? '[Message]';
+            }
+
+            // Get unread count from backend instead of Agora
+            int unreadCount = 0;
+            if (backendChatId != null) {
+              try {
+                final messagesResult = await ApiService.getChatMessages(
+                  chatId: backendChatId,
+                  page: 1,
+                  limit: 100, // Get recent messages to count unread
+                );
+                if (messagesResult['success'] == true) {
+                  final messages = messagesResult['data']['items'] as List;
+                  // Count messages where isRead is false
+                  unreadCount = messages
+                      .where((msg) => msg['isRead'] == false)
+                      .length;
                 }
-              } else {
+              } catch (e) {
+                debugPrint(
+                  ' Could not fetch unread count for $backendChatId: $e',
+                );
+                // Fallback to Agora count
                 unreadCount = await conv.unreadCount();
               }
+            } else {
+              unreadCount = await conv.unreadCount();
+            }
 
-              return {
-                '_id': backendChatId ?? conversationId,
-                'actualUserId': conversationId, // For Agora
-                'participants': chatData['participants'],
-                'lastMessage': {
-                  'content': content,
-                  'createdAt': DateTime.fromMillisecondsSinceEpoch(
-                    lastMsg.serverTime,
-                  ).toIso8601String(),
-                },
-                'unreadCount': unreadCount, 
-                'updatedAt': DateTime.fromMillisecondsSinceEpoch(
+            formattedChats.add({
+              '_id': backendChatId ?? conversationId,
+              'actualUserId': conversationId, // For Agora
+              'participants': chatData['participants'],
+              'lastMessage': {
+                'content': content,
+                'createdAt': DateTime.fromMillisecondsSinceEpoch(
                   lastMsg.serverTime,
                 ).toIso8601String(),
-              };
-            }
+              },
+              'unreadCount': unreadCount,
+              'updatedAt': DateTime.fromMillisecondsSinceEpoch(
+                lastMsg.serverTime,
+              ).toIso8601String(),
+            });
+          } else {
             // Fallback return if success is false
-            return {
+            formattedChats.add({
               '_id': conversationId,
               'actualUserId': conversationId,
               'participants': [],
@@ -218,24 +222,24 @@ class _PatientMessagesListScreenState extends State<PatientMessagesListScreen> {
               'updatedAt': DateTime.fromMillisecondsSinceEpoch(
                 lastMsg.serverTime,
               ).toIso8601String(),
-            };
-          } catch (e) {
-            debugPrint(' Could not resolve chat/user $conversationId: $e');
-            // Fallback return for error
-            return {
-              '_id': conversationId,
-              'actualUserId': conversationId,
-              'participants': [],
-              'lastMessage': {
-                'content': '',
-                'createdAt': DateTime.now().toIso8601String(),
-              },
-              'unreadCount': 0,
-              'updatedAt': DateTime.now().toIso8601String(),
-            };
+            });
           }
-        }),
-      );
+        } catch (e) {
+          debugPrint(' Could not resolve chat/user $conversationId: $e');
+          // Fallback return for error
+          formattedChats.add({
+            '_id': conversationId,
+            'actualUserId': conversationId,
+            'participants': [],
+            'lastMessage': {
+              'content': '',
+              'createdAt': DateTime.now().toIso8601String(),
+            },
+            'unreadCount': 0,
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -482,7 +486,9 @@ class _PatientMessagesListScreenState extends State<PatientMessagesListScreen> {
           final String actualUserId =
               chat['actualUserId']?.toString() ?? backendId;
 
-          debugPrint(' [PATIENT] Opening chat: $backendId (User: $actualUserId)');
+          debugPrint(
+            ' [PATIENT] Opening chat: $backendId (User: $actualUserId)',
+          );
           debugPrint('   • Current unread count: $unreadCount');
 
           //  Mark as read immediately (optimistic UI update)
@@ -495,10 +501,12 @@ class _PatientMessagesListScreenState extends State<PatientMessagesListScreen> {
             // Mark all messages as read in both Agora and backend
             bool agoraSuccess = false;
             bool backendSuccess = false;
-            
+
             try {
               // Agora SDK - MUST use UserID
-              await AgoraChatService.instance.markAllMessagesAsRead(actualUserId);
+              await AgoraChatService.instance.markAllMessagesAsRead(
+                actualUserId,
+              );
               agoraSuccess = true;
               debugPrint(' Marked conversation $actualUserId as read in Agora');
             } catch (e) {
@@ -510,9 +518,13 @@ class _PatientMessagesListScreenState extends State<PatientMessagesListScreen> {
               final result = await ApiService.markChatAsRead(chatId: backendId);
               backendSuccess = result['success'] == true;
               if (backendSuccess) {
-                debugPrint(' Marked conversation $backendId as read in backend');
+                debugPrint(
+                  ' Marked conversation $backendId as read in backend',
+                );
               } else {
-                debugPrint(' Backend mark as read failed: ${result['message']}');
+                debugPrint(
+                  ' Backend mark as read failed: ${result['message']}',
+                );
               }
             } catch (e) {
               debugPrint('Failed to mark as read in backend: $e');

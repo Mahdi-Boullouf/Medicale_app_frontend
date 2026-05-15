@@ -106,6 +106,30 @@ abstract class AppLocalizations {
   /// **'DocMobi'**
   String get appTitle;
 
+  /// No description provided for @commune.
+  ///
+  /// In en, this message translates to:
+  /// **'Commune'**
+  String get commune;
+
+  /// No description provided for @wilaya.
+  ///
+  /// In en, this message translates to:
+  /// **'Wilaya'**
+  String get wilaya;
+
+  /// No description provided for @filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get filter;
+
+  /// Button text to message a doctor
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get message;
+
   /// A welcome message
   ///
   /// In en, this message translates to:
@@ -519,12 +543,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No bio available'**
   String get noBioAvailable;
-
-  /// Button text to message a doctor
-  ///
-  /// In en, this message translates to:
-  /// **'Message'**
-  String get message;
 
   /// Welcome message title
   ///
@@ -3063,6 +3081,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete Your account'**
   String get deleteAccount;
+
+  /// No description provided for @applyFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply Filter'**
+  String get applyFilter;
+
+  /// No description provided for @allDoctors.
+  ///
+  /// In en, this message translates to:
+  /// **'All Doctors'**
+  String get allDoctors;
+
+  /// No description provided for @yourProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Profile'**
+  String get yourProfile;
 }
 
 class _AppLocalizationsDelegate

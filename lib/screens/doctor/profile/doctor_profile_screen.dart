@@ -1,6 +1,7 @@
 import 'package:docmobi/l10n/app_localizations.dart';
 import 'package:docmobi/screens/doctor/navigation/doctor_main_navigation.dart';
 import 'package:docmobi/screens/common/help_support_screen.dart';
+import 'package:docmobi/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/screens/doctor/profile/doctor_personal_info_screen.dart';
 import 'package:docmobi/screens/doctor/profile/doctor_my_schedule_screen.dart';
@@ -49,6 +50,16 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
       context,
       listen: false,
     ).fetchUserProfile();
+  }
+
+  Future<void> _toggleAppointments(bool disable) async {
+    _isSaving = true;
+    final userProvider = legacy_provider.Provider.of<UserProvider>(
+      context,
+      listen: false,
+    );
+    await userProvider.toggleAppointments(disable);
+    _isSaving = false;
   }
 
   /// Save video call availability to backend with Optimistic UI
@@ -182,6 +193,7 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
           final profileImageUrl = user?.profileImage;
 
           //  Use Optimistic Value if available, otherwise Provider value
+          final appointementsDisabled = user?.appointmentsDisabled ?? false;
           final isVideoCallAvailable =
               _optimisticVideoCallValue ??
               (user?.isVideoCallAvailable ?? false);
@@ -306,16 +318,39 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
                     },
                   ),
                   _buildProfileItem(
+                    icon: userProvider.isAppointmentsDisabled
+                        ? Icons.disabled_by_default_outlined
+                        : Icons.disabled_by_default_rounded,
+                    title: "Disable all appointements",
+                    onTap: null,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Switch(
+                          value: userProvider.isAppointmentsDisabled,
+                          onChanged: _isSaving
+                              ? null
+                              : (value) => _toggleAppointments(value),
+                          activeThumbColor: const Color(0xFF1664CD),
+                          activeTrackColor: const Color(
+                            0xFF1664CD,
+                          ).withValues(alpha: 0.3),
+                          inactiveThumbColor: Colors.grey.shade400,
+                          inactiveTrackColor: Colors.grey.withValues(
+                            alpha: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildProfileItem(
                     icon: isVideoCallAvailable
                         ? Icons.videocam
-                        : Icons
-                              .videocam_off,
+                        : Icons.videocam_off,
                     title: l10n.audioVideoCalls,
                     onTap: _isSaving
                         ? null
-                        : () => _toggleVideoCall(
-                            !isVideoCallAvailable,
-                          ), 
+                        : () => _toggleVideoCall(!isVideoCallAvailable),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

@@ -54,10 +54,16 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
       if (result['success'] == true) {
         final doctorsData = result['data'] as List? ?? [];
 
-        final currentUser = Provider.of<UserProvider>(context, listen: false).user;
-        List<Doctor> loadedDoctors = doctorsData.map((json) {
-          return Doctor.fromJson(json);
-        }).where((doctor) => doctor.id != currentUser?.id).toList();
+        final currentUser = Provider.of<UserProvider>(
+          context,
+          listen: false,
+        ).user;
+        List<Doctor> loadedDoctors = doctorsData
+            .map((json) {
+              return Doctor.fromJson(json);
+            })
+            .where((doctor) => doctor.id != currentUser?.id)
+            .toList();
 
         //  If user position is provided, calculate distance and sort
         if (widget.userPosition != null) {
@@ -120,7 +126,8 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
 
   double _calculateDistanceInKm(LatLng p1, LatLng p2) {
     const double p = 0.017453292519943295; // Math.PI / 180
-    final double a = 0.5 -
+    final double a =
+        0.5 -
         cos((p2.latitude - p1.latitude) * p) / 2 +
         cos(p1.latitude * p) *
             cos(p2.latitude * p) *
@@ -226,9 +233,7 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFF1664CD),
-        ),
+        child: CircularProgressIndicator(color: Color(0xFF1664CD)),
       );
     }
 
@@ -357,11 +362,11 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
-                            height: 70,
-                            width: 70,
-                            color: Colors.grey[200],
-                            child: const Icon(Icons.person, size: 40),
-                          ),
+                                height: 70,
+                                width: 70,
+                                color: Colors.grey[200],
+                                child: const Icon(Icons.person, size: 40),
+                              ),
                         )
                       : Image.asset(
                           doctor.image,
@@ -370,11 +375,11 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
-                            height: 70,
-                            width: 70,
-                            color: Colors.grey[200],
-                            child: const Icon(Icons.person, size: 40),
-                          ),
+                                height: 70,
+                                width: 70,
+                                color: Colors.grey[200],
+                                child: const Icon(Icons.person, size: 40),
+                              ),
                         ),
                 ),
                 const SizedBox(width: 16),
@@ -536,7 +541,10 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
             // Action Buttons
             Row(
               children: [
-                if (Provider.of<UserProvider>(context, listen: false).user?.role !=
+                if (Provider.of<UserProvider>(
+                      context,
+                      listen: false,
+                    ).user?.role !=
                     'doctor')
                   Expanded(
                     child: ElevatedButton(
@@ -563,7 +571,9 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
                         elevation: 0,
                       ),
                       child: Text(
-                        isAvailable ? 'Book Now' : 'Not Available',
+                        isAvailable
+                            ? AppLocalizations.of(context)!.bookNow
+                            : AppLocalizations.of(context)!.notAvailable,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -572,7 +582,8 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
                       ),
                     ),
                   )
-                else if (doctor.id != Provider.of<UserProvider>(context, listen: false).user?.id)
+                else if (doctor.id !=
+                    Provider.of<UserProvider>(context, listen: false).user?.id)
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => _openChatWithDoctor(context, doctor),
@@ -721,9 +732,7 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
         scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(
-              result['message'] ??
-                  l10n.failedOpenChat ??
-                  'Failed to open chat',
+              result['message'] ?? l10n.failedOpenChat ?? 'Failed to open chat',
             ),
             backgroundColor: Colors.red,
           ),
