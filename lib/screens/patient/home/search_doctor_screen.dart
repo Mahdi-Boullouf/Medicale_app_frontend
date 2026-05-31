@@ -1,3 +1,4 @@
+import 'package:docmobi/config/algeria_locations.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/services/api_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -23,6 +24,8 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
   List<Doctor> _filteredDoctors = [];
   bool _isLoading = true;
   String? _errorMessage;
+  String? _selectedWilayaCode;
+  String? _selectedCommuneName;
 
   @override
   void initState() {
@@ -37,17 +40,26 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
     super.dispose();
   }
 
+  String? _getWilayaName(String? code) {
+    if (code == null) return null;
+    return wilayas.firstWhere((e) => e['code'] == code, orElse: () => {})['name'] as String?;
+  }
+
   Future<void> _loadDoctors() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
+    String url = '/api/v1/user/role/doctor';
+    final params = <String>[];
+    final wilayaName = _getWilayaName(_selectedWilayaCode);
+    if (wilayaName != null) params.add('wilaya=${Uri.encodeComponent(wilayaName)}');
+    if (_selectedCommuneName != null) params.add('commune=${Uri.encodeComponent(_selectedCommuneName!)}');
+    if (params.isNotEmpty) url += '?${params.join('&')}';
+
     try {
-      final result = await ApiService.get(
-        '/api/v1/user/role/doctor',
-        requiresAuth: true,
-      );
+      final result = await ApiService.get(url, requiresAuth: true);
 
       debugPrint(' Doctors API Response: $result');
 
@@ -220,13 +232,144 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
           if (_searchController.text.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.clear, color: Colors.grey),
-              onPressed: () {
-                _searchController.clear();
-              },
+              onPressed: () => _searchController.clear(),
             ),
+          Stack(
+            alignment: Alignment.topRight,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.filter_alt_outlined, color: Colors.black),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => _buildFilterBottomSheet(),
+                  );
+                },
+              ),
+              if (_selectedWilayaCode != null)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1664CD),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
       body: _buildBody(),
+    );
+  }
+
+  Widget _buildFilterBottomSheet() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: Colors.white,
+      ),
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        child: SafeArea(
+          top: false,
+          child: StatefulBuilder(
+            builder: (context, setSheetState) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.filter,
+                  style: const TextStyle(
+                    color: Color(0xFF1B2C49),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                DropdownMenu<String>(
+                  menuHeight: MediaQuery.of(context).size.height * .5,
+                  label: Text(AppLocalizations.of(context)!.wilaya),
+                  inputDecorationTheme: const InputDecorationTheme(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  width: double.infinity,
+                  enableSearch: true,
+                  dropdownMenuEntries: wilayas
+                      .map((w) => DropdownMenuEntry<String>(
+                            value: w['code'] as String,
+                            label: '${w['code']} - ${w['name']}',
+                          ))
+                      .toList(),
+                  onSelected: (value) {
+                    setSheetState(() {
+                      _selectedWilayaCode = value;
+                      _selectedCommuneName = null;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownMenu<String>(
+                  enabled: _selectedWilayaCode != null,
+                  menuHeight: MediaQuery.of(context).size.height * .5,
+                  label: Text(AppLocalizations.of(context)!.commune),
+                  inputDecorationTheme: const InputDecorationTheme(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  width: double.infinity,
+                  enableSearch: true,
+                  dropdownMenuEntries: communs
+                      .where((c) => c['wilaya_code'] == _selectedWilayaCode)
+                      .map((c) => DropdownMenuEntry<String>(
+                            value: c['commune_name_ascii'] as String,
+                            label: c['commune_name_ascii'] as String,
+                          ))
+                      .toList(),
+                  onSelected: (value) {
+                    setSheetState(() => _selectedCommuneName = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                if (_selectedWilayaCode != null)
+                  TextButton(
+                    onPressed: () {
+                      setSheetState(() {
+                        _selectedWilayaCode = null;
+                        _selectedCommuneName = null;
+                      });
+                    },
+                    child: const Text(
+                      'Clear filter',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _loadDoctors();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1664CD),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text(AppLocalizations.of(context)!.applyFilter),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

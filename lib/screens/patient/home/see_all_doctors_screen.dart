@@ -1,6 +1,8 @@
 // screens/patient/home/see_all_doctors_screen.dart
 // ✅ COMPLETE CODE with Real-time Availability & Video Badge & Visiting Hours
 
+import 'dart:developer';
+
 import 'package:docmobi/config/algeria_locations.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/services/api_service.dart';
@@ -58,11 +60,11 @@ class _SeeAllDoctorsScreenState extends State<SeeAllDoctorsScreen> {
             '?wilaya=${getWilayaName(getWilayaName(selectedWilayaCode) ?? '')}';
       }
       if (communeName != null) {
-        baseUrl += '?commune=$communeName';
+        baseUrl += '&commune=$communeName';
       }
       final result = await ApiService.get(baseUrl, requiresAuth: true);
 
-      debugPrint(' Doctors API Response: $result');
+      log(' Doctors API Response: $result');
 
       if (result['success'] == true) {
         final doctorsData = result['data'] as List? ?? [];

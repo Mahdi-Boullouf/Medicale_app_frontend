@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/mahdi/Desktop/Freelance/Medicale_app_backend -type f -name \"*.js\" | xargs grep -l \"role/doctor\\\\|getDoctors\\\\|doctor.*wilaya\\\\|wilaya.*doctor\" 2>/dev/null | head -20)",
+      "Read(//Users/mahdi/Desktop/Freelance/Medicale_app_backend/**)"
+    ]
+  }
+}

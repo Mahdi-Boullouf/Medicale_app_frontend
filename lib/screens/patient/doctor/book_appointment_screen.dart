@@ -285,7 +285,12 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
     final dayName = _getDayName(date);
     WeeklySchedule? daySchedule;
-
+    for (var vacation in doctor.vacations!) {
+      if (date.isBetween(vacation.startDate, vacation.endDate)) {
+        setState(() => availableSlots = []);
+        return;
+      }
+    }
     for (var schedule in doctor.weeklySchedule!) {
       if (schedule.day.toLowerCase() == dayName.toLowerCase() &&
           schedule.isActive) {
@@ -806,5 +811,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         ),
       ),
     );
+  }
+}
+
+extension on DateTime {
+  bool isBetween(DateTime startDate, DateTime endDate) {
+    return isAfter(startDate) && isBefore(endDate);
   }
 }

@@ -34,6 +34,9 @@ class PatientHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
+  // When true, skips the 50 km distance filter so all doctors are shown regardless of location
+  static const bool testingMode = false;
+
   final LocationService _locationService = LocationService();
   final MarkerFactory _markerFactory = MarkerFactory();
   final DirectionsService _directionsService = DirectionsService();
@@ -1336,6 +1339,7 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
                         //  Distance Filter: Only show doctors within 50 km
                         final nearbyDoctors = doctorProvider.nearbyDoctors
                             .where((doc) {
+                              if (testingMode) return true;
                               if (doc.latitude == null ||
                                   doc.longitude == null) {
                                 return false;

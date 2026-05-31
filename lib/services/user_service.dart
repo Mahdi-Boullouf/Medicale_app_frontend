@@ -78,6 +78,7 @@ class UserService {
     double? longitude,
     bool? isVideoCallAvailable,
     bool? isOnlineAppointmentAvailable,
+    List<Map<String, dynamic>>? vacations,
   }) async {
     try {
       debugPrint(' Updating user profile...');
@@ -122,6 +123,7 @@ class UserService {
       if (degrees != null) body['degrees'] = degrees;
       if (fees != null) body['fees'] = fees;
       if (weeklySchedule != null) body['weeklySchedule'] = weeklySchedule;
+      if (vacations != null) body['vacations'] = vacations;
       if (visitingHoursText != null) {
         body['visitingHoursText'] = visitingHoursText;
       }

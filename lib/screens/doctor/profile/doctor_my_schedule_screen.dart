@@ -11,13 +11,15 @@ class DoctorMyScheduleScreen extends StatefulWidget {
 
 class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
   bool onlineAppointment = true;
-  bool _initialOnlineAppointmentValue = true; 
-  bool _hasUnsavedChanges = false; 
+  bool _initialOnlineAppointmentValue = true;
+  bool _hasUnsavedChanges = false;
   final TextEditingController _feesController = TextEditingController();
   final DoctorScheduleService _scheduleService = DoctorScheduleService();
 
   bool _isSaving = false;
   String selectedSlotKey = "";
+  int _sessionDurationMinutes = 10;
+  final TextEditingController _durationController = TextEditingController(text: '10');
 
   final List<Map<String, dynamic>> scheduleData = [
     {'day': 'Monday', 'enabled': false, 'slots': []},
@@ -169,6 +171,122 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
     });
   }
 
+  /// Add multiple slots by selecting a range (generates 10-min intervals)
+  Future<void> _addHourSlots(Map<String, dynamic> dayData) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    // Info dialog
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            "Add Hour Range",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1B2C49),
+            ),
+          ),
+          content: Text(
+            "Select a start and end time. $_sessionDurationMinutes-minute slots will be generated automatically for this range.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                l10n.ok,
+                style: const TextStyle(color: Color(0xFF2D5AF0)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted) return;
+    final startTime = await _selectTime(context);
+    if (startTime == null) return;
+
+    if (!mounted) return;
+    final endTime = await _selectTime(context, initialTime: startTime);
+    if (endTime == null) return;
+
+    final startMinutes = _timeToMinutes(startTime);
+    final endMinutes = _timeToMinutes(endTime);
+
+    if (startMinutes >= endMinutes) {
+      _showSnackBar(l10n.endTimeError, Colors.red);
+      return;
+    }
+
+    int current = startMinutes;
+    int count = 0;
+
+    setState(() {
+      while (current + _sessionDurationMinutes <= endMinutes) {
+        final s = _minutesToTime12(current);
+        final e = _minutesToTime12(current + _sessionDurationMinutes);
+
+        // Check if slot already exists to avoid duplicates
+        bool exists = (dayData['slots'] as List).any(
+          (slot) => slot['start'] == s && slot['end'] == e,
+        );
+
+        if (!exists) {
+          dayData['slots'].add({'start': s, 'end': e});
+          count++;
+        }
+        current += _sessionDurationMinutes;
+      }
+
+      // Sort slots chronologically
+      if (count > 0) {
+        (dayData['slots'] as List).sort((a, b) {
+          final aMin = _timeToMinutes(a['start']);
+          final bMin = _timeToMinutes(b['start']);
+          return aMin.compareTo(bMin);
+        });
+      }
+    });
+
+    if (count > 0) {
+      _showSnackBar("Generated $count new slots", Colors.green);
+    } else {
+      _showSnackBar("No new slots added (already exist)", Colors.orange);
+    }
+  }
+
+  int _timeToMinutes(String time12) {
+    try {
+      final parts = time12.trim().split(' ');
+      if (parts.length != 2) return 0;
+      final timeParts = parts[0].split(':');
+      int hour = int.parse(timeParts[0]);
+      int minute = int.parse(timeParts[1]);
+      final period = parts[1].toLowerCase();
+
+      if (period == 'pm' && hour < 12) hour += 12;
+      if (period == 'am' && hour == 12) hour = 0;
+
+      return hour * 60 + minute;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  String _minutesToTime12(int totalMinutes) {
+    int hour = (totalMinutes ~/ 60) % 24;
+    int minute = totalMinutes % 60;
+    final period = hour >= 12 ? 'Pm' : 'Am';
+
+    int displayHour = hour;
+    if (displayHour > 12) displayHour -= 12;
+    if (displayHour == 0) displayHour = 12;
+
+    return '$displayHour:${minute.toString().padLeft(2, '0')} $period';
+  }
+
   /// Load doctor's existing schedule from backend
   Future<void> _loadExistingSchedule() async {
     try {
@@ -195,9 +313,11 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
         if (isOnlineAppt != null) {
           setState(() {
             onlineAppointment = isOnlineAppt;
-            _initialOnlineAppointmentValue = isOnlineAppt; 
+            _initialOnlineAppointmentValue = isOnlineAppt;
           });
-          debugPrint('Loaded online appointment availability: $onlineAppointment');
+          debugPrint(
+            'Loaded online appointment availability: $onlineAppointment',
+          );
         }
 
         // Load weeklySchedule
@@ -251,7 +371,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
 
     try {
       debugPrint(' Saving doctor schedule...');
-      debugPrint('   - Video Call Available: $onlineAppointment'); 
+      debugPrint('   - Video Call Available: $onlineAppointment');
 
       final List<Map<String, dynamic>> formattedSchedule = scheduleData.map((
         dayData,
@@ -279,9 +399,10 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
       final response = await _scheduleService.saveWeeklySchedule(
         weeklySchedule: formattedSchedule,
         fees: fees,
-        isVideoCallAvailable: true, // Keep video calls enabled by default when saving schedule? 
-                                    // Actually we should fetch current value.
-        isOnlineAppointmentAvailable: onlineAppointment, 
+        isVideoCallAvailable:
+            true, // Keep video calls enabled by default when saving schedule?
+        // Actually we should fetch current value.
+        isOnlineAppointmentAvailable: onlineAppointment,
       );
 
       if (mounted) {
@@ -289,7 +410,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
           debugPrint(' Schedule saved successfully!');
           debugPrint('   - isVideoCallAvailable saved as: $onlineAppointment');
           debugPrint('   - Response data: ${response['data']}');
-          
+
           //  Enhanced success message with online appointment status
           final statusText = onlineAppointment ? 'Enabled ✓' : 'Disabled ✗';
           _showSnackBar(
@@ -297,7 +418,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
             Colors.green,
             duration: const Duration(seconds: 4),
           );
-          
+
           // Reset unsaved changes flag
           setState(() {
             _hasUnsavedChanges = false;
@@ -412,63 +533,65 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
             const SizedBox(height: 20),
 
             // Online Appointment Toggle
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE9F0FF),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.video_call_outlined,
-                      color: Color(0xFF1B2C49),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          AppLocalizations.of(context)!.onlineAppointment,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1B2C49),
-                          ),
-                        ),
-                        const Text(
-                          'If disabled, patients cannot book video appointments.',
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Switch(
-                    value: onlineAppointment,
-                    activeThumbColor: const Color(0xFF6C63FF),
-                    onChanged: (val) {
-                      setState(() {
-                        onlineAppointment = val;
-                        //  Mark as unsaved if value changed from initial
-                        _hasUnsavedChanges = (val != _initialOnlineAppointmentValue) ||
-                            _feesController.text.isNotEmpty;
-                      });
-                      debugPrint(' Online appointment changed to: $val (unsaved)');
-                      
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
+            // Container(
+            //   padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+            //   decoration: BoxDecoration(
+            //     color: const Color(0xFFE9F0FF),
+            //     borderRadius: BorderRadius.circular(15),
+            //   ),
+            //   child: Row(
+            //     children: [
+            //       Container(
+            //         padding: const EdgeInsets.all(8),
+            //         decoration: const BoxDecoration(
+            //           color: Colors.white,
+            //           shape: BoxShape.circle,
+            //         ),
+            //         child: const Icon(
+            //           Icons.video_call_outlined,
+            //           color: Color(0xFF1B2C49),
+            //         ),
+            //       ),
+            //       const SizedBox(width: 15),
+            //       Expanded(
+            //         child: Column(
+            //           crossAxisAlignment: CrossAxisAlignment.start,
+            //           children: [
+            //             Text(
+            //               AppLocalizations.of(context)!.onlineAppointment,
+            //               style: const TextStyle(
+            //                 fontSize: 16,
+            //                 fontWeight: FontWeight.bold,
+            //                 color: Color(0xFF1B2C49),
+            //               ),
+            //             ),
+            //             const Text(
+            //               'If disabled, patients cannot book video appointments.',
+            //               style: TextStyle(fontSize: 11, color: Colors.grey),
+            //             ),
+            //           ],
+            //         ),
+            //       ),
+            //       Switch(
+            //         value: onlineAppointment,
+            //         activeThumbColor: const Color(0xFF6C63FF),
+            //         onChanged: (val) {
+            //           setState(() {
+            //             onlineAppointment = val;
+            //             //  Mark as unsaved if value changed from initial
+            //             _hasUnsavedChanges =
+            //                 (val != _initialOnlineAppointmentValue) ||
+            //                 _feesController.text.isNotEmpty;
+            //           });
+            //           debugPrint(
+            //             ' Online appointment changed to: $val (unsaved)',
+            //           );
+            //         },
+            //       ),
+            //     ],
+            //   ),
+            // ),
+            // const SizedBox(height: 20),
 
             // Fees Input
             Text(
@@ -508,6 +631,87 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
             ),
             const SizedBox(height: 25),
 
+            // Session Duration
+            Text(
+              'Session Duration',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1B2C49),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                for (final preset in [10, 15, 20, 30, 45, 60])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text('${preset}m'),
+                      selected: _sessionDurationMinutes == preset,
+                      selectedColor: const Color(0xFF1664CD),
+                      labelStyle: TextStyle(
+                        color: _sessionDurationMinutes == preset
+                            ? Colors.white
+                            : const Color(0xFF1B2C49),
+                        fontWeight: FontWeight.w600,
+                      ),
+                      onSelected: (_) {
+                        setState(() {
+                          _sessionDurationMinutes = preset;
+                          _durationController.text = preset.toString();
+                        });
+                      },
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                SizedBox(
+                  width: 100,
+                  child: TextField(
+                    controller: _durationController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: '1–60',
+                      suffixText: 'min',
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFFE9F0FF)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF6C63FF),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    onChanged: (val) {
+                      final parsed = int.tryParse(val);
+                      if (parsed != null && parsed >= 1 && parsed <= 60) {
+                        setState(() => _sessionDurationMinutes = parsed);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Used when auto-generating slots',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+            const SizedBox(height: 25),
+
             Row(
               children: [
                 const Icon(Icons.access_time_filled, color: Color(0xFF3B71FE)),
@@ -544,7 +748,10 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange.shade700,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -637,111 +844,143 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
           if (isEnabled) ...[
             const Divider(height: 1, color: Color(0xFFE9F0FF)),
             const SizedBox(height: 12),
-            // Time Slots
-            ...data['slots'].asMap().entries.map<Widget>((slotEntry) {
-              int slotIndex = slotEntry.key;
-              var slot = slotEntry.value;
-              String slotKey = "${data['day']}_$slotIndex";
-              bool isSelected = selectedSlotKey == slotKey;
+            // Time Slots - Now scrollable with height limit
+            if ((data['slots'] as List).isNotEmpty)
+              Container(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: (data['slots'] as List).length,
+                  padding: EdgeInsets.zero,
+                  itemBuilder: (context, slotIndex) {
+                    var slot = data['slots'][slotIndex];
+                    String slotKey = "${data['day']}_$slotIndex";
+                    bool isSelected = selectedSlotKey == slotKey;
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 5,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            selectedSlotKey = slotKey;
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFF1664CD)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isSelected
-                                  ? const Color(0xFF1664CD)
-                                  : const Color(0xFFE9F0FF),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                slot['start'],
-                                style: TextStyle(
-                                  color: isSelected
-                                      ? Colors.white
-                                      : const Color(0xFF1B2C49),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Padding(
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  selectedSlotKey = slotKey;
+                                });
+                              },
+                              child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 15,
+                                  vertical: 12,
                                 ),
-                                child: Text(
-                                  AppLocalizations.of(context)!.to,
-                                  style: TextStyle(
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? const Color(0xFF1664CD)
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
                                     color: isSelected
-                                        ? Colors.white70
-                                        : Colors.grey,
-                                    fontWeight: FontWeight.bold,
+                                        ? const Color(0xFF1664CD)
+                                        : const Color(0xFFE9F0FF),
                                   ),
                                 ),
-                              ),
-                              Text(
-                                slot['end'],
-                                style: TextStyle(
-                                  color: isSelected
-                                      ? Colors.white
-                                      : const Color(0xFF1B2C49),
-                                  fontWeight: FontWeight.w500,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      slot['start'],
+                                      style: TextStyle(
+                                        color: isSelected
+                                            ? Colors.white
+                                            : const Color(0xFF1B2C49),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 15,
+                                      ),
+                                      child: Text(
+                                        AppLocalizations.of(context)!.to,
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? Colors.white70
+                                              : Colors.grey,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      slot['end'],
+                                      style: TextStyle(
+                                        color: isSelected
+                                            ? Colors.white
+                                            : const Color(0xFF1B2C49),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.redAccent,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                data['slots'].removeAt(slotIndex);
+                              });
+                            },
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Colors.redAccent,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          data['slots'].removeAt(slotIndex);
-                        });
-                      },
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              );
-            }).toList(),
+              ),
 
-            TextButton.icon(
-              onPressed: () => _addNewTimeSlot(data),
-              icon: const Icon(
-                Icons.add_circle_outline,
-                size: 20,
-                color: Color(0xFF3B71FE),
-              ),
-              label: Text(
-                AppLocalizations.of(context)!.addNewSlot,
-                style: const TextStyle(
-                  color: Color(0xFF3B71FE),
-                  fontWeight: FontWeight.bold,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: () => _addNewTimeSlot(data),
+                  icon: const Icon(
+                    Icons.add_circle_outline,
+                    size: 20,
+                    color: Color(0xFF3B71FE),
+                  ),
+                  label: Text(
+                    AppLocalizations.of(context)!.addNewSlot,
+                    style: const TextStyle(
+                      color: Color(0xFF3B71FE),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 15),
+                TextButton.icon(
+                  onPressed: () => _addHourSlots(data),
+                  icon: const Icon(
+                    Icons.auto_awesome_outlined,
+                    size: 20,
+                    color: Color(0xFF1664CD),
+                  ),
+                  label: const Text(
+                    "Add Hour",
+                    style: TextStyle(
+                      color: Color(0xFF1664CD),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
           ],
@@ -753,6 +992,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
   @override
   void dispose() {
     _feesController.dispose();
+    _durationController.dispose();
     super.dispose();
   }
 }

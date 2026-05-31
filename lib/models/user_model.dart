@@ -32,6 +32,8 @@ class UserModel {
 
   final double? latitude;
   final double? longitude;
+  final List<Vacation>? vacations; // ✅ NEW: Vacation field
+
 
   Map<String, dynamic>? get fees => feesAmount != null
       ? {'amount': feesAmount, 'currency': feesCurrency}
@@ -65,6 +67,7 @@ class UserModel {
     this.weeklySchedule,
     this.latitude,
     this.longitude,
+    this.vacations,
     this.createdAt,
   });
 
@@ -124,6 +127,12 @@ class UserModel {
               ? double.tryParse(json['location']['lng'].toString())
               : null),
 
+      vacations:
+          json['vacations'] != null
+              ? (json['vacations'] as List)
+                  .map((v) => Vacation.fromJson(v))
+                  .toList()
+              : null,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -155,6 +164,7 @@ class UserModel {
       'weeklySchedule': weeklySchedule?.map((d) => d.toJson()).toList(),
       'latitude': latitude,
       'longitude': longitude,
+      'vacations': vacations?.map((v) => v.toJson()).toList(),
       'createdAt': createdAt?.toIso8601String(),
     };
   }
@@ -185,6 +195,7 @@ class UserModel {
     List<DaySchedule>? weeklySchedule,
     double? latitude,
     double? longitude,
+    List<Vacation>? vacations,
     DateTime? createdAt,
   }) {
     return UserModel(
@@ -213,8 +224,41 @@ class UserModel {
       weeklySchedule: weeklySchedule ?? this.weeklySchedule,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      vacations: vacations ?? this.vacations,
       createdAt: createdAt ?? this.createdAt,
     );
+  }
+}
+
+class Vacation {
+  final String? id;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String? note;
+
+  Vacation({
+    this.id,
+    required this.startDate,
+    required this.endDate,
+    this.note,
+  });
+
+  factory Vacation.fromJson(Map<String, dynamic> json) {
+    return Vacation(
+      id: json['_id'] ?? json['id'],
+      startDate: DateTime.parse(json['startDate']),
+      endDate: DateTime.parse(json['endDate']),
+      note: json['note'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      if (note != null) 'note': note,
+    };
   }
 }
 

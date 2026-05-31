@@ -25,6 +25,7 @@ class Doctor {
   final bool isOnlineAppointmentAvailable;
   final String? visitingHoursText;
   final List<String> degrees; // ✅ Added degrees field
+  final List<Vacation>? vacations; // ✅ NEW: Vacation field
 
   Doctor({
     required this.id,
@@ -49,6 +50,7 @@ class Doctor {
     this.isOnlineAppointmentAvailable = true,
     this.visitingHoursText,
     this.degrees = const [],
+    this.vacations,
   });
 
   factory Doctor.fromJson(Map<String, dynamic> json) {
@@ -158,6 +160,12 @@ class Doctor {
               ?.map((e) => e.toString())
               .toList() ??
           [],
+      vacations:
+          json['vacations'] != null
+              ? (json['vacations'] as List)
+                  .map((e) => Vacation.fromJson(e))
+                  .toList()
+              : null,
     );
   }
 
@@ -195,6 +203,40 @@ class Doctor {
       'degrees': degrees,
       if (weeklySchedule != null)
         'weeklySchedule': weeklySchedule!.map((e) => e.toJson()).toList(),
+      if (vacations != null)
+        'vacations': vacations!.map((e) => e.toJson()).toList(),
+    };
+  }
+}
+
+class Vacation {
+  final String? id;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String? note;
+
+  Vacation({
+    this.id,
+    required this.startDate,
+    required this.endDate,
+    this.note,
+  });
+
+  factory Vacation.fromJson(Map<String, dynamic> json) {
+    return Vacation(
+      id: json['_id'] ?? json['id'],
+      startDate: DateTime.parse(json['startDate']),
+      endDate: DateTime.parse(json['endDate']),
+      note: json['note'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      if (note != null) 'note': note,
     };
   }
 }

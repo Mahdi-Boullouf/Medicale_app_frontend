@@ -56,10 +56,16 @@ class TimeSlotGrid extends StatelessWidget {
               ),
             )
           else
-            Column(
-              children: availableSlots
-                  .map((slot) => _buildTimeSlotCard(context, slot))
-                  .toList(),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 250),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: availableSlots
+                      .map((slot) => _buildTimeSlotCard(context, slot))
+                      .toList(),
+                ),
+              ),
             ),
         ],
       ),

@@ -38,15 +38,16 @@ class AppointmentTypeSelector extends StatelessWidget {
                 l10n.payAtClinic,
                 false,
               ),
-              const SizedBox(width: 15),
-              _buildTypeOption(
-                context,
-                'assets/icons/video_call.png',
-                "Video Call",
-                l10n.videoCall,
-                isVideoDisabled ? "UNAVAILABLE" : l10n.onlinePayment,
-                isVideoDisabled,
-              ),
+              if (!isVideoDisabled) const SizedBox(width: 15),
+              if (!isVideoDisabled)
+                _buildTypeOption(
+                  context,
+                  'assets/icons/video_call.png',
+                  "Video Call",
+                  l10n.videoCall,
+                  isVideoDisabled ? "UNAVAILABLE" : l10n.onlinePayment,
+                  isVideoDisabled,
+                ),
             ],
           ),
           if (isVideoDisabled) ...[

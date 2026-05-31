@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../auth/sign_in_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:docmobi/providers/locale_provider.dart';
+import 'package:docmobi/screens/doctor/profile/doctor_vacation_screen.dart';
 
 class DoctorProfileScreen extends ConsumerStatefulWidget {
   const DoctorProfileScreen({super.key});
@@ -427,6 +428,19 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
                       );
                     },
                   ),
+                  _buildProfileItem(
+                    icon: Icons.beach_access_outlined,
+                    title: "My Vacations",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DoctorVacationScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
 
                   _buildProfileItem(
                     assetIconPath: 'assets/images/algerian.png',

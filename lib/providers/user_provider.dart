@@ -257,6 +257,7 @@ class UserProvider with ChangeNotifier {
     double? longitude,
     bool? isVideoCallAvailable,
     bool? isOnlineAppointmentAvailable,
+    List<Map<String, dynamic>>? vacations,
   }) async {
     _isLoading = true;
     _error = null;
@@ -295,6 +296,12 @@ class UserProvider with ChangeNotifier {
           medicalLicenseNumber ??
           (_user?.role == 'doctor' ? _user?.medicalLicenseNumber : null);
 
+      final currentVacations =
+          vacations ??
+          (_user?.role == 'doctor'
+              ? _user?.vacations?.map((v) => v.toJson()).toList()
+              : null);
+
       //  Location handling - persist if not explicitly updated
       final currentLat = latitude ?? (_user?.latitude);
       final currentLng = longitude ?? (_user?.longitude);
@@ -325,6 +332,7 @@ class UserProvider with ChangeNotifier {
         longitude: currentLng, // Use persisted longitude
         isVideoCallAvailable: isVideoCallAvailable,
         isOnlineAppointmentAvailable: isOnlineAppointmentAvailable,
+        vacations: currentVacations,
       );
 
       if (response['success'] == true && response['data'] != null) {
