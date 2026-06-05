@@ -105,7 +105,7 @@ class AuthService {
             },
             body: json.encode({'email': email, 'password': password}),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 40));
 
       debugPrint('Status: ${response.statusCode}');
       debugPrint(' Response: ${response.body}');
@@ -133,12 +133,12 @@ class AuthService {
           }
 
           debugPrint(' Login successful - Token and role saved');
-          
+
           //  Sync tokens immediately — fixes user switching routing conflict
           try {
-             await ApiService.init(); // Refresh ApiService with new token
-             PushNotificationService.registerUserDevice();
-          } catch(e) {
+            await ApiService.init(); // Refresh ApiService with new token
+            PushNotificationService.registerUserDevice();
+          } catch (e) {
             debugPrint('Error triggering notification sync: $e');
           }
         }
@@ -208,7 +208,7 @@ class AuthService {
             },
             body: json.encode(body),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 40));
 
       debugPrint(' Status: ${response.statusCode}');
       debugPrint('Response: ${response.body}');
@@ -247,11 +247,10 @@ class AuthService {
     }
   }
 
-
   Future<Map<String, dynamic>> logout() async {
     try {
       debugPrint('Initiating logout cleanup...');
-      
+
       // 1. Stop background polling
       try {
         NotificationPoller().stopPolling();
@@ -277,7 +276,7 @@ class AuthService {
       try {
         await http
             .post(Uri.parse('$baseUrl${ApiConfig.logout}'), headers: headers)
-            .timeout(const Duration(seconds: 3));
+            .timeout(const Duration(seconds: 40));
         debugPrint(' ✅ Backend logout called');
       } catch (e) {
         debugPrint(' ⚠️ Backend logout request failed: $e');
@@ -335,7 +334,7 @@ class AuthService {
             Uri.parse('$baseUrl/api/v1/user/profile'),
             headers: headers,
           ) // Using profile endpoint to verify token
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 40));
 
       if (response.statusCode == 200) {
         return {'success': true, 'message': 'Token is valid'};
@@ -361,8 +360,6 @@ class AuthService {
     }
   }
 
-
-
   /// Forgot Password (Send OTP)
   Future<Map<String, dynamic>> forgotPassword(String email) async {
     try {
@@ -378,7 +375,7 @@ class AuthService {
             },
             body: json.encode({'email': email}),
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(const Duration(seconds: 40));
 
       debugPrint('Status: ${response.statusCode}');
       debugPrint('Response: ${response.body}');
@@ -405,8 +402,6 @@ class AuthService {
 
   /// Verify OTP (Might not be needed separately if Reset Password includes OTP, but good to have)
   Future<Map<String, dynamic>> verifyOTP(String email, String otp) async {
- 
-
     try {
       debugPrint('📤 POST: $baseUrl${ApiConfig.verifyOTP}');
 
@@ -419,7 +414,7 @@ class AuthService {
             },
             body: json.encode({'email': email, 'otp': otp}),
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(const Duration(seconds: 40));
 
       debugPrint(' Status: ${response.statusCode}');
       debugPrint(' Response: ${response.body}');
@@ -465,7 +460,7 @@ class AuthService {
                   newPassword, // Changed from newPassword to password based on typical APIs
             }),
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(const Duration(seconds: 40));
 
       debugPrint(' Status: ${response.statusCode}');
       debugPrint(' Response: ${response.body}');
@@ -500,7 +495,7 @@ class AuthService {
             Uri.parse('$baseUrl${ApiConfig.deleteAccount}'),
             headers: headers,
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 40));
 
       debugPrint(' Status: ${response.statusCode}');
       debugPrint(' Response: ${response.body}');
@@ -533,7 +528,7 @@ class AuthService {
             Uri.parse('$baseUrl${ApiConfig.blockUser}/$targetUserId'),
             headers: headers,
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 40));
 
       final data = json.decode(response.body);
       return {
@@ -557,7 +552,7 @@ class AuthService {
             Uri.parse('$baseUrl${ApiConfig.blockUser}/$targetUserId'),
             headers: headers,
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 40));
 
       final data = json.decode(response.body);
       return {
@@ -592,7 +587,7 @@ class AuthService {
               'reason': reason,
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 40));
 
       final data = json.decode(response.body);
       return {

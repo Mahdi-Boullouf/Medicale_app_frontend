@@ -148,7 +148,7 @@ class ApiService {
 
         final response = await http
             .get(Uri.parse(url), headers: headers)
-            .timeout(const Duration(seconds: 15));
+            .timeout(const Duration(seconds: 30));
 
         return _handleResponse(response);
       } catch (e) {
@@ -191,7 +191,7 @@ class ApiService {
 
       final response = await http
           .post(Uri.parse(url), headers: headers, body: json.encode(body))
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 40));
 
       return _handleResponse(response);
     } catch (e) {
@@ -223,7 +223,7 @@ class ApiService {
 
       final response = await http
           .put(Uri.parse(url), headers: headers, body: json.encode(body))
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 40));
 
       return _handleResponse(response);
     } catch (e) {
@@ -255,7 +255,7 @@ class ApiService {
 
       final response = await http
           .patch(Uri.parse(url), headers: headers, body: json.encode(body))
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 40));
 
       return _handleResponse(response);
     } catch (e) {
@@ -285,7 +285,7 @@ class ApiService {
 
       final response = await http
           .delete(Uri.parse(url), headers: headers)
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 40));
 
       return _handleResponse(response);
     } catch (e) {
@@ -815,7 +815,7 @@ class ApiService {
             headers: headers,
             body: jsonEncode({'token': token}),
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 40));
       return _handleResponse(response);
     } catch (e) {
       debugPrint(' FCM token unregister failed: $e');

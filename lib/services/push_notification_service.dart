@@ -43,7 +43,9 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       // ✅ iOS SAFETY CHECK: On iOS, VoIP pushes (APNs) natively handle CallKit UI.
       // Standard FCM data pushes for calls are redundant and cause "Ghost Screens" (Duplicate UI).
       if (Platform.isIOS) {
-        debugPrint(' [BACKGROUND] Skipping FCM incoming call for iOS — VoIP (APNs) handles this.');
+        debugPrint(
+          ' [BACKGROUND] Skipping FCM incoming call for iOS — VoIP (APNs) handles this.',
+        );
         return;
       }
 
@@ -75,13 +77,16 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 
   // Normal Priority: Standard notifications
-  final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
-  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
-    requestAlertPermission: true,
-    requestBadgePermission: true,
-    requestSoundPermission: true,
-  );
+  final FlutterLocalNotificationsPlugin localNotifications =
+      FlutterLocalNotificationsPlugin();
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  const DarwinInitializationSettings initializationSettingsIOS =
+      DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
   const InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
     iOS: initializationSettingsIOS,
@@ -93,7 +98,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   final String? body = message.notification?.body;
 
   final String notificationTitle = title ?? data['userName'] ?? 'New Message';
-  final String notificationBody = body ?? (data['type'] == 'image' ? '[Image]' : data['content'] ?? data['body'] ?? 'You have a new message');
+  final String notificationBody =
+      body ??
+      (data['type'] == 'image'
+          ? '[Image]'
+          : data['content'] ?? data['body'] ?? 'You have a new message');
 
   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
     'docmobi_chat_notifications_v3',
@@ -110,7 +119,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     presentBadge: true,
     presentSound: true,
   );
-  const NotificationDetails details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+  const NotificationDetails details = NotificationDetails(
+    android: androidDetails,
+    iOS: iosDetails,
+  );
 
   try {
     await localNotifications.show(
@@ -128,9 +140,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class PushNotificationService {
   static final FirebaseMessaging _fcm = FirebaseMessaging.instance;
-  static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
-  static GlobalKey<NavigatorState>? get navigatorKey => CallKitService.navigatorKey;
+  static GlobalKey<NavigatorState>? get navigatorKey =>
+      CallKitService.navigatorKey;
   static set navigatorKey(GlobalKey<NavigatorState>? key) {
     CallKitService.navigatorKey = key;
   }
@@ -152,7 +166,9 @@ class PushNotificationService {
         sound: true,
         provisional: false,
       );
-      debugPrint(' Notification permission status: \${settings.authorizationStatus}');
+      debugPrint(
+        ' Notification permission status: \${settings.authorizationStatus}',
+      );
     } catch (e) {
       debugPrint(' Error requesting notification permissions: $e');
     }
@@ -160,8 +176,10 @@ class PushNotificationService {
     if (Platform.isAndroid) {
       try {
         await FlutterCallkitIncoming.requestNotificationPermission({
-          "rationaleMessagePermission": "Notification permission is required to show incoming calls",
-          "postNotificationMessageRequired": "Please allow notifications for incoming calls to work properly",
+          "rationaleMessagePermission":
+              "Notification permission is required to show incoming calls",
+          "postNotificationMessageRequired":
+              "Please allow notifications for incoming calls to work properly",
         });
       } catch (e) {
         debugPrint(' Error requesting CallKit permissions: $e');
@@ -185,16 +203,19 @@ class PushNotificationService {
       }
     });
 
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
-    );
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+          android: initializationSettingsAndroid,
+          iOS: initializationSettingsIOS,
+        );
 
     await _localNotifications.initialize(
       initializationSettings,
@@ -224,7 +245,10 @@ class PushNotificationService {
         showBadge: false,
       );
 
-      final androidPlugin = _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final androidPlugin = _localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await androidPlugin?.createNotificationChannel(chatChannel);
       await androidPlugin?.createNotificationChannel(callChannel);
     } catch (e) {
@@ -247,15 +271,17 @@ class PushNotificationService {
         // ✅ iOS SAFETY CHECK: On iOS, VoIP pushes (APNs) natively handle CallKit UI.
         // Standard FCM data pushes for calls are redundant and cause "Ghost Screens" (Duplicate UI).
         if (Platform.isIOS) {
-          debugPrint(' [FOREGROUND] Skipping FCM incoming call for iOS — VoIP (APNs) handles this.');
+          debugPrint(
+            ' [FOREGROUND] Skipping FCM incoming call for iOS — VoIP (APNs) handles this.',
+          );
           return;
         }
 
         await _localNotifications.cancelAll();
         await CallKitService.showCallKitIncoming(message.data);
-      } else if (message.data['type'] == 'cancel_call' || 
-                 message.data['status'] == 'cancelled' || 
-                 message.data['type'] == 'call_log') {
+      } else if (message.data['type'] == 'cancel_call' ||
+          message.data['status'] == 'cancelled' ||
+          message.data['type'] == 'call_log') {
         // ✅ SMART DETECTION: Even if it's a call_log or a general notification,
         // if status is 'cancelled', we immediately tell CallKit to stop ringing.
         debugPrint(' 📴 [FCM] Call cancel signal matched via smart detection');
@@ -298,7 +324,9 @@ class PushNotificationService {
 
       if (uuid != null && uuid.toString().isNotEmpty) {
         await FlutterCallkitIncoming.endCall(uuid.toString());
-      } else if (status == 'cancelled' || status == 'ended' || status == 'rejected') {
+      } else if (status == 'cancelled' ||
+          status == 'ended' ||
+          status == 'rejected') {
         await FlutterCallkitIncoming.endAllCalls();
       } else {
         await FlutterCallkitIncoming.endAllCalls(); // Fallback for all ended signals
@@ -355,7 +383,9 @@ class PushNotificationService {
   static Future<void> registerUserDevice() async {
     try {
       if (!ApiService.isLoggedIn) {
-        debugPrint(' [NOTIF] User not logged in — skipping device registration');
+        debugPrint(
+          ' [NOTIF] User not logged in — skipping device registration',
+        );
         return;
       }
       debugPrint(' [NOTIF] Synchronizing device tokens (Multi-Device)...');
@@ -370,14 +400,16 @@ class PushNotificationService {
           if (apnsToken != null) {
             debugPrint(' ✅ [NOTIF] APNs token retrieved: $apnsToken');
           } else {
-            debugPrint(' ⚠️ [NOTIF] APNs token is NULL! Background pushes might fail. Retrying...');
+            debugPrint(
+              ' ⚠️ [NOTIF] APNs token is NULL! Background pushes might fail. Retrying...',
+            );
             await Future.delayed(const Duration(seconds: 2));
             final retryApns = await _fcm.getAPNSToken();
             debugPrint(' [NOTIF] APNs token after retry: $retryApns');
           }
         }
-        
-        fcmToken = await _fcm.getToken().timeout(const Duration(seconds: 10));
+
+        fcmToken = await _fcm.getToken().timeout(const Duration(seconds: 40));
         debugPrint(' [NOTIF] FCM Token retrieved');
       } catch (e) {
         debugPrint(' [NOTIF] ❌ Error fetching FCM token: $e');
@@ -386,14 +418,18 @@ class PushNotificationService {
       String? voipToken;
       if (Platform.isIOS) {
         try {
-          voipToken = _cachedVoipToken ?? await FlutterCallkitIncoming.getDevicePushTokenVoIP().timeout(const Duration(seconds: 10));
+          voipToken =
+              _cachedVoipToken ??
+              await FlutterCallkitIncoming.getDevicePushTokenVoIP().timeout(
+                const Duration(seconds: 10),
+              );
         } catch (e) {
           debugPrint(' [NOTIF] ❌ Error fetching VoIP token: $e');
         }
       }
 
       final platform = Platform.isAndroid ? 'android' : 'ios';
-      
+
       final result = await ApiService.registerDeviceTokens(
         fcmToken: fcmToken,
         voipToken: voipToken,
@@ -402,7 +438,9 @@ class PushNotificationService {
       );
 
       if (result['success'] == true) {
-        debugPrint(' ✅ Device tokens registered successfully (Device: $deviceId)');
+        debugPrint(
+          ' ✅ Device tokens registered successfully (Device: $deviceId)',
+        );
       } else {
         debugPrint(" ❌ Device registration failed: ${result['message']}");
       }
@@ -413,9 +451,11 @@ class PushNotificationService {
 
   static Future<void> checkInitialMessage() async {
     try {
-      final NotificationAppLaunchDetails? notificationAppLaunchDetails = await _localNotifications.getNotificationAppLaunchDetails();
+      final NotificationAppLaunchDetails? notificationAppLaunchDetails =
+          await _localNotifications.getNotificationAppLaunchDetails();
       if (notificationAppLaunchDetails?.didNotificationLaunchApp ?? false) {
-        final payload = notificationAppLaunchDetails!.notificationResponse?.payload;
+        final payload =
+            notificationAppLaunchDetails!.notificationResponse?.payload;
         if (payload != null) handleNotificationClick(payload);
         return;
       }
@@ -435,21 +475,25 @@ class PushNotificationService {
     final msgChatId = message.data['chatId']?.toString();
     if (msgChatId != null && msgChatId == currentChatId) return;
 
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'docmobi_chat_notifications_v3',
-      'Chat Notifications',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-      playSound: true,
-    );
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'docmobi_chat_notifications_v3',
+          'Chat Notifications',
+          importance: Importance.max,
+          priority: Priority.high,
+          showWhen: true,
+          playSound: true,
+        );
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
       badgeNumber: 1,
     );
-    const NotificationDetails details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
 
     try {
       await _localNotifications.show(
@@ -473,7 +517,10 @@ class PushNotificationService {
   }) async {
     await _showLocalNotification(
       RemoteMessage(
-        notification: RemoteNotification(title: 'New message from $senderName', body: content),
+        notification: RemoteNotification(
+          title: 'New message from $senderName',
+          body: content,
+        ),
         data: {
           'type': 'chat',
           'chatId': chatId,
@@ -491,7 +538,9 @@ class PushNotificationService {
       return;
     }
     try {
-      Map<String, dynamic> data = (payload is String) ? jsonDecode(payload) : Map<String, dynamic>.from(payload);
+      Map<String, dynamic> data = (payload is String)
+          ? jsonDecode(payload)
+          : Map<String, dynamic>.from(payload);
       // Calls handled via checkActiveCalls/CallKit
       if (data['type'] == 'incoming_call') return;
 
@@ -506,24 +555,28 @@ class PushNotificationService {
           final userRole = prefs.getString('user_role')?.toLowerCase();
 
           if (userRole == 'doctor') {
-            navigatorKey!.currentState?.push(MaterialPageRoute(
-              builder: (context) => DoctorChatDetailScreen(
-                chatId: chatId,
-                userName: userName,
-                userAvatar: userAvatar,
-                userRole: 'patient',
-                otherUserId: otherUserId,
+            navigatorKey!.currentState?.push(
+              MaterialPageRoute(
+                builder: (context) => DoctorChatDetailScreen(
+                  chatId: chatId,
+                  userName: userName,
+                  userAvatar: userAvatar,
+                  userRole: 'patient',
+                  otherUserId: otherUserId,
+                ),
               ),
-            ));
+            );
           } else {
-            navigatorKey!.currentState?.push(MaterialPageRoute(
-              builder: (context) => ChatDetailScreen(
-                chatId: chatId,
-                doctorName: userName,
-                doctorAvatar: userAvatar,
-                doctorId: otherUserId,
+            navigatorKey!.currentState?.push(
+              MaterialPageRoute(
+                builder: (context) => ChatDetailScreen(
+                  chatId: chatId,
+                  doctorName: userName,
+                  doctorAvatar: userAvatar,
+                  doctorId: otherUserId,
+                ),
               ),
-            ));
+            );
           }
         }
       }

@@ -261,7 +261,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               'date': DateFormat('yyyy-MM-dd').format(date),
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         return json.decode(response.body);

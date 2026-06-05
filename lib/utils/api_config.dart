@@ -19,8 +19,7 @@ class ApiConfig {
 
   /// Get base URL based on environment and platform
   static String get baseUrl {
-    return localhostUrl;
-
+    return localNetworkUrl;
     if (kReleaseMode || _currentMode == DevMode.production) {
       return prodUrl;
     }

@@ -248,7 +248,7 @@ class CallKitService {
             try {
               final tokenResponse = await ApiService.getAgoraToken(
                 channelName: normalizedChatId,
-              ).timeout(const Duration(seconds: 8));
+              ).timeout(const Duration(seconds: 40));
               fetchedToken = tokenResponse['data']?['token'];
               if (fetchedToken != null) {
                 _cachedAgoraToken = fetchedToken;
@@ -283,11 +283,11 @@ class CallKitService {
             if (socketUserId != null && socketUserId.isNotEmpty) {
               connected = await SocketService.instance
                   .connect(socketUserId)
-                  .timeout(const Duration(seconds: 6), onTimeout: () => false);
+                  .timeout(const Duration(seconds: 40), onTimeout: () => false);
             } else {
               connected = await SocketService.instance
                   .ensureConnected()
-                  .timeout(const Duration(seconds: 6), onTimeout: () => false);
+                  .timeout(const Duration(seconds: 40), onTimeout: () => false);
             }
             if (connected) {
               SocketService.instance.emit('call:accept', {
