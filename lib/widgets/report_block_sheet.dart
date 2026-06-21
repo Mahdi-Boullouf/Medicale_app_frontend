@@ -5,6 +5,7 @@
 //
 import 'package:flutter/material.dart';
 import 'package:docmobi/services/auth_service.dart';
+import 'package:docmobi/l10n/app_localizations.dart';
 
 class ReportBlockSheet {
   /// Show the action sheet.
@@ -66,6 +67,7 @@ class _ReportBlockSheetContentState extends State<_ReportBlockSheetContent> {
 
     if (!mounted) return;
     final scaffoldMsg = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     final result = await AuthService().reportContent(
       reportedUserId: widget.reportedUserId,
@@ -77,7 +79,7 @@ class _ReportBlockSheetContentState extends State<_ReportBlockSheetContent> {
     scaffoldMsg.showSnackBar(
       SnackBar(
         content: Text(
-          result['message'] ?? 'Report submitted',
+          result['message'] ?? l10n.reportSubmitted,
         ),
         backgroundColor: result['success'] == true ? Colors.green : Colors.red,
       ),
@@ -86,6 +88,7 @@ class _ReportBlockSheetContentState extends State<_ReportBlockSheetContent> {
 
   Future<void> _onBlock() async {
     if (_loading) return;
+    final l10n = AppLocalizations.of(context)!;
     setState(() => _loading = true);
 
     final result = await AuthService().blockUser(widget.reportedUserId);
@@ -97,7 +100,7 @@ class _ReportBlockSheetContentState extends State<_ReportBlockSheetContent> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(result['message'] ?? 'User blocked'),
+        content: Text(result['message'] ?? l10n.userBlocked),
         backgroundColor: result['success'] == true ? Colors.green : Colors.red,
       ),
     );
@@ -110,6 +113,7 @@ class _ReportBlockSheetContentState extends State<_ReportBlockSheetContent> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -131,10 +135,10 @@ class _ReportBlockSheetContentState extends State<_ReportBlockSheetContent> {
             ListTile(
               leading: const Icon(Icons.flag_outlined, color: Colors.orange),
               title: Text(
-                'Report ${widget.itemType}',
+                l10n.report,
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
-              subtitle: const Text('Our team will review within 24 hours'),
+              subtitle: Text(l10n.reviewWithin24h),
               onTap: _onReport,
             ),
 
@@ -149,15 +153,14 @@ class _ReportBlockSheetContentState extends State<_ReportBlockSheetContent> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.block, color: Colors.red),
-              title: const Text(
-                'Block User',
-                style: TextStyle(
+              title: Text(
+                l10n.blockUserLabel,
+                style: const TextStyle(
                   fontWeight: FontWeight.w500,
                   color: Colors.red,
                 ),
               ),
-              subtitle:
-                  const Text('Their content will be hidden from your feed'),
+              subtitle: Text(l10n.contentHiddenFromFeed),
               onTap: _loading ? null : _onBlock,
             ),
 
@@ -166,7 +169,7 @@ class _ReportBlockSheetContentState extends State<_ReportBlockSheetContent> {
             // Cancel
             ListTile(
               leading: const Icon(Icons.close),
-              title: const Text('Cancel'),
+              title: Text(l10n.cancel),
               onTap: () => Navigator.pop(context),
             ),
           ],
@@ -178,32 +181,33 @@ class _ReportBlockSheetContentState extends State<_ReportBlockSheetContent> {
   /// Prompt the user to enter a reason for the report.
   static Future<String?> _askReason(BuildContext context) async {
     final controller = TextEditingController();
+    final l10n = AppLocalizations.of(context)!;
     return showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Report Reason'),
+        title: Text(l10n.reportReason),
         content: TextField(
           controller: controller,
           maxLines: 3,
           maxLength: 300,
-          decoration: const InputDecoration(
-            hintText: 'Describe what is wrong with this content...',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: l10n.reportReasonHint,
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1664CD),
             ),
             onPressed: () => Navigator.pop(ctx, controller.text),
-            child: const Text(
-              'Submit',
-              style: TextStyle(color: Colors.white),
+            child: Text(
+              l10n.submit,
+              style: const TextStyle(color: Colors.white),
             ),
           ),
         ],

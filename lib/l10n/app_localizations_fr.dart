@@ -9,6 +9,81 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
+  String get connectingToCall => 'Connexion à l\'appel...';
+
+  @override
+  String get logoutConfirm => 'Voulez-vous vraiment vous déconnecter ?';
+
+  @override
+  String get saveLabel => 'Enregistrer';
+
+  @override
+  String get addLabel => 'Ajouter';
+
+  @override
+  String get addNoteOptional => 'Ajouter une note (facultatif)';
+
+  @override
+  String get vacationNoteHint => 'ex. Vacances d\'été';
+
+  @override
+  String get myVacations => 'Mes congés';
+
+  @override
+  String get noVacationsPlanned => 'Aucun congé prévu';
+
+  @override
+  String get vacationsUpdated => 'Congés mis à jour avec succès';
+
+  @override
+  String get report => 'Signaler';
+
+  @override
+  String get reportReason => 'Motif du signalement';
+
+  @override
+  String get reviewWithin24h => 'Notre équipe examinera sous 24 heures';
+
+  @override
+  String get blockUserLabel => 'Bloquer l\'utilisateur';
+
+  @override
+  String get contentHiddenFromFeed => 'Son contenu sera masqué de votre fil';
+
+  @override
+  String get comingSoon => 'Bientôt disponible';
+
+  @override
+  String get locationPermissionDenied => 'Autorisation de localisation refusée';
+
+  @override
+  String get noAppointmentsToExport => 'Aucun rendez-vous à exporter';
+
+  @override
+  String get noAppointmentsInRange => 'Aucun rendez-vous dans cette période';
+
+  @override
+  String get failedMarkAsRead => 'Échec du marquage comme lu';
+
+  @override
+  String get reportReasonHint => 'Décrivez ce qui ne va pas avec ce contenu...';
+
+  @override
+  String get reportSubmitted => 'Signalement envoyé';
+
+  @override
+  String get userBlocked => 'Utilisateur bloqué';
+
+  @override
+  String get myWishlist => 'Ma liste de souhaits';
+
+  @override
+  String get selectAppointmentDateRange => 'Sélectionnez la plage de dates';
+
+  @override
+  String get exportPdf => 'Exporter en PDF';
+
+  @override
   String get appTitle => 'DocMobi';
 
   @override
@@ -602,6 +677,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reschedule => 'Reprogrammer';
 
   @override
+  String get appointmentRescheduled =>
+      'Rendez-vous reprogrammé. Le patient a été notifié.';
+
+  @override
+  String get failedReschedule => 'Échec de la reprogrammation du rendez-vous';
+
+  @override
   String get writeReview => 'Écrire un avis';
 
   @override
@@ -1131,6 +1213,19 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get deleteLabel => 'Supprimer';
+
+  @override
+  String get deleteReel => 'Supprimer le reel';
+
+  @override
+  String get deleteReelConfirm =>
+      'Voulez-vous vraiment supprimer ce reel ? Cette action est irréversible.';
+
+  @override
+  String get reelDeleted => 'Reel supprimé';
+
+  @override
+  String get failedDeleteReel => 'Échec de la suppression du reel';
 
   @override
   String get conversationsDeleted => 'Conversations supprimées';

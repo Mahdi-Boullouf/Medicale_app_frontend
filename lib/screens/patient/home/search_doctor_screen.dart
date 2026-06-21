@@ -398,7 +398,7 @@ class _SearchDoctorScreenState extends State<SearchDoctorScreen> {
               ElevatedButton.icon(
                 onPressed: _loadDoctors,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+                label: Text(AppLocalizations.of(context)!.retry),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1664CD),
                   foregroundColor: Colors.white,

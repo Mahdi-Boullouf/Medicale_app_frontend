@@ -63,6 +63,7 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
             icon: const Icon(Icons.picture_as_pdf, color: Colors.indigo),
             tooltip: 'Export Report',
             onPressed: () async {
+              final l10n = AppLocalizations.of(context)!;
               final provider = context.read<AppointmentProvider>();
               final allAppointments = [
                 ...provider.pendingAppointments,
@@ -72,7 +73,7 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
 
               if (allAppointments.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('No appointments to export')),
+                  SnackBar(content: Text(l10n.noAppointmentsToExport)),
                 );
                 return;
               }
@@ -85,8 +86,8 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
                 context: context,
                 firstDate: DateTime(2020),
                 lastDate: DateTime.now().add(const Duration(days: 365)),
-                helpText: 'Select Appointment Date Range',
-                confirmText: 'Export PDF',
+                helpText: l10n.selectAppointmentDateRange,
+                confirmText: l10n.exportPdf,
                 builder: (context, child) {
                   return Theme(
                     data: Theme.of(context).copyWith(
@@ -119,8 +120,8 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
               if (filteredAppointments.isEmpty) {
                 if (mounted) {
                   scaffoldMessenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('No appointments found in this date range'),
+                    SnackBar(
+                      content: Text(l10n.noAppointmentsInRange),
                     ),
                   );
                 }
@@ -446,9 +447,9 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
                     color: const Color(0xFF1664CD),
                   ),
                   const SizedBox(width: 6),
-                  const Text(
-                    'See Details',
-                    style: TextStyle(
+                  Text(
+                    AppLocalizations.of(context)!.seeDetails,
+                    style: const TextStyle(
                       color: Color(0xFF1664CD),
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
@@ -460,6 +461,16 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
           ),
 
           const SizedBox(height: 15),
+          SizedBox(
+            width: double.infinity,
+            child: _actionBtn(
+              l10n.reschedule,
+              const Color(0xFFEAF2FF),
+              const Color(0xFF1664CD),
+              () => _handleReschedule(appointment, provider),
+            ),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -618,9 +629,9 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
                     color: const Color(0xFF1664CD),
                   ),
                   const SizedBox(width: 6),
-                  const Text(
-                    'See Details',
-                    style: TextStyle(
+                  Text(
+                    AppLocalizations.of(context)!.seeDetails,
+                    style: const TextStyle(
                       color: Color(0xFF1664CD),
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
@@ -634,6 +645,15 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
           const SizedBox(height: 15),
           Row(
             children: [
+              Expanded(
+                child: _actionBtn(
+                  l10n.reschedule,
+                  const Color(0xFFEAF2FF),
+                  const Color(0xFF1664CD),
+                  () => _handleReschedule(appointment, provider),
+                ),
+              ),
+              const SizedBox(width: 15),
               Expanded(
                 child: _actionBtn(
                   l10n.cancel,
@@ -1173,12 +1193,12 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('Document URL'),
+              title: Text(AppLocalizations.of(context)!.documentUrl),
               content: SelectableText(cleanUrl),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Close'),
+                  child: Text(AppLocalizations.of(context)!.close),
                 ),
               ],
             ),
@@ -1337,6 +1357,108 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
         ],
       ),
     );
+  }
+
+  /// Parse a stored appointment time string into a TimeOfDay for the picker.
+  /// Accepts "HH:MM" (24h) and "h:MM AM/PM" formats; falls back to now.
+  TimeOfDay _parseTimeOfDay(String? raw) {
+    if (raw != null && raw.trim().isNotEmpty) {
+      try {
+        final value = raw.trim();
+        final isPm = value.toLowerCase().contains('pm');
+        final isAm = value.toLowerCase().contains('am');
+        final cleaned = value
+            .toLowerCase()
+            .replaceAll('am', '')
+            .replaceAll('pm', '')
+            .trim();
+        final parts = cleaned.split(':');
+        int hour = int.parse(parts[0].trim());
+        final minute = parts.length > 1 ? int.parse(parts[1].trim()) : 0;
+        if (isPm && hour < 12) hour += 12;
+        if (isAm && hour == 12) hour = 0;
+        return TimeOfDay(hour: hour % 24, minute: minute % 60);
+      } catch (_) {
+        // ignore and fall through to default
+      }
+    }
+    return TimeOfDay.now();
+  }
+
+  void _handleReschedule(
+    AppointmentModel appointment,
+    AppointmentProvider provider,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    final now = DateTime.now();
+    final initialDate = appointment.appointmentDate.isBefore(now)
+        ? now
+        : appointment.appointmentDate;
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 90)),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(primary: Color(0xFF0D53C1)),
+        ),
+        child: child!,
+      ),
+    );
+    if (pickedDate == null || !mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: _parseTimeOfDay(appointment.appointmentTime),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      ),
+    );
+    if (pickedTime == null || !mounted) return;
+
+    final dateStr =
+        '${pickedDate.year.toString().padLeft(4, '0')}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final success = await provider.rescheduleAppointment(
+        appointmentId: appointment.id,
+        date: dateStr,
+        time: timeStr,
+      );
+
+      if (mounted) {
+        Navigator.pop(context); // Dismiss loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? l10n.appointmentRescheduled
+                  : (provider.error ?? l10n.failedReschedule),
+            ),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   void _handleStartSession(AppointmentModel appointment) {

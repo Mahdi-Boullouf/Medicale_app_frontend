@@ -9,6 +9,81 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
+  String get connectingToCall => 'جارٍ الاتصال...';
+
+  @override
+  String get logoutConfirm => 'هل أنت متأكد أنك تريد تسجيل الخروج؟';
+
+  @override
+  String get saveLabel => 'حفظ';
+
+  @override
+  String get addLabel => 'إضافة';
+
+  @override
+  String get addNoteOptional => 'إضافة ملاحظة (اختياري)';
+
+  @override
+  String get vacationNoteHint => 'مثال: عطلة الصيف';
+
+  @override
+  String get myVacations => 'إجازاتي';
+
+  @override
+  String get noVacationsPlanned => 'لا توجد إجازات مخططة';
+
+  @override
+  String get vacationsUpdated => 'تم تحديث الإجازات بنجاح';
+
+  @override
+  String get report => 'إبلاغ';
+
+  @override
+  String get reportReason => 'سبب الإبلاغ';
+
+  @override
+  String get reviewWithin24h => 'سيراجع فريقنا خلال 24 ساعة';
+
+  @override
+  String get blockUserLabel => 'حظر المستخدم';
+
+  @override
+  String get contentHiddenFromFeed => 'سيتم إخفاء محتواه من خلاصتك';
+
+  @override
+  String get comingSoon => 'قريباً';
+
+  @override
+  String get locationPermissionDenied => 'تم رفض إذن الموقع';
+
+  @override
+  String get noAppointmentsToExport => 'لا توجد مواعيد للتصدير';
+
+  @override
+  String get noAppointmentsInRange => 'لا توجد مواعيد في هذا النطاق الزمني';
+
+  @override
+  String get failedMarkAsRead => 'فشل في وضع علامة كمقروء';
+
+  @override
+  String get reportReasonHint => 'صف ما هو الخطأ في هذا المحتوى...';
+
+  @override
+  String get reportSubmitted => 'تم إرسال البلاغ';
+
+  @override
+  String get userBlocked => 'تم حظر المستخدم';
+
+  @override
+  String get myWishlist => 'قائمة رغباتي';
+
+  @override
+  String get selectAppointmentDateRange => 'اختر نطاق تاريخ الموعد';
+
+  @override
+  String get exportPdf => 'تصدير PDF';
+
+  @override
   String get appTitle => 'دوك موبي';
 
   @override
@@ -588,6 +663,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get reschedule => 'إعادة جدولة';
 
   @override
+  String get appointmentRescheduled =>
+      'تمت إعادة جدولة الموعد. تم إشعار المريض.';
+
+  @override
+  String get failedReschedule => 'فشل في إعادة جدولة الموعد';
+
+  @override
   String get writeReview => 'اكتب تقييمًا';
 
   @override
@@ -1085,6 +1167,19 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get deleteLabel => 'حذف';
+
+  @override
+  String get deleteReel => 'حذف الريل';
+
+  @override
+  String get deleteReelConfirm =>
+      'هل أنت متأكد أنك تريد حذف هذا الريل؟ لا يمكن التراجع عن هذا الإجراء.';
+
+  @override
+  String get reelDeleted => 'تم حذف الريل';
+
+  @override
+  String get failedDeleteReel => 'فشل في حذف الريل';
 
   @override
   String get conversationsDeleted => 'تم حذف المحادثات';

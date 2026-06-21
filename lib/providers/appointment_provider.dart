@@ -235,6 +235,43 @@ class AppointmentProvider with ChangeNotifier {
     }
   }
 
+  /// Reschedule appointment (Doctor) — change date and/or time.
+  /// [date] must be "YYYY-MM-DD" and [time] must be "HH:MM" (24-hour).
+  Future<bool> rescheduleAppointment({
+    required String appointmentId,
+    required String date,
+    required String time,
+  }) async {
+    try {
+      final response = await _appointmentService.rescheduleAppointment(
+        appointmentId: appointmentId,
+        date: date,
+        time: time,
+      );
+
+      if (response['success'] == true) {
+        final index = _appointments.indexWhere((apt) => apt.id == appointmentId);
+        if (index != -1) {
+          _appointments[index] = _appointments[index].copyWith(
+            appointmentDate: DateTime.tryParse(date),
+            appointmentTime: time,
+          );
+        }
+        notifyListeners();
+        return true;
+      } else {
+        _error = response['message'] ?? 'Failed to reschedule appointment';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Reschedule Appointment Error: $e');
+      _error = 'Error: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Complete appointment (Doctor)
   Future<bool> completeAppointment({
     required String appointmentId,

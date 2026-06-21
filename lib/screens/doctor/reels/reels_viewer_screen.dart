@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'package:docmobi/l10n/app_localizations.dart';
 import 'package:docmobi/services/api_service.dart';
@@ -30,6 +31,7 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
   final Map<String, int> _likeCounts = {};
   final Map<String, int> _commentCounts = {};
   final Map<String, int> _shareCounts = {};
+  String? _currentUserId;
 
   @override
   void initState() {
@@ -43,6 +45,7 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
     currentPage = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
     _initializeVideoForPage(currentPage);
+    _loadCurrentUserId();
 
     for (var reel in widget.reelsList) {
       final reelId = reel['_id'] ?? '';
@@ -50,6 +53,85 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
       _likeCounts[reelId] = reel['likesCount'] ?? 0;
       _commentCounts[reelId] = reel['commentsCount'] ?? 0;
       _shareCounts[reelId] = reel['sharesCount'] ?? 0;
+    }
+  }
+
+  Future<void> _loadCurrentUserId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final id = prefs.getString('user_id');
+      if (mounted) setState(() => _currentUserId = id);
+    } catch (e) {
+      debugPrint('Error loading current user id: $e');
+    }
+  }
+
+  bool _isOwner(Map<String, dynamic> reel) {
+    final authorId = reel['author']?['_id']?.toString();
+    return _currentUserId != null &&
+        authorId != null &&
+        _currentUserId == authorId;
+  }
+
+  /// Confirm + delete the current reel (author only). Pops with `true` so the
+  /// grid refreshes; resumes playback if cancelled or on failure.
+  Future<void> _confirmDeleteReel(Map<String, dynamic> reel) async {
+    final l10n = AppLocalizations.of(context)!;
+    final reelId = reel['_id']?.toString() ?? '';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.deleteReel),
+        content: Text(l10n.deleteReelConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              l10n.deleteLabel,
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      _videoControllers[currentPage]?.play();
+      return;
+    }
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final result = await ApiService.deleteReel(reelId);
+    if (!mounted) return;
+    Navigator.pop(context); // dismiss loading
+
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.reelDeleted),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context, true); // back to grid -> refresh
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? l10n.failedDeleteReel),
+          backgroundColor: Colors.red,
+        ),
+      );
+      _videoControllers[currentPage]?.play();
     }
   }
 
@@ -190,9 +272,11 @@ class _ReelsViewerScreenState extends State<ReelsViewerScreen> {
           likesCount: _likeCounts[widget.reelsList[index]['_id']] ?? 0,
           commentsCount: _commentCounts[widget.reelsList[index]['_id']] ?? 0,
           sharesCount: _shareCounts[widget.reelsList[index]['_id']] ?? 0,
+          isOwner: _isOwner(widget.reelsList[index]),
           onLike: () => _toggleLike(widget.reelsList[index]['_id']),
           onComment: () => _showComments(widget.reelsList[index]['_id']),
           onShare: () => _shareReel(widget.reelsList[index]),
+          onDelete: () => _confirmDeleteReel(widget.reelsList[index]),
           onBack: () => Navigator.pop(context, true),
         ),
       ),
@@ -207,9 +291,11 @@ class ReelItemWidget extends StatefulWidget {
   final int likesCount;
   final int commentsCount;
   final int sharesCount;
+  final bool isOwner;
   final VoidCallback onLike;
   final VoidCallback onComment;
   final VoidCallback onShare;
+  final VoidCallback onDelete;
   final VoidCallback onBack;
 
   const ReelItemWidget({
@@ -220,9 +306,11 @@ class ReelItemWidget extends StatefulWidget {
     required this.likesCount,
     required this.commentsCount,
     required this.sharesCount,
+    this.isOwner = false,
     required this.onLike,
     required this.onComment,
     required this.onShare,
+    required this.onDelete,
     required this.onBack,
   });
 
@@ -584,21 +672,26 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
                         label: '',
                         onTap: () {
                           widget.controller?.pause();
-                          ReportBlockSheet.show(
-                            context,
-                            reportedUserId: author?['_id'] ?? '',
-                            itemType: 'Reel',
-                            itemId: widget.reel['_id'] ?? '',
-                            onBlocked: () {
+                          if (widget.isOwner) {
+                            // Author can delete their own reel.
+                            widget.onDelete();
+                          } else {
+                            ReportBlockSheet.show(
+                              context,
+                              reportedUserId: author?['_id'] ?? '',
+                              itemType: 'Reel',
+                              itemId: widget.reel['_id'] ?? '',
+                              onBlocked: () {
+                                if (mounted) {
+                                  Navigator.pop(context, true);
+                                }
+                              },
+                            ).then((_) {
                               if (mounted) {
-                                Navigator.pop(context, true);
+                                widget.controller?.play();
                               }
-                            },
-                          ).then((_) {
-                            if (mounted) {
-                              widget.controller?.play();
-                            }
-                          });
+                            });
+                          }
                         },
                       ),
                       const SizedBox(height: 20),

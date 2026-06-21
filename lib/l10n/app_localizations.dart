@@ -100,6 +100,156 @@ abstract class AppLocalizations {
     Locale('fr'),
   ];
 
+  /// No description provided for @connectingToCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to call...'**
+  String get connectingToCall;
+
+  /// No description provided for @logoutConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to log out?'**
+  String get logoutConfirm;
+
+  /// No description provided for @saveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get saveLabel;
+
+  /// No description provided for @addLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get addLabel;
+
+  /// No description provided for @addNoteOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Note (Optional)'**
+  String get addNoteOptional;
+
+  /// No description provided for @vacationNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Summer Vacation'**
+  String get vacationNoteHint;
+
+  /// No description provided for @myVacations.
+  ///
+  /// In en, this message translates to:
+  /// **'My Vacations'**
+  String get myVacations;
+
+  /// No description provided for @noVacationsPlanned.
+  ///
+  /// In en, this message translates to:
+  /// **'No vacations planned'**
+  String get noVacationsPlanned;
+
+  /// No description provided for @vacationsUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Vacations updated successfully'**
+  String get vacationsUpdated;
+
+  /// No description provided for @report.
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get report;
+
+  /// No description provided for @reportReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Report Reason'**
+  String get reportReason;
+
+  /// No description provided for @reviewWithin24h.
+  ///
+  /// In en, this message translates to:
+  /// **'Our team will review within 24 hours'**
+  String get reviewWithin24h;
+
+  /// No description provided for @blockUserLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Block User'**
+  String get blockUserLabel;
+
+  /// No description provided for @contentHiddenFromFeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Their content will be hidden from your feed'**
+  String get contentHiddenFromFeed;
+
+  /// No description provided for @comingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming Soon'**
+  String get comingSoon;
+
+  /// No description provided for @locationPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Location permission denied'**
+  String get locationPermissionDenied;
+
+  /// No description provided for @noAppointmentsToExport.
+  ///
+  /// In en, this message translates to:
+  /// **'No appointments to export'**
+  String get noAppointmentsToExport;
+
+  /// No description provided for @noAppointmentsInRange.
+  ///
+  /// In en, this message translates to:
+  /// **'No appointments found in this date range'**
+  String get noAppointmentsInRange;
+
+  /// No description provided for @failedMarkAsRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to mark as read'**
+  String get failedMarkAsRead;
+
+  /// No description provided for @reportReasonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe what is wrong with this content...'**
+  String get reportReasonHint;
+
+  /// No description provided for @reportSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Report submitted'**
+  String get reportSubmitted;
+
+  /// No description provided for @userBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'User blocked'**
+  String get userBlocked;
+
+  /// No description provided for @myWishlist.
+  ///
+  /// In en, this message translates to:
+  /// **'My Wishlist'**
+  String get myWishlist;
+
+  /// No description provided for @selectAppointmentDateRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Appointment Date Range'**
+  String get selectAppointmentDateRange;
+
+  /// No description provided for @exportPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Export PDF'**
+  String get exportPdf;
+
   /// The title of the application
   ///
   /// In en, this message translates to:
@@ -1192,6 +1342,18 @@ abstract class AppLocalizations {
   /// **'Reschedule'**
   String get reschedule;
 
+  /// No description provided for @appointmentRescheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment rescheduled. The patient has been notified.'**
+  String get appointmentRescheduled;
+
+  /// No description provided for @failedReschedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to reschedule appointment'**
+  String get failedReschedule;
+
   /// Button text to write review
   ///
   /// In en, this message translates to:
@@ -2121,6 +2283,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get deleteLabel;
+
+  /// No description provided for @deleteReel.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Reel'**
+  String get deleteReel;
+
+  /// No description provided for @deleteReelConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this reel? This action cannot be undone.'**
+  String get deleteReelConfirm;
+
+  /// No description provided for @reelDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Reel deleted'**
+  String get reelDeleted;
+
+  /// No description provided for @failedDeleteReel.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete reel'**
+  String get failedDeleteReel;
 
   /// No description provided for @conversationsDeleted.
   ///

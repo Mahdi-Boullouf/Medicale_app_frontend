@@ -9,6 +9,83 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get connectingToCall => 'Connecting to call...';
+
+  @override
+  String get logoutConfirm => 'Are you sure you want to log out?';
+
+  @override
+  String get saveLabel => 'Save';
+
+  @override
+  String get addLabel => 'Add';
+
+  @override
+  String get addNoteOptional => 'Add Note (Optional)';
+
+  @override
+  String get vacationNoteHint => 'e.g. Summer Vacation';
+
+  @override
+  String get myVacations => 'My Vacations';
+
+  @override
+  String get noVacationsPlanned => 'No vacations planned';
+
+  @override
+  String get vacationsUpdated => 'Vacations updated successfully';
+
+  @override
+  String get report => 'Report';
+
+  @override
+  String get reportReason => 'Report Reason';
+
+  @override
+  String get reviewWithin24h => 'Our team will review within 24 hours';
+
+  @override
+  String get blockUserLabel => 'Block User';
+
+  @override
+  String get contentHiddenFromFeed =>
+      'Their content will be hidden from your feed';
+
+  @override
+  String get comingSoon => 'Coming Soon';
+
+  @override
+  String get locationPermissionDenied => 'Location permission denied';
+
+  @override
+  String get noAppointmentsToExport => 'No appointments to export';
+
+  @override
+  String get noAppointmentsInRange =>
+      'No appointments found in this date range';
+
+  @override
+  String get failedMarkAsRead => 'Failed to mark as read';
+
+  @override
+  String get reportReasonHint => 'Describe what is wrong with this content...';
+
+  @override
+  String get reportSubmitted => 'Report submitted';
+
+  @override
+  String get userBlocked => 'User blocked';
+
+  @override
+  String get myWishlist => 'My Wishlist';
+
+  @override
+  String get selectAppointmentDateRange => 'Select Appointment Date Range';
+
+  @override
+  String get exportPdf => 'Export PDF';
+
+  @override
   String get appTitle => 'DocMobi';
 
   @override
@@ -587,6 +664,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reschedule => 'Reschedule';
 
   @override
+  String get appointmentRescheduled =>
+      'Appointment rescheduled. The patient has been notified.';
+
+  @override
+  String get failedReschedule => 'Failed to reschedule appointment';
+
+  @override
   String get writeReview => 'Write Review';
 
   @override
@@ -1106,6 +1190,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deleteLabel => 'Delete';
+
+  @override
+  String get deleteReel => 'Delete Reel';
+
+  @override
+  String get deleteReelConfirm =>
+      'Are you sure you want to delete this reel? This action cannot be undone.';
+
+  @override
+  String get reelDeleted => 'Reel deleted';
+
+  @override
+  String get failedDeleteReel => 'Failed to delete reel';
 
   @override
   String get conversationsDeleted => 'Conversations deleted';

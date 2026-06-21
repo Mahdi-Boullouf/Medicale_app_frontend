@@ -242,6 +242,38 @@ class AppointmentService {
     }
   }
 
+  /// Reschedule appointment (change date and/or time) — doctor
+  /// [date] must be "YYYY-MM-DD" and [time] must be "HH:MM" (24-hour).
+  Future<Map<String, dynamic>> rescheduleAppointment({
+    required String appointmentId,
+    required String date,
+    required String time,
+  }) async {
+    try {
+      debugPrint('Rescheduling appointment $appointmentId to $date $time');
+
+      final response = await ApiService.patch(
+        '${ApiConfig.appointments}/$appointmentId',
+        {'date': date, 'time': time},
+        requiresAuth: true,
+      );
+
+      if (response['success'] == true) {
+        debugPrint(' Appointment rescheduled successfully');
+      } else {
+        debugPrint(' Failed to reschedule: ${response['message']}');
+      }
+
+      return response;
+    } catch (e) {
+      debugPrint(' Reschedule Appointment Error: $e');
+      return {
+        'success': false,
+        'message': 'Failed to reschedule appointment: $e',
+      };
+    }
+  }
+
   /// Get available appointment slots
   Future<Map<String, dynamic>> getAvailableSlots({
     required String doctorId,

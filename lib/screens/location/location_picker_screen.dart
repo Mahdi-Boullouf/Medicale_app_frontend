@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:docmobi/l10n/app_localizations.dart';
 import '../../services/location_service.dart';
 import '../../utils/marker_factory.dart';
 
@@ -80,7 +81,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           permission == LocationPermission.deniedForever) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location permission denied')),
+            SnackBar(content: Text(AppLocalizations.of(context)!.locationPermissionDenied)),
           );
         }
         setState(() => _isLoadingLocation = false);
@@ -399,7 +400,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           // User denied permission
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location permission denied')),
+            SnackBar(content: Text(AppLocalizations.of(context)!.locationPermissionDenied)),
           );
         } else {
           // Request permission and proceed
@@ -411,7 +412,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             if (mounted) {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Location permission denied')),
+                SnackBar(content: Text(AppLocalizations.of(context)!.locationPermissionDenied)),
               );
             }
           } else {

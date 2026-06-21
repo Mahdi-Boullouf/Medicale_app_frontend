@@ -533,9 +533,9 @@ class _PatientMessagesListScreenState extends State<PatientMessagesListScreen> {
             // Show error feedback if both failed
             if (!agoraSuccess && !backendSuccess && mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Failed to mark as read'),
-                  duration: Duration(seconds: 2),
+                SnackBar(
+                  content: Text(AppLocalizations.of(context)!.failedMarkAsRead),
+                  duration: const Duration(seconds: 2),
                   backgroundColor: Colors.orange,
                 ),
               );

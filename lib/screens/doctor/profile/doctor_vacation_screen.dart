@@ -26,6 +26,7 @@ class _DoctorVacationScreenState extends State<DoctorVacationScreen> {
   }
 
   Future<void> _saveVacations() async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() => _isSaving = true);
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -35,7 +36,7 @@ class _DoctorVacationScreenState extends State<DoctorVacationScreen> {
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vacations updated successfully')),
+          SnackBar(content: Text(l10n.vacationsUpdated)),
         );
         Navigator.pop(context);
       }
@@ -72,26 +73,27 @@ class _DoctorVacationScreenState extends State<DoctorVacationScreen> {
     if (picked != null) {
       final noteController = TextEditingController();
       if (!mounted) return;
-      
+      final l10n = AppLocalizations.of(context)!;
+
       final bool? confirm = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Add Note (Optional)'),
+          title: Text(l10n.addNoteOptional),
           content: TextField(
             controller: noteController,
-            decoration: const InputDecoration(
-              hintText: 'e.g. Summer Vacation',
+            decoration: InputDecoration(
+              hintText: l10n.vacationNoteHint,
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1664CD)),
-              child: const Text('Add', style: TextStyle(color: Colors.white)),
+              child: Text(l10n.addLabel, style: const TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -116,7 +118,7 @@ class _DoctorVacationScreenState extends State<DoctorVacationScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       appBar: AppBar(
-        title: const Text('My Vacations', style: TextStyle(color: Color(0xFF1B2C49), fontWeight: FontWeight.bold)),
+        title: Text(l10n.myVacations, style: const TextStyle(color: Color(0xFF1B2C49), fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
@@ -132,7 +134,7 @@ class _DoctorVacationScreenState extends State<DoctorVacationScreen> {
           else
             TextButton(
               onPressed: _saveVacations,
-              child: const Text('Save', style: TextStyle(color: Color(0xFF1664CD), fontWeight: FontWeight.bold)),
+              child: Text(l10n.saveLabel, style: const TextStyle(color: Color(0xFF1664CD), fontWeight: FontWeight.bold)),
             ),
         ],
       ),
@@ -143,7 +145,7 @@ class _DoctorVacationScreenState extends State<DoctorVacationScreen> {
                 children: [
                   Icon(Icons.beach_access_outlined, size: 80, color: Colors.grey.shade300),
                   const SizedBox(height: 16),
-                  Text('No vacations planned', style: TextStyle(color: Colors.grey.shade500, fontSize: 16)),
+                  Text(l10n.noVacationsPlanned, style: TextStyle(color: Colors.grey.shade500, fontSize: 16)),
                 ],
               ),
             )

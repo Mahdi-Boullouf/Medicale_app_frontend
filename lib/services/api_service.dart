@@ -731,6 +731,22 @@ class ApiService {
     }
   }
 
+  /// Delete a reel (author or admin only — enforced by backend)
+  static Future<Map<String, dynamic>> deleteReel(String reelId) async {
+    try {
+      debugPrint('🗑️ Deleting reel: $reelId');
+
+      final response = await delete(
+        '/api/v1/reels/$reelId',
+        requiresAuth: true,
+      );
+
+      return response;
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to delete reel: $e'};
+    }
+  }
+
   /// Get User Profile
   static Future<Map<String, dynamic>> getUserProfile({String? userId}) async {
     // 1. Check cache first

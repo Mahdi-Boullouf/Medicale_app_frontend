@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:docmobi/widgets/custom_button.dart';
 import 'package:docmobi/widgets/custom_text_field.dart';
 import 'package:docmobi/services/api_service.dart';
+import 'package:docmobi/services/location_service.dart';
 import 'package:docmobi/l10n/app_localizations.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -173,6 +174,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (!_validateForm()) return;
 
     setState(() => _isLoading = true);
+
+    // Ask for location access via the native OS prompt as part of registration,
+    // so the user grants it up-front instead of being sent to Settings later.
+    await LocationService().requestLocationPermission();
+    if (!mounted) return;
 
     try {
       debugPrint(' Starting registration...');
@@ -628,7 +634,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       child: DropdownButton<String>(
                         isExpanded: true,
                         value: selectedWilaya,
-                        hint: Text("Wilaya"),
+                        hint: Text(AppLocalizations.of(context)!.wilaya),
 
                         icon: const Icon(
                           Icons.arrow_drop_down,
@@ -659,7 +665,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                   if (selectedWilaya != null)
                     Text(
-                      "Commune",
+                      AppLocalizations.of(context)!.commune,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF0B3267),
@@ -677,7 +683,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         child: DropdownButton<String>(
                           isExpanded: true,
                           value: selectedCommune,
-                          hint: Text("Commune"),
+                          hint: Text(AppLocalizations.of(context)!.commune),
                           icon: const Icon(
                             Icons.arrow_drop_down,
                             color: Color(0xFF1664CD),

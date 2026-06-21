@@ -25,6 +25,26 @@ class LocationService {
     return await Geolocator.requestPermission();
   }
 
+  /// Request location permission using the native OS prompt.
+  ///
+  /// Triggers the system permission dialog directly (no custom UI and no
+  /// redirect to app Settings). Returns true when the user grants
+  /// while-in-use or always access. Safe to call during signup.
+  Future<bool> requestLocationPermission() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        // Shows the native OS permission dialog.
+        permission = await Geolocator.requestPermission();
+      }
+      return permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse;
+    } catch (e) {
+      debugPrint('Location permission request error: $e');
+      return false;
+    }
+  }
+
   /// Get current position with high accuracy
   Future<Position> getCurrentPosition() async {
     return await Geolocator.getCurrentPosition(
