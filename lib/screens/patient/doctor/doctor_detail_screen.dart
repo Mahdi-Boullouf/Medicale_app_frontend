@@ -458,6 +458,150 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
                     ),
                   ),
                 ],
+
+                const SizedBox(height: 30),
+
+                // ── Reviews Section ──────────────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      l10n.reviewsTitle,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1B2C49),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star,
+                          size: 18,
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${_avgRating.toStringAsFixed(1)} (${l10n.reviewsCount(_totalReviews)})',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                if (_reviews.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      l10n.noReviewsYet,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  )
+                else
+                  ..._reviews.take(3).map((review) {
+                    final patient = review['patient'];
+                    final rating = (review['rating'] ?? 0).toDouble();
+                    final comment = review['comment'] as String?;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFF),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.grey.shade200,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: const Color(0xFFE9F0FF),
+                                child: Text(
+                                  (patient?['fullName'] ?? 'P')
+                                      .substring(0, 1)
+                                      .toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Color(0xFF1664CD),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                patient?['fullName'] ?? '',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const Spacer(),
+                              Row(
+                                children: List.generate(
+                                  5,
+                                  (i) => Icon(
+                                    i < rating.round()
+                                        ? Icons.star
+                                        : Icons.star_border,
+                                    color: Colors.orange,
+                                    size: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (comment != null && comment.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              comment,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }),
+
+                // Write Review button — only for patients
+                if (currentUserRole == 'patient') ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showReviewDialog(context),
+                      icon: const Icon(
+                        Icons.star_outline,
+                        color: Color(0xFF1664CD),
+                      ),
+                      label: Text(
+                        l10n.writeReview,
+                        style: const TextStyle(
+                          color: Color(0xFF1664CD),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF1664CD)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 20),
               ],
             ),
@@ -465,6 +609,126 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showReviewDialog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    double selectedRating = 0;
+    final commentController = TextEditingController();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.writeReview,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(l10n.yourRating),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: List.generate(5, (i) {
+                      return GestureDetector(
+                        onTap: () => setSheetState(
+                          () => selectedRating = (i + 1).toDouble(),
+                        ),
+                        child: Icon(
+                          i < selectedRating ? Icons.star : Icons.star_border,
+                          color: Colors.orange,
+                          size: 36,
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: commentController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: l10n.yourComment,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: selectedRating == 0
+                          ? null
+                          : () async {
+                              final messenger =
+                                  ScaffoldMessenger.of(context);
+                              Navigator.pop(sheetContext);
+                              final res = await ApiService.createReview(
+                                doctorId: widget.doctor.id,
+                                rating: selectedRating,
+                                comment: commentController.text.trim(),
+                              );
+                              if (!mounted) return;
+                              if (res['success'] == true) {
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(l10n.reviewSubmitted),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                                _loadDoctorReviews();
+                              } else {
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(l10n.failedReview),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1664CD),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text(
+                        l10n.submitReview,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+    commentController.dispose();
   }
 
   Widget _buildBulletItem(String text) {

@@ -918,22 +918,7 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
                     ),
 
                     // Google Map with Routes
-
-                    // Google Map with Routes
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => FullMapScreen(
-                              currentPosition: _currentPosition,
-                              markers: _markers,
-                              polylines: _polylines,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Container(
+                    Container(
                         height: 250,
                         margin: const EdgeInsets.symmetric(horizontal: 20),
                         decoration: BoxDecoration(
@@ -1163,10 +1148,50 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
                                           ),
                                         ),
                                       ),
+                                    // Expand to Full Map Button
+                                    Positioned(
+                                      top: 10,
+                                      left: 10,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => FullMapScreen(
+                                                currentPosition:
+                                                    _currentPosition,
+                                                markers: _markers,
+                                                polylines: _polylines,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.15,
+                                                ),
+                                                blurRadius: 4,
+                                              ),
+                                            ],
+                                          ),
+                                          child: const Icon(
+                                            Icons.fullscreen,
+                                            color: Color(0xFF0D47A1),
+                                            size: 22,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                         ),
-                      ),
                     ),
                     const SizedBox(height: 25),
 

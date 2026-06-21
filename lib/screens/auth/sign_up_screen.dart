@@ -497,7 +497,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     if (value == null || value.isEmpty) {
                       return l10n.enterEmail;
                     }
-                    if (!value.contains('@')) {
+                    final emailRegex = RegExp(
+                      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                    );
+                    if (!emailRegex.hasMatch(value.trim())) {
                       return l10n.invalidEmail;
                     }
                     return null;

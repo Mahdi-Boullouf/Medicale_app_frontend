@@ -671,7 +671,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get failedReschedule => 'Failed to reschedule appointment';
 
   @override
-  String get writeReview => 'Write Review';
+  String get writeReview => 'Write a Review';
 
   @override
   String get updateReview => 'Update Your Review';
@@ -737,7 +737,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notif_reel_commented_body => 'Someone commented on your reel.';
 
   @override
-  String get reviewSubmitted => 'Review submitted successfully! ';
+  String get reviewSubmitted => 'Review submitted successfully';
 
   @override
   String get failedSubmitReview => 'Failed to submit review';
@@ -1732,4 +1732,67 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get yourProfile => 'Your Profile';
+
+  @override
+  String get reviewsTitle => 'Reviews & Ratings';
+
+  @override
+  String get myReviews => 'My Reviews';
+
+  @override
+  String get noReviewsYet => 'No reviews yet';
+
+  @override
+  String get mesPatients => 'My Patients';
+
+  @override
+  String get searchPatient => 'Search patient...';
+
+  @override
+  String get noPatientsFound => 'No patients found';
+
+  @override
+  String patientsCount(int count) {
+    return '$count patients';
+  }
+
+  @override
+  String appointmentsCompletedOf(int completed, int total) {
+    return '$completed completed of $total';
+  }
+
+  @override
+  String get submitReview => 'Submit Review';
+
+  @override
+  String get failedReview => 'Failed to submit review';
+
+  @override
+  String get yourRating => 'Your Rating';
+
+  @override
+  String get yourComment => 'Your comment (optional)';
+
+  @override
+  String get howItWorks => 'How It Works';
+
+  @override
+  String get howItWorksSubtitle => 'Watch our tutorial videos to get started';
+
+  @override
+  String get doctorTutorialTitle => 'For Doctors';
+
+  @override
+  String get doctorTutorialDesc =>
+      'Learn how to manage your appointments, connect with patients, and grow your practice using DocMobi.';
+
+  @override
+  String get patientTutorialTitle => 'For Patients';
+
+  @override
+  String get patientTutorialDesc =>
+      'Discover how to find doctors near you, book appointments, and manage your health with DocMobi.';
+
+  @override
+  String get watchVideo => 'Watch Video';
 }

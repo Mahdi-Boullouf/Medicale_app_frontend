@@ -1357,7 +1357,7 @@ abstract class AppLocalizations {
   /// Button text to write review
   ///
   /// In en, this message translates to:
-  /// **'Write Review'**
+  /// **'Write a Review'**
   String get writeReview;
 
   /// Dialog title to update review
@@ -1477,7 +1477,7 @@ abstract class AppLocalizations {
   /// Success snackbar after review submission
   ///
   /// In en, this message translates to:
-  /// **'Review submitted successfully! '**
+  /// **'Review submitted successfully'**
   String get reviewSubmitted;
 
   /// Error snackbar after review failure
@@ -3285,6 +3285,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your Profile'**
   String get yourProfile;
+
+  /// No description provided for @reviewsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviews & Ratings'**
+  String get reviewsTitle;
+
+  /// No description provided for @myReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'My Reviews'**
+  String get myReviews;
+
+  /// No description provided for @noReviewsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No reviews yet'**
+  String get noReviewsYet;
+
+  /// No description provided for @mesPatients.
+  ///
+  /// In en, this message translates to:
+  /// **'My Patients'**
+  String get mesPatients;
+
+  /// No description provided for @searchPatient.
+  ///
+  /// In en, this message translates to:
+  /// **'Search patient...'**
+  String get searchPatient;
+
+  /// No description provided for @noPatientsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No patients found'**
+  String get noPatientsFound;
+
+  /// No description provided for @patientsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} patients'**
+  String patientsCount(int count);
+
+  /// No description provided for @appointmentsCompletedOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} completed of {total}'**
+  String appointmentsCompletedOf(int completed, int total);
+
+  /// No description provided for @submitReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit Review'**
+  String get submitReview;
+
+  /// No description provided for @failedReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to submit review'**
+  String get failedReview;
+
+  /// No description provided for @yourRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Rating'**
+  String get yourRating;
+
+  /// No description provided for @yourComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Your comment (optional)'**
+  String get yourComment;
+
+  /// No description provided for @howItWorks.
+  ///
+  /// In en, this message translates to:
+  /// **'How It Works'**
+  String get howItWorks;
+
+  /// No description provided for @howItWorksSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch our tutorial videos to get started'**
+  String get howItWorksSubtitle;
+
+  /// No description provided for @doctorTutorialTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'For Doctors'**
+  String get doctorTutorialTitle;
+
+  /// No description provided for @doctorTutorialDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Learn how to manage your appointments, connect with patients, and grow your practice using DocMobi.'**
+  String get doctorTutorialDesc;
+
+  /// No description provided for @patientTutorialTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'For Patients'**
+  String get patientTutorialTitle;
+
+  /// No description provided for @patientTutorialDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover how to find doctors near you, book appointments, and manage your health with DocMobi.'**
+  String get patientTutorialDesc;
+
+  /// No description provided for @watchVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch Video'**
+  String get watchVideo;
 }
 
 class _AppLocalizationsDelegate

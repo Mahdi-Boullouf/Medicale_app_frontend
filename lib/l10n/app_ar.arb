@@ -544,5 +544,38 @@
   "commune": "بلدية",
   "applyFilter": "تطبيق التصفية",
   "allDoctors": "جميع الأطباء",
-  "yourProfile": "ملفك الشخصي"
+  "yourProfile": "ملفك الشخصي",
+  "reviewsTitle": "التقييمات والآراء",
+  "myReviews": "تقييماتي",
+  "noReviewsYet": "لا توجد تقييمات بعد",
+  "mesPatients": "مرضاي",
+  "searchPatient": "البحث عن مريض...",
+  "noPatientsFound": "لا يوجد مرضى",
+  "patientsCount": "{count} مريض",
+  "@patientsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "appointmentsCompletedOf": "{completed} مكتمل من {total}",
+  "@appointmentsCompletedOf": {
+    "placeholders": {
+      "completed": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "symptoms": "الأعراض",
+  "writeReview": "كتابة تقييم",
+  "submitReview": "إرسال التقييم",
+  "reviewSubmitted": "تم إرسال التقييم بنجاح",
+  "failedReview": "فشل إرسال التقييم",
+  "yourRating": "تقييمك",
+  "yourComment": "تعليقك (اختياري)",
+  "howItWorks": "كيف يعمل التطبيق",
+  "howItWorksSubtitle": "شاهد مقاطع الفيديو التعليمية للبدء",
+  "doctorTutorialTitle": "للأطباء",
+  "doctorTutorialDesc": "تعرف على كيفية إدارة مواعيدك والتواصل مع مرضاك وتنمية ممارستك الطبية باستخدام دوك موبي.",
+  "patientTutorialTitle": "للمرضى",
+  "patientTutorialDesc": "اكتشف كيفية العثور على الأطباء القريبين منك وحجز المواعيد وإدارة صحتك مع دوك موبي.",
+  "watchVideo": "مشاهدة الفيديو"
 }

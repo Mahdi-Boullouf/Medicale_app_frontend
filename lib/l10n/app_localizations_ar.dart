@@ -670,7 +670,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get failedReschedule => 'فشل في إعادة جدولة الموعد';
 
   @override
-  String get writeReview => 'اكتب تقييمًا';
+  String get writeReview => 'كتابة تقييم';
 
   @override
   String get updateReview => 'تحديث تقييمك';
@@ -733,7 +733,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get notif_reel_commented_body => 'علق شخص ما على الريل الخاص بك.';
 
   @override
-  String get reviewSubmitted => 'تم تقديم التقييم بنجاح!';
+  String get reviewSubmitted => 'تم إرسال التقييم بنجاح';
 
   @override
   String get failedSubmitReview => 'فشل في تقديم التقييم';
@@ -1708,4 +1708,67 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get yourProfile => 'ملفك الشخصي';
+
+  @override
+  String get reviewsTitle => 'التقييمات والآراء';
+
+  @override
+  String get myReviews => 'تقييماتي';
+
+  @override
+  String get noReviewsYet => 'لا توجد تقييمات بعد';
+
+  @override
+  String get mesPatients => 'مرضاي';
+
+  @override
+  String get searchPatient => 'البحث عن مريض...';
+
+  @override
+  String get noPatientsFound => 'لا يوجد مرضى';
+
+  @override
+  String patientsCount(int count) {
+    return '$count مريض';
+  }
+
+  @override
+  String appointmentsCompletedOf(int completed, int total) {
+    return '$completed مكتمل من $total';
+  }
+
+  @override
+  String get submitReview => 'إرسال التقييم';
+
+  @override
+  String get failedReview => 'فشل إرسال التقييم';
+
+  @override
+  String get yourRating => 'تقييمك';
+
+  @override
+  String get yourComment => 'تعليقك (اختياري)';
+
+  @override
+  String get howItWorks => 'كيف يعمل التطبيق';
+
+  @override
+  String get howItWorksSubtitle => 'شاهد مقاطع الفيديو التعليمية للبدء';
+
+  @override
+  String get doctorTutorialTitle => 'للأطباء';
+
+  @override
+  String get doctorTutorialDesc =>
+      'تعرف على كيفية إدارة مواعيدك والتواصل مع مرضاك وتنمية ممارستك الطبية باستخدام دوك موبي.';
+
+  @override
+  String get patientTutorialTitle => 'للمرضى';
+
+  @override
+  String get patientTutorialDesc =>
+      'اكتشف كيفية العثور على الأطباء القريبين منك وحجز المواعيد وإدارة صحتك مع دوك موبي.';
+
+  @override
+  String get watchVideo => 'مشاهدة الفيديو';
 }

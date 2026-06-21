@@ -751,7 +751,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get notif_reel_commented_body => 'Quelqu\'un a commenté votre reel.';
 
   @override
-  String get reviewSubmitted => 'Avis soumis avec succès !';
+  String get reviewSubmitted => 'Avis soumis avec succès';
 
   @override
   String get failedSubmitReview => 'Échec de l\'envoi de l\'avis';
@@ -1765,4 +1765,68 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get yourProfile => 'Votre Profil';
+
+  @override
+  String get reviewsTitle => 'Avis & Notes';
+
+  @override
+  String get myReviews => 'Mes avis';
+
+  @override
+  String get noReviewsYet => 'Aucun avis pour l\'instant';
+
+  @override
+  String get mesPatients => 'Mes Patients';
+
+  @override
+  String get searchPatient => 'Rechercher un patient...';
+
+  @override
+  String get noPatientsFound => 'Aucun patient trouvé';
+
+  @override
+  String patientsCount(int count) {
+    return '$count patients';
+  }
+
+  @override
+  String appointmentsCompletedOf(int completed, int total) {
+    return '$completed terminé(s) sur $total';
+  }
+
+  @override
+  String get submitReview => 'Soumettre l\'avis';
+
+  @override
+  String get failedReview => 'Échec de la soumission de l\'avis';
+
+  @override
+  String get yourRating => 'Votre note';
+
+  @override
+  String get yourComment => 'Votre commentaire (facultatif)';
+
+  @override
+  String get howItWorks => 'Comment ça marche';
+
+  @override
+  String get howItWorksSubtitle =>
+      'Regardez nos vidéos tutoriels pour commencer';
+
+  @override
+  String get doctorTutorialTitle => 'Pour les médecins';
+
+  @override
+  String get doctorTutorialDesc =>
+      'Apprenez à gérer vos rendez-vous, à communiquer avec vos patients et à développer votre pratique avec DocMobi.';
+
+  @override
+  String get patientTutorialTitle => 'Pour les patients';
+
+  @override
+  String get patientTutorialDesc =>
+      'Découvrez comment trouver des médecins près de vous, prendre des rendez-vous et gérer votre santé avec DocMobi.';
+
+  @override
+  String get watchVideo => 'Regarder la vidéo';
 }

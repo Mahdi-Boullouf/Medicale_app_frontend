@@ -747,6 +747,40 @@ class ApiService {
     }
   }
 
+  // ─── Reviews ────────────────────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> createReview({
+    required String doctorId,
+    required double rating,
+    String? comment,
+    String? appointmentId,
+  }) async {
+    try {
+      final body = <String, dynamic>{'doctorId': doctorId, 'rating': rating};
+      if (comment != null && comment.isNotEmpty) body['comment'] = comment;
+      if (appointmentId != null) body['appointmentId'] = appointmentId;
+      return await post('/api/v1/doctor-review', body, requiresAuth: true);
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to submit review: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getMyReviews() async {
+    try {
+      return await get('/api/v1/doctor-review/me', requiresAuth: true);
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to load reviews: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteReview(String reviewId) async {
+    try {
+      return await delete('/api/v1/doctor-review/$reviewId', requiresAuth: true);
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to delete review: $e'};
+    }
+  }
+
   /// Get User Profile
   static Future<Map<String, dynamic>> getUserProfile({String? userId}) async {
     // 1. Check cache first

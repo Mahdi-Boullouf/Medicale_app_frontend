@@ -16,6 +16,9 @@ import '../../auth/sign_in_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:docmobi/providers/locale_provider.dart';
 import 'package:docmobi/screens/doctor/profile/doctor_vacation_screen.dart';
+import 'package:docmobi/screens/common/how_it_works_screen.dart';
+import 'package:docmobi/screens/doctor/profile/doctor_reviews_screen.dart';
+import 'package:docmobi/screens/doctor/patients/mes_patients_screen.dart';
 
 class DoctorProfileScreen extends ConsumerStatefulWidget {
   const DoctorProfileScreen({super.key});
@@ -443,6 +446,30 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
 
 
                   _buildProfileItem(
+                    icon: Icons.people_outline,
+                    title: l10n.mesPatients,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MesPatientsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildProfileItem(
+                    icon: Icons.star_outline,
+                    title: l10n.myReviews,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DoctorReviewsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildProfileItem(
                     assetIconPath: 'assets/images/algerian.png',
                     title: l10n.myEarning,
                     onTap: () {
@@ -542,6 +569,18 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
                     },
                   ),
 
+                  _buildProfileItem(
+                    icon: Icons.play_circle_outline,
+                    title: l10n.howItWorks,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HowItWorksScreen(),
+                        ),
+                      );
+                    },
+                  ),
                   _buildProfileItem(
                     assetIconPath: 'assets/icons/help&support.png',
                     title: l10n.helpSupport,

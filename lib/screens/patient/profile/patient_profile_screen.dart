@@ -2,6 +2,7 @@ import 'package:docmobi/l10n/app_localizations.dart';
 import 'package:docmobi/screens/patient/appointments/patient_appointments_screen.dart';
 import 'package:docmobi/screens/patient/profile/dependents_list_screen.dart';
 import 'package:docmobi/screens/common/help_support_screen.dart';
+import 'package:docmobi/screens/common/how_it_works_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:docmobi/screens/patient/profile/personal_info_screen.dart';
 import 'package:docmobi/screens/patient/profile/change_password_screen.dart';
@@ -319,6 +320,18 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                   ),
                 ),
 
+                _buildMenuItem(
+                  icon: Icons.play_circle_outline,
+                  title: l10n.howItWorks,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HowItWorksScreen(),
+                      ),
+                    );
+                  },
+                ),
                 _buildMenuItem(
                   icon: Icons.help_outline,
                   title: l10n.helpSupport,

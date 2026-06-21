@@ -52,13 +52,30 @@ class AgoraChatService {
           debugPrint(' [AGORA] Disconnected from server');
         },
         onTokenWillExpire: () {
-          debugPrint(' [AGORA] Token will expire soon');
+          debugPrint(' [AGORA] Token will expire soon — refreshing');
+          _refreshToken();
         },
         onTokenDidExpire: () {
-          debugPrint(' [AGORA] Token expired');
+          debugPrint(' [AGORA] Token expired — refreshing');
+          _refreshToken();
         },
       ),
     );
+  }
+
+  Future<void> _refreshToken() async {
+    try {
+      final response = await ApiService.getAgoraChatToken();
+      if (response['success'] == true) {
+        final newToken = response['data']?['token'] as String?;
+        if (newToken != null && newToken.isNotEmpty) {
+          await ChatClient.getInstance.renewAgoraToken(newToken);
+          debugPrint('✅ [AGORA] Token refreshed successfully');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ [AGORA] Token refresh failed: $e');
+    }
   }
 
   Future<bool> checkConnection() async {

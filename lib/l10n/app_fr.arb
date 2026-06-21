@@ -979,5 +979,38 @@
   "commune": "Commune",
   "applyFilter": "Appliquer le filtre",
   "allDoctors": "Tous les docteurs",
-  "yourProfile": "Votre Profil"
+  "yourProfile": "Votre Profil",
+  "reviewsTitle": "Avis & Notes",
+  "myReviews": "Mes avis",
+  "noReviewsYet": "Aucun avis pour l'instant",
+  "mesPatients": "Mes Patients",
+  "searchPatient": "Rechercher un patient...",
+  "noPatientsFound": "Aucun patient trouvé",
+  "patientsCount": "{count} patients",
+  "@patientsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "appointmentsCompletedOf": "{completed} terminé(s) sur {total}",
+  "@appointmentsCompletedOf": {
+    "placeholders": {
+      "completed": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "symptoms": "Symptômes",
+  "writeReview": "Écrire un avis",
+  "submitReview": "Soumettre l'avis",
+  "reviewSubmitted": "Avis soumis avec succès",
+  "failedReview": "Échec de la soumission de l'avis",
+  "yourRating": "Votre note",
+  "yourComment": "Votre commentaire (facultatif)",
+  "howItWorks": "Comment ça marche",
+  "howItWorksSubtitle": "Regardez nos vidéos tutoriels pour commencer",
+  "doctorTutorialTitle": "Pour les médecins",
+  "doctorTutorialDesc": "Apprenez à gérer vos rendez-vous, à communiquer avec vos patients et à développer votre pratique avec DocMobi.",
+  "patientTutorialTitle": "Pour les patients",
+  "patientTutorialDesc": "Découvrez comment trouver des médecins près de vous, prendre des rendez-vous et gérer votre santé avec DocMobi.",
+  "watchVideo": "Regarder la vidéo"
 }

@@ -60,32 +60,21 @@ class LoginProvider extends ChangeNotifier {
             userData?['user']?['_id']?.toString() ??
             userData?['_id']?.toString();
 
-        if (userId != null) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('user_id', userId);
-
-          await SocketService.instance.connect(userId);
-          debugPrint('Socket connected after login');
-
-          try {
-            await AgoraChatService.instance.init();
-            await AgoraChatService.instance.login(userId);
-            debugPrint('Agora Chat initialized after login');
-          } catch (e) {
-            debugPrint(' Agora Chat init error: $e');
-          }
-
-          try {
-            await PushNotificationService.init();
-            debugPrint('FCM Token registered after login');
-          } catch (e) {
-            debugPrint('FCM registration error: $e');
-          }
-        }
-
         debugPrint('Login successful - Role: $userRole');
 
         if (userRole == userType.toLowerCase()) {
+          if (userId != null) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('user_id', userId);
+
+            // Initialize socket / Agora chat / FCM in the BACKGROUND. These are
+            // network round-trips (Agora login alone can take seconds) and the
+            // home screen doesn't need them ready to render — chat screens call
+            // AgoraChatService.login() themselves when opened. Awaiting them
+            // here was the main reason login felt slow.
+            _initServicesInBackground(userId);
+          }
+
           final l10n = AppLocalizations.of(context)!;
           _showSnackBar(
             context,
@@ -93,7 +82,8 @@ class LoginProvider extends ChangeNotifier {
             isError: false,
           );
 
-          await Future.delayed(const Duration(milliseconds: 500));
+          _isLoading = false;
+          notifyListeners();
 
           if (userRole == 'patient') {
             Navigator.pushAndRemoveUntil(
@@ -142,6 +132,34 @@ class LoginProvider extends ChangeNotifier {
       final l10n = AppLocalizations.of(context)!;
       _showSnackBar(context, l10n.connectionError, isError: true);
     }
+  }
+
+  /// Fire-and-forget initialization of realtime/push services after login.
+  /// Runs after navigation so it never blocks the login button.
+  void _initServicesInBackground(String userId) {
+    () async {
+      try {
+        await SocketService.instance.connect(userId);
+        debugPrint('Socket connected after login');
+      } catch (e) {
+        debugPrint('Socket connect error: $e');
+      }
+
+      try {
+        await AgoraChatService.instance.init();
+        await AgoraChatService.instance.login(userId);
+        debugPrint('Agora Chat initialized after login');
+      } catch (e) {
+        debugPrint('Agora Chat init error: $e');
+      }
+
+      try {
+        await PushNotificationService.init();
+        debugPrint('FCM Token registered after login');
+      } catch (e) {
+        debugPrint('FCM registration error: $e');
+      }
+    }();
   }
 
   String _capitalize(String text) {
