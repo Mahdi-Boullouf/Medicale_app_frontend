@@ -756,6 +756,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 availableSlots: availableSlots,
                 selectedTimeSlot: selectedTimeSlot,
                 isLoading: _isLoadingSlots,
+                selectedDate: selectedDate,
                 onSlotSelected: (slot) =>
                     setState(() => selectedTimeSlot = slot),
               ),

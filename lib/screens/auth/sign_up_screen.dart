@@ -286,7 +286,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               Icon(Icons.gavel_rounded, color: Color(0xFF1664CD)),
               SizedBox(width: 10),
               Text(
-                'Terms of Service',
+                'Conditions d\'Utilisation',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -299,46 +299,137 @@ class _SignUpScreenState extends State<SignUpScreen> {
             child: ListBody(
               children: [
                 Text(
-                  'By accepting, you agree to our Terms of Service and End User License Agreement (EULA).',
-                  style: TextStyle(fontSize: 14, color: Colors.black87),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Safety & Conduct Policy:',
+                  'Confidentialité et Protection des Données',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Colors.redAccent,
+                    color: Color(0xFF0B3267),
                   ),
                 ),
                 SizedBox(height: 8),
                 Text(
-                  '• We have zero tolerance for objectionable content or abusive users.',
-                  style: TextStyle(fontSize: 13, color: Colors.black87),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  '• You may not post defamatory, obscene, pornographic, or illegal content.',
-                  style: TextStyle(fontSize: 13, color: Colors.black87),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  '• Violators will be ejected and their content removed within 24 hours.',
+                  '• Docmobi protège la confidentialité des patients et des professionnels de santé.\n'
+                  '• Les données personnelles sont utilisées uniquement pour le fonctionnement et l\'amélioration des services.\n'
+                  '• Docmobi ne vend ni ne partage les données personnelles avec des tiers non autorisés.\n'
+                  '• Les informations des patients et des médecins sont traitées de manière confidentielle et sécurisée.',
                   style: TextStyle(fontSize: 13, color: Colors.black87),
                 ),
                 SizedBox(height: 12),
                 Text(
-                  'User Features:',
+                  'Utilisation de la Plateforme',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1664CD),
+                    color: Color(0xFF0B3267),
                   ),
                 ),
                 SizedBox(height: 8),
                 Text(
-                  '• You can report content or block users at any time via the (...) menu.',
+                  '• Les utilisateurs doivent fournir des informations exactes et à jour.\n'
+                  '• Toute usurpation d\'identité, fraude ou fausse information est strictement interdite.\n'
+                  '• Chaque utilisateur est responsable des informations publiées sur son compte.',
                   style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Rendez-vous Médicaux',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0B3267),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '• Les médecins peuvent accepter, modifier, reporter ou annuler un rendez-vous si nécessaire.\n'
+                  '• Les patients sont responsables de l\'exactitude des informations fournies lors de la prise de rendez-vous.\n'
+                  '• Docmobi facilite la mise en relation mais ne garantit pas la disponibilité des professionnels de santé.',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Réseau Social et Contenu',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0B3267),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '• Les utilisateurs doivent respecter les règles de courtoisie et de professionnalisme.\n'
+                  '• Les contenus offensants, trompeurs, diffamatoires, illégaux ou nuisibles sont interdits.\n'
+                  '• Docmobi se réserve le droit de supprimer tout contenu non conforme.',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Notifications et Localisation',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0B3267),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '• L\'application peut envoyer des notifications relatives aux rendez-vous, aux messages et aux mises à jour importantes.\n'
+                  '• La géolocalisation peut être utilisée pour améliorer la recherche de professionnels de santé à proximité.',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Suspension des Comptes',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0B3267),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '• Docmobi peut suspendre ou supprimer tout compte ne respectant pas les présentes conditions.\n'
+                  '• Les contenus ou comportements abusifs peuvent entraîner une exclusion immédiate de la plateforme.',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Limitation de Responsabilité',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0B3267),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '• Docmobi est une plateforme technologique de mise en relation entre patients et professionnels de santé.\n'
+                  '• Docmobi ne fournit pas de diagnostic médical et ne remplace pas une consultation médicale.\n'
+                  '• Les actes médicaux, conseils et décisions relèvent exclusivement de la responsabilité du professionnel de santé concerné.',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Acceptation',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0B3267),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'En cliquant sur « Accepter », vous reconnaissez avoir lu, compris et accepté l\'ensemble des présentes Conditions d\'Utilisation et de la Politique de Confidentialité de Docmobi.',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'En acceptant, vous acceptez les Conditions d\'Utilisation, la Politique de Confidentialité et le Contrat de Licence Utilisateur Final (EULA) de Docmobi.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.black54,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ],
             ),
@@ -855,18 +946,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               children: [
                                 TextSpan(
                                   text:
-                                      'I agree to the Terms of Service and confirm that I understand there is  ',
+                                      'J\'accepte les Conditions d\'Utilisation, la Politique de Confidentialité et l\'',
                                 ),
                                 TextSpan(
-                                  text: 'zero tolerance',
+                                  text: 'EULA',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.red,
+                                    color: Color(0xFF1664CD),
                                   ),
                                 ),
                                 TextSpan(
-                                  text:
-                                      ' for objectionable content or abusive users.',
+                                  text: ' de Docmobi.',
                                 ),
                               ],
                             ),

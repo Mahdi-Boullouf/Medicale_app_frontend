@@ -641,30 +641,33 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                for (final preset in [10, 15, 20, 30, 45, 60])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text('${preset}m'),
-                      selected: _sessionDurationMinutes == preset,
-                      selectedColor: const Color(0xFF1664CD),
-                      labelStyle: TextStyle(
-                        color: _sessionDurationMinutes == preset
-                            ? Colors.white
-                            : const Color(0xFF1B2C49),
-                        fontWeight: FontWeight.w600,
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final preset in [10, 15, 20, 30, 45, 60])
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text('${preset}m'),
+                        selected: _sessionDurationMinutes == preset,
+                        selectedColor: const Color(0xFF1664CD),
+                        labelStyle: TextStyle(
+                          color: _sessionDurationMinutes == preset
+                              ? Colors.white
+                              : const Color(0xFF1B2C49),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        onSelected: (_) {
+                          setState(() {
+                            _sessionDurationMinutes = preset;
+                            _durationController.text = preset.toString();
+                          });
+                        },
                       ),
-                      onSelected: (_) {
-                        setState(() {
-                          _sessionDurationMinutes = preset;
-                          _durationController.text = preset.toString();
-                        });
-                      },
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 10),
             Row(
@@ -946,8 +949,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                 ),
               ),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Column(
               children: [
                 TextButton.icon(
                   onPressed: () => _addNewTimeSlot(data),
@@ -964,7 +966,6 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 15),
                 TextButton.icon(
                   onPressed: () => _addHourSlots(data),
                   icon: const Icon(

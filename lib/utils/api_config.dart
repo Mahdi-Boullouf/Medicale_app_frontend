@@ -7,7 +7,7 @@ class ApiConfig {
   static const String prodUrl = 'https://api.docmobidz.com';
 
   /// Development URLs
-  static const String localhostUrl = 'http://localhost:3000';
+  static const String localhostUrl = 'http://localhost:4000';
   static const String androidEmulatorUrl = 'http://10.0.2.2:5005';
 
   /// Your computer's local IP (for physical device testing on same WiFi)
@@ -19,6 +19,7 @@ class ApiConfig {
 
   /// Get base URL based on environment and platform
   static String get baseUrl {
+    return localhostUrl; // For testin  g, you can change this to localhostUrl or localNetworkUrl
     if (kReleaseMode || _currentMode == DevMode.production) {
       return prodUrl;
     }

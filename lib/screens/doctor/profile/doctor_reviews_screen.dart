@@ -32,10 +32,15 @@ class _DoctorReviewsScreenState extends State<DoctorReviewsScreen> {
       final response = await ApiService.getMyReviews();
       if (response['success'] == true && response['data'] != null) {
         final data = response['data'];
+        final List<dynamic> reviews = data is List ? data : (data['items'] ?? []);
+        final int total = reviews.length;
+        final double avg = total > 0
+            ? reviews.fold<double>(0, (sum, r) => sum + (r['rating'] ?? 0).toDouble()) / total
+            : 0.0;
         setState(() {
-          _reviews = data['items'] ?? [];
-          _avgRating = (data['summary']?['avgRating'] ?? 0.0).toDouble();
-          _totalReviews = data['summary']?['totalReviews'] ?? 0;
+          _reviews = reviews;
+          _totalReviews = total;
+          _avgRating = avg;
           _isLoading = false;
         });
       } else {

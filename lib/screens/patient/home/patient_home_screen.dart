@@ -23,6 +23,8 @@ import '../../../services/location_service.dart';
 import '../../../services/directions_service.dart';
 import '../../../utils/marker_factory.dart';
 import 'package:docmobi/screens/patient/profile/patient_profile_screen.dart';
+import 'package:docmobi/screens/location/location_picker_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../widgets/custom_image.dart';
 import 'dart:async';
 
@@ -174,6 +176,121 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
         _isLoadingLocation = false;
       });
     }
+    _checkLocationAndPrompt();
+  }
+
+  Future<void> _checkLocationAndPrompt() async {
+    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    final alreadyShown = prefs.getBool('location_prompt_shown_patient') ?? false;
+    if (alreadyShown) return;
+    await prefs.setBool('location_prompt_shown_patient', true);
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (mounted) _showLocationBottomSheet();
+  }
+
+  void _showLocationBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1664CD).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.location_on_rounded,
+                color: Color(0xFF1664CD),
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Définissez votre localisation',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1B2C49),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Partagez votre position pour trouver les médecins les plus proches de chez vous.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.black54,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.of(ctx).pop();
+                  final result = await Navigator.push<Map<String, dynamic>>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const LocationPickerScreen(),
+                    ),
+                  );
+                  if (result != null && mounted) {
+                    await legacy_provider.Provider.of<UserProvider>(
+                      context,
+                      listen: false,
+                    ).fetchUserProfile();
+                  }
+                },
+                icon: const Icon(Icons.my_location_rounded, color: Colors.white),
+                label: const Text(
+                  'Définir ma localisation',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1664CD),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text(
+                'Plus tard',
+                style: TextStyle(color: Colors.black45, fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -744,14 +861,14 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
                                   ),
                                   child: Row(
                                     children: [
-                                      CustomImage(
-                                        imageUrl:
-                                            userProvider.user?.profileImage,
-                                        width: 56,
-                                        height: 56,
-                                        shape: BoxShape.circle,
-                                        placeholderAsset:
-                                            'assets/images/profile.png',
+                                      CircleAvatar(
+                                        radius: 28,
+                                        backgroundColor: const Color(0xFF1664CD),
+                                        child: const Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 30,
+                                        ),
                                       ),
 
                                       const SizedBox(width: 12),

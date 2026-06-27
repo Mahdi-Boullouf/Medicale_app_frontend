@@ -194,9 +194,7 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
 
           final userName = user?.fullName ?? 'Doctor';
           final userRole = user?.role ?? 'doctor';
-          final profileImageUrl = user?.profileImage;
-
-          //  Use Optimistic Value if available, otherwise Provider value
+//  Use Optimistic Value if available, otherwise Provider value
           final appointementsDisabled = user?.appointmentsDisabled ?? false;
           final isVideoCallAvailable =
               _optimisticVideoCallValue ??
@@ -216,16 +214,14 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
                       children: [
                         Stack(
                           children: [
-                            CircleAvatar(
+                            const CircleAvatar(
                               radius: 55,
-                              backgroundImage:
-                                  profileImageUrl != null &&
-                                      profileImageUrl.isNotEmpty
-                                  ? NetworkImage(profileImageUrl)
-                                  : const AssetImage(
-                                          'assets/images/doctor_booking.png',
-                                        )
-                                        as ImageProvider,
+                              backgroundColor: Color(0xFF1664CD),
+                              child: Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 58,
+                              ),
                             ),
                             if (isLoading)
                               Positioned.fill(

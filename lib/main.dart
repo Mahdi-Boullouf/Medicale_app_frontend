@@ -10,6 +10,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:docmobi/providers/appointment_provider.dart';
 import 'package:provider/provider.dart' as legacy_provider;
 import 'package:docmobi/providers/doctor_provider.dart';
@@ -21,7 +22,8 @@ bool _chatSocketInitializing = false;
 bool _chatSocketInitialized = false;
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   debugPrint('');
   debugPrint('╔═══════════════════════════════════════════════════════╗');
@@ -58,6 +60,7 @@ void main() async {
   debugPrint('Critical initialization complete - Starting app');
   debugPrint('');
 
+  FlutterNativeSplash.remove();
   runApp(
     ProviderScope(
       overrides: [

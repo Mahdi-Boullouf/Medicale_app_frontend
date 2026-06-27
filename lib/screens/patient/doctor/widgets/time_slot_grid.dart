@@ -9,6 +9,7 @@ class TimeSlotGrid extends StatelessWidget {
   final bool isLoading;
   final ValueChanged<TimeSlot> onSlotSelected;
   final String title;
+  final DateTime? selectedDate;
 
   const TimeSlotGrid({
     super.key,
@@ -17,6 +18,7 @@ class TimeSlotGrid extends StatelessWidget {
     required this.isLoading,
     required this.onSlotSelected,
     required this.title,
+    this.selectedDate,
   });
 
   @override
@@ -89,11 +91,35 @@ class TimeSlotGrid extends StatelessWidget {
     child: child,
   );
 
+  bool _isSlotInPast(TimeSlot slot) {
+    if (selectedDate == null) return false;
+    final now = DateTime.now();
+    final isToday =
+        selectedDate!.year == now.year &&
+        selectedDate!.month == now.month &&
+        selectedDate!.day == now.day;
+    if (!isToday) return false;
+    try {
+      final parts = slot.start.split(':');
+      final slotTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+      );
+      return slotTime.isBefore(now);
+    } catch (_) {
+      return false;
+    }
+  }
+
   Widget _buildTimeSlotCard(BuildContext context, TimeSlot slot) {
     final isSelected =
         selectedTimeSlot?.start == slot.start &&
         selectedTimeSlot?.end == slot.end;
-    final isDisabled = slot.isBooked == true;
+    final isPast = _isSlotInPast(slot);
+    final isDisabled = slot.isBooked == true || isPast;
 
     return GestureDetector(
       onTap: isDisabled ? null : () => onSlotSelected(slot),
@@ -158,7 +184,16 @@ class TimeSlotGrid extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            if (isDisabled)
+            if (isPast)
+              const Text(
+                "Passé",
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              )
+            else if (slot.isBooked == true)
               const Text(
                 "Booked",
                 style: TextStyle(

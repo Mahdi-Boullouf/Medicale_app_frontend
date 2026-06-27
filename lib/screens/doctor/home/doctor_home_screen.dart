@@ -17,6 +17,8 @@ import 'dart:async';
 import '../../../providers/notification_provider.dart';
 import '../../../widgets/custom_image.dart';
 import '../../patient/home/search_doctor_screen.dart';
+import '../../location/location_picker_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DoctorHomeScreen extends ConsumerStatefulWidget {
   const DoctorHomeScreen({super.key});
@@ -178,6 +180,7 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
   }
     await _loadUserData();
     await _loadPosts();
+    _checkLocationAndPrompt();
    }
 
    void _handleTokenMissing() {
@@ -221,6 +224,121 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
     } catch (e) {
       debugPrint(' Error loading user data: $e');
     }
+  }
+
+  Future<void> _checkLocationAndPrompt() async {
+    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    final alreadyShown = prefs.getBool('location_prompt_shown_doctor') ?? false;
+    if (alreadyShown) return;
+    await prefs.setBool('location_prompt_shown_doctor', true);
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (mounted) _showLocationBottomSheet();
+  }
+
+  void _showLocationBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1664CD).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.location_on_rounded,
+                color: Color(0xFF1664CD),
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Définissez votre localisation',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1B2C49),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Aidez les patients à vous trouver plus facilement en indiquant l\'adresse de votre cabinet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.black54,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.of(ctx).pop();
+                  final result = await Navigator.push<Map<String, dynamic>>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const LocationPickerScreen(),
+                    ),
+                  );
+                  if (result != null && mounted) {
+                    final userProvider = legacy_provider.Provider.of<UserProvider>(
+                      context,
+                      listen: false,
+                    );
+                    await userProvider.fetchUserProfile();
+                  }
+                },
+                icon: const Icon(Icons.my_location_rounded, color: Colors.white),
+                label: const Text(
+                  'Définir ma localisation',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1664CD),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text(
+                'Plus tard',
+                style: TextStyle(color: Colors.black45, fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _loadPosts() async {
@@ -418,13 +536,14 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
                           children: [
                             GestureDetector(
                               onTap: _navigateToProfile,
-                              child: CustomImage(
-                                imageUrl: user?.profileImage,
-                                width: 56,
-                                height: 56,
-                                shape: BoxShape.circle,
-                                // placeholderAsset:
-                                //     'assets/images/doctor_booking.png',
+                              child: const CircleAvatar(
+                                radius: 28,
+                                backgroundColor: Color(0xFF1664CD),
+                                child: Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 30,
+                                ),
                               ),
                             ),
 
@@ -1018,14 +1137,11 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundImage:
-                        user?.profileImage != null &&
-                            user!.profileImage!.isNotEmpty
-                        ? NetworkImage(user.profileImage!)
-                        : const AssetImage('assets/images/doctor_booking.png')
-                              as ImageProvider,
+                  CustomImage(
+                    imageUrl: user?.profileImage,
+                    width: 40,
+                    height: 40,
+                    shape: BoxShape.circle,
                   ),
                   const SizedBox(width: 10),
                   Expanded(

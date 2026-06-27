@@ -92,18 +92,19 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                 /// Profile Picture Section
                 Stack(
                   children: [
-                    CircleAvatar(
+                    const CircleAvatar(
                       radius: 50,
-                      backgroundImage: user?.profileImage != null
-                          ? NetworkImage(user!.profileImage!)
-                          : const AssetImage('assets/images/doctor1.png')
-                                as ImageProvider,
+                      backgroundColor: Color(0xFF1664CD),
+                      child: Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 52,
+                      ),
                     ),
-                    // Loading indicator overlay
                     if (userProvider.isLoading)
                       Positioned.fill(
                         child: Container(
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: Colors.black26,
                             shape: BoxShape.circle,
                           ),

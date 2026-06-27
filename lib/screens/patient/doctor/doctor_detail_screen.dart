@@ -612,9 +612,8 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
   }
 
   Future<void> _showReviewDialog(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context)!;
-    double selectedRating = 0;
-    final commentController = TextEditingController();
 
     await showModalBottomSheet<void>(
       context: context,
@@ -622,113 +621,26 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 24,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.writeReview,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(l10n.yourRating),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: List.generate(5, (i) {
-                      return GestureDetector(
-                        onTap: () => setSheetState(
-                          () => selectedRating = (i + 1).toDouble(),
-                        ),
-                        child: Icon(
-                          i < selectedRating ? Icons.star : Icons.star_border,
-                          color: Colors.orange,
-                          size: 36,
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: commentController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: l10n.yourComment,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: selectedRating == 0
-                          ? null
-                          : () async {
-                              final messenger =
-                                  ScaffoldMessenger.of(context);
-                              Navigator.pop(sheetContext);
-                              final res = await ApiService.createReview(
-                                doctorId: widget.doctor.id,
-                                rating: selectedRating,
-                                comment: commentController.text.trim(),
-                              );
-                              if (!mounted) return;
-                              if (res['success'] == true) {
-                                messenger.showSnackBar(
-                                  SnackBar(
-                                    content: Text(l10n.reviewSubmitted),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                                _loadDoctorReviews();
-                              } else {
-                                messenger.showSnackBar(
-                                  SnackBar(
-                                    content: Text(l10n.failedReview),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1664CD),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: Text(
-                        l10n.submitReview,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+      builder: (_) => _ReviewSheet(
+        doctorId: widget.doctor.id,
+        l10n: l10n,
+        onSubmitted: (res) {
+          if (!mounted) return;
+          if (res['success'] == true) {
+            messenger.showSnackBar(SnackBar(
+              content: Text(l10n.reviewSubmitted),
+              backgroundColor: Colors.green,
+            ));
+            _loadDoctorReviews();
+          } else {
+            messenger.showSnackBar(SnackBar(
+              content: Text(l10n.failedReview),
+              backgroundColor: Colors.red,
+            ));
+          }
+        },
+      ),
     );
-    commentController.dispose();
   }
 
   Widget _buildBulletItem(String text) {
@@ -880,5 +792,124 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
         );
       }
     }
+  }
+}
+
+class _ReviewSheet extends StatefulWidget {
+  final String doctorId;
+  final AppLocalizations l10n;
+  final void Function(Map<String, dynamic> res) onSubmitted;
+
+  const _ReviewSheet({
+    required this.doctorId,
+    required this.l10n,
+    required this.onSubmitted,
+  });
+
+  @override
+  State<_ReviewSheet> createState() => _ReviewSheetState();
+}
+
+class _ReviewSheetState extends State<_ReviewSheet> {
+  double _rating = 0;
+  final _commentController = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() => _submitting = true);
+    final res = await ApiService.createReview(
+      doctorId: widget.doctorId,
+      rating: _rating,
+      comment: _commentController.text.trim(),
+    );
+    if (!mounted) return;
+    Navigator.pop(context);
+    widget.onSubmitted(res);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = widget.l10n;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.writeReview,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Text(l10n.yourRating),
+          const SizedBox(height: 8),
+          Row(
+            children: List.generate(5, (i) {
+              return GestureDetector(
+                onTap: () => setState(() => _rating = (i + 1).toDouble()),
+                child: Icon(
+                  i < _rating ? Icons.star : Icons.star_border,
+                  color: Colors.orange,
+                  size: 36,
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _commentController,
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: l10n.yourComment,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: (_rating == 0 || _submitting) ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1664CD),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: _submitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      l10n.submitReview,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
