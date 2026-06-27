@@ -92,6 +92,8 @@ PODS:
     - SDWebImageWebPCoder
   - flutter_local_notifications (0.0.1):
     - Flutter
+  - flutter_native_splash (2.4.3):
+    - Flutter
   - flutter_secure_storage (6.0.0):
     - Flutter
   - gal (1.0.0):
@@ -209,6 +211,7 @@ DEPENDENCIES:
   - flutter_callkit_incoming (from `.symlinks/plugins/flutter_callkit_incoming/ios`)
   - flutter_image_compress_common (from `.symlinks/plugins/flutter_image_compress_common/ios`)
   - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
+  - flutter_native_splash (from `.symlinks/plugins/flutter_native_splash/ios`)
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - gal (from `.symlinks/plugins/gal/darwin`)
   - geocoding_ios (from `.symlinks/plugins/geocoding_ios/ios`)
@@ -268,6 +271,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_image_compress_common/ios"
   flutter_local_notifications:
     :path: ".symlinks/plugins/flutter_local_notifications/ios"
+  flutter_native_splash:
+    :path: ".symlinks/plugins/flutter_native_splash/ios"
   flutter_secure_storage:
     :path: ".symlinks/plugins/flutter_secure_storage/ios"
   gal:
@@ -323,6 +328,7 @@ SPEC CHECKSUMS:
   flutter_callkit_incoming: 417dd1b46541cdd5d855ad795ccbe97d1c18155e
   flutter_image_compress_common: ec1d45c362c9d30a3f6a0426c297f47c52007e3e
   flutter_local_notifications: ff50f8405aaa0ccdc7dcfb9022ca192e8ad9688f
+  flutter_native_splash: df59bb2e1421aa0282cb2e95618af4dcb0c56c29
   flutter_secure_storage: d33dac7ae2ea08509be337e775f6b59f1ff45f12
   gal: 6a522c75909f1244732d4596d11d6a2f86ff37a5
   geocoding_ios: a389ea40f6f548de6e63006a2e31bf66ff80769a
