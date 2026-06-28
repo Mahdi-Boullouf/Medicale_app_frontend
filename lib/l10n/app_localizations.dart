@@ -3334,6 +3334,24 @@ abstract class AppLocalizations {
   /// **'{completed} completed of {total}'**
   String appointmentsCompletedOf(int completed, int total);
 
+  /// No description provided for @tapToViewDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to view details'**
+  String get tapToViewDetails;
+
+  /// No description provided for @attachments.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments'**
+  String get attachments;
+
+  /// No description provided for @noAttachments.
+  ///
+  /// In en, this message translates to:
+  /// **'No attachments'**
+  String get noAttachments;
+
   /// No description provided for @submitReview.
   ///
   /// In en, this message translates to:

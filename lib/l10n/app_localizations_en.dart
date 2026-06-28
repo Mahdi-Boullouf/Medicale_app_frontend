@@ -1762,6 +1762,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get tapToViewDetails => 'Tap to view details';
+
+  @override
+  String get attachments => 'Attachments';
+
+  @override
+  String get noAttachments => 'No attachments';
+
+  @override
   String get submitReview => 'Submit Review';
 
   @override

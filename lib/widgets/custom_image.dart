@@ -53,14 +53,28 @@ class CustomImage extends StatelessWidget {
   }
 
   Widget _buildPlaceholder() {
+    if (shape == BoxShape.circle) {
+      final double size = width ?? height ?? 48;
+      return Container(
+        width: size,
+        height: size,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color(0xFFE9F0FF),
+        ),
+        child: Icon(
+          Icons.person,
+          color: const Color(0xFF1664CD),
+          size: size * 0.55,
+        ),
+      );
+    }
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
         shape: shape,
-        borderRadius: shape == BoxShape.circle
-            ? null
-            : (borderRadius ?? BorderRadius.circular(8)),
+        borderRadius: borderRadius ?? BorderRadius.circular(8),
         image: DecorationImage(image: AssetImage(placeholderAsset), fit: fit),
       ),
     );

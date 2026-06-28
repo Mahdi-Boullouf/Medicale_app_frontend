@@ -536,14 +536,11 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
                           children: [
                             GestureDetector(
                               onTap: _navigateToProfile,
-                              child: const CircleAvatar(
-                                radius: 28,
-                                backgroundColor: Color(0xFF1664CD),
-                                child: Icon(
-                                  Icons.person,
-                                  color: Colors.white,
-                                  size: 30,
-                                ),
+                              child: CustomImage(
+                                imageUrl: user?.profileImage,
+                                width: 56,
+                                height: 56,
+                                shape: BoxShape.circle,
                               ),
                             ),
 
@@ -1282,12 +1279,11 @@ class DoctorInfoBottomSheet extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            CircleAvatar(
-              radius: 50,
-              backgroundImage: doctorImage != null
-                  ? NetworkImage(doctorImage)
-                  : const AssetImage('assets/images/doctor.png')
-                        as ImageProvider,
+            CustomImage(
+              imageUrl: doctorImage,
+              width: 100,
+              height: 100,
+              shape: BoxShape.circle,
             ),
             const SizedBox(height: 16),
 

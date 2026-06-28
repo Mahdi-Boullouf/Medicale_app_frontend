@@ -861,14 +861,11 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
                                   ),
                                   child: Row(
                                     children: [
-                                      CircleAvatar(
-                                        radius: 28,
-                                        backgroundColor: const Color(0xFF1664CD),
-                                        child: const Icon(
-                                          Icons.person,
-                                          color: Colors.white,
-                                          size: 30,
-                                        ),
+                                      CustomImage(
+                                        imageUrl: userProvider.user?.profileImage,
+                                        width: 56,
+                                        height: 56,
+                                        shape: BoxShape.circle,
                                       ),
 
                                       const SizedBox(width: 12),

@@ -565,6 +565,9 @@
     }
   },
   "symptoms": "الأعراض",
+  "tapToViewDetails": "اضغط لعرض التفاصيل",
+  "attachments": "المرفقات",
+  "noAttachments": "لا توجد مرفقات",
   "writeReview": "كتابة تقييم",
   "submitReview": "إرسال التقييم",
   "reviewSubmitted": "تم إرسال التقييم بنجاح",

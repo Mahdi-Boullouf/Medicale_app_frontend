@@ -1,4 +1,6 @@
 import 'package:docmobi/l10n/app_localizations.dart';
+import 'package:docmobi/models/user_model.dart';
+import 'package:docmobi/providers/user_provider.dart';
 import 'package:docmobi/screens/doctor/navigation/doctor_main_navigation.dart';
 import 'package:docmobi/screens/onboarding/profile/select_profile_screen.dart';
 import 'package:docmobi/screens/patient/navigation/patient_main_navigation.dart';
@@ -7,6 +9,7 @@ import 'package:docmobi/services/api_service.dart';
 import 'package:docmobi/services/push_notification_service.dart';
 import 'package:docmobi/services/socket_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginProvider extends ChangeNotifier {
@@ -66,13 +69,21 @@ class LoginProvider extends ChangeNotifier {
           if (userId != null) {
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString('user_id', userId);
-
-            // Initialize socket / Agora chat / FCM in the BACKGROUND. These are
-            // network round-trips (Agora login alone can take seconds) and the
-            // home screen doesn't need them ready to render — chat screens call
-            // AgoraChatService.login() themselves when opened. Awaiting them
-            // here was the main reason login felt slow.
             _initServicesInBackground(userId);
+          }
+
+          // Populate UserProvider immediately from login response so avatar
+          // shows up right away without waiting for fetchUserProfile().
+          if (userData?['user'] != null) {
+            try {
+              final userModel = UserModel.fromJson(
+                Map<String, dynamic>.from(userData!['user']),
+              );
+              if (context.mounted) {
+                Provider.of<UserProvider>(context, listen: false)
+                    .setUserFromLogin(userModel);
+              }
+            } catch (_) {}
           }
 
           final l10n = AppLocalizations.of(context)!;

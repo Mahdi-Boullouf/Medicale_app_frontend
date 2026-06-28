@@ -17,6 +17,13 @@ class UserProvider with ChangeNotifier {
   bool get isLoggedIn => _user != null;
   bool isAppointmentsDisabled = false;
 
+  /// Set user immediately from login response data (no network call needed).
+  void setUserFromLogin(UserModel user) {
+    _user = user;
+    isAppointmentsDisabled = user.appointmentsDisabled ?? false;
+    notifyListeners();
+  }
+
   ///  Load user from local cache immediately on app start
   Future<void> loadFromCache() async {
     try {

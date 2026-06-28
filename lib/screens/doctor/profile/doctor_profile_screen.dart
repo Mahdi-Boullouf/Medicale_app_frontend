@@ -8,6 +8,7 @@ import 'package:docmobi/screens/doctor/profile/doctor_my_schedule_screen.dart';
 import 'package:docmobi/screens/doctor/profile/doctor_earnigs.dart';
 import 'package:docmobi/screens/patient/profile/change_password_screen.dart';
 import 'package:provider/provider.dart' as legacy_provider;
+import 'package:docmobi/widgets/custom_image.dart';
 import '../../../providers/user_provider.dart';
 import '../../../services/auth_service.dart';
 import 'package:docmobi/services/api_service.dart';
@@ -214,14 +215,11 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
                       children: [
                         Stack(
                           children: [
-                            const CircleAvatar(
-                              radius: 55,
-                              backgroundColor: Color(0xFF1664CD),
-                              child: Icon(
-                                Icons.person,
-                                color: Colors.white,
-                                size: 58,
-                              ),
+                            CustomImage(
+                              imageUrl: user?.profileImage,
+                              width: 110,
+                              height: 110,
+                              shape: BoxShape.circle,
                             ),
                             if (isLoading)
                               Positioned.fill(

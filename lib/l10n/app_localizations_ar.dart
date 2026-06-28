@@ -1738,6 +1738,15 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get tapToViewDetails => 'اضغط لعرض التفاصيل';
+
+  @override
+  String get attachments => 'المرفقات';
+
+  @override
+  String get noAttachments => 'لا توجد مرفقات';
+
+  @override
   String get submitReview => 'إرسال التقييم';
 
   @override

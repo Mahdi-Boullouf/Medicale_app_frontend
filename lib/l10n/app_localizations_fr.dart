@@ -1795,6 +1795,15 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get tapToViewDetails => 'Appuyez pour voir les détails';
+
+  @override
+  String get attachments => 'Pièces jointes';
+
+  @override
+  String get noAttachments => 'Aucune pièce jointe';
+
+  @override
   String get submitReview => 'Soumettre l\'avis';
 
   @override

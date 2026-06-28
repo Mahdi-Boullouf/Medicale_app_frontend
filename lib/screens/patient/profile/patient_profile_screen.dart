@@ -9,6 +9,7 @@ import 'package:docmobi/screens/patient/profile/change_password_screen.dart';
 import 'package:docmobi/screens/patient/navigation/patient_main_navigation.dart';
 
 import 'package:provider/provider.dart' as legacy_provider;
+import 'package:docmobi/widgets/custom_image.dart';
 import '../../../providers/user_provider.dart';
 import '../../../services/auth_service.dart';
 import 'package:docmobi/services/api_service.dart';
@@ -92,14 +93,11 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                 /// Profile Picture Section
                 Stack(
                   children: [
-                    const CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Color(0xFF1664CD),
-                      child: Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 52,
-                      ),
+                    CustomImage(
+                      imageUrl: user?.profileImage,
+                      width: 100,
+                      height: 100,
+                      shape: BoxShape.circle,
                     ),
                     if (userProvider.isLoading)
                       Positioned.fill(

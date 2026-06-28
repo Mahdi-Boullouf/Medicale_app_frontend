@@ -1469,6 +1469,9 @@
     }
   },
   "symptoms": "Symptoms",
+  "tapToViewDetails": "Tap to view details",
+  "attachments": "Attachments",
+  "noAttachments": "No attachments",
   "writeReview": "Write a Review",
   "submitReview": "Submit Review",
   "reviewSubmitted": "Review submitted successfully",

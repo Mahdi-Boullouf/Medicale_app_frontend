@@ -1000,6 +1000,9 @@
     }
   },
   "symptoms": "Symptômes",
+  "tapToViewDetails": "Appuyez pour voir les détails",
+  "attachments": "Pièces jointes",
+  "noAttachments": "Aucune pièce jointe",
   "writeReview": "Écrire un avis",
   "submitReview": "Soumettre l'avis",
   "reviewSubmitted": "Avis soumis avec succès",
