@@ -1,10 +1,11 @@
 import 'package:docmobi/services/push_notification_service.dart';
 import 'package:agora_chat_sdk/agora_chat_sdk.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:docmobi/config/agora_config.dart';
 import 'package:docmobi/services/api_service.dart';
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +17,14 @@ class AgoraChatService {
   AgoraChatService._internal();
 
   bool _isInitialized = false;
+
+  /// The user ID we are (or should be) logged into Agora Chat as. Used to
+  /// recover the session automatically after a disconnect/token expiry.
+  String? _loggedInUserId;
+
+  /// Guards against overlapping reconnect attempts.
+  bool _isRecovering = false;
+  Timer? _reconnectTimer;
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -47,9 +56,12 @@ class AgoraChatService {
       ConnectionEventHandler(
         onConnected: () {
           debugPrint(' [AGORA] Connected to server');
+          _isRecovering = false;
+          _reconnectTimer?.cancel();
         },
         onDisconnected: () {
-          debugPrint(' [AGORA] Disconnected from server');
+          debugPrint(' [AGORA] Disconnected from server — scheduling recovery');
+          _scheduleReconnect();
         },
         onTokenWillExpire: () {
           debugPrint(' [AGORA] Token will expire soon — refreshing');
@@ -63,7 +75,36 @@ class AgoraChatService {
     );
   }
 
-  Future<void> _refreshToken() async {
+  /// Attempt to restore the Agora Chat session after a disconnect. The SDK's
+  /// own auto-reconnect handles transient drops, but if the token has gone
+  /// stale we proactively renew it; if we were fully logged out we re-login.
+  void _scheduleReconnect() {
+    if (_isRecovering || _loggedInUserId == null) return;
+    _isRecovering = true;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(const Duration(seconds: 3), () async {
+      try {
+        final connected = await ChatClient.getInstance.isConnected();
+        if (connected) {
+          _isRecovering = false;
+          return;
+        }
+        debugPrint('🔄 [AGORA] Still disconnected — attempting recovery');
+        // Renewing the token nudges the SDK to reconnect; if the session is
+        // gone entirely, fall back to a full re-login.
+        final refreshed = await _refreshToken();
+        if (!refreshed && _loggedInUserId != null) {
+          await login(_loggedInUserId!);
+        }
+      } catch (e) {
+        debugPrint('⚠️ [AGORA] Recovery attempt failed: $e');
+      } finally {
+        _isRecovering = false;
+      }
+    });
+  }
+
+  Future<bool> _refreshToken() async {
     try {
       final response = await ApiService.getAgoraChatToken();
       if (response['success'] == true) {
@@ -71,10 +112,40 @@ class AgoraChatService {
         if (newToken != null && newToken.isNotEmpty) {
           await ChatClient.getInstance.renewAgoraToken(newToken);
           debugPrint('✅ [AGORA] Token refreshed successfully');
+          return true;
         }
       }
     } catch (e) {
       debugPrint('❌ [AGORA] Token refresh failed: $e');
+    }
+    return false;
+  }
+
+  /// Ensures the SDK is initialized and logged in as [userId] before any
+  /// send/load operation. Safe to call repeatedly — it's a no-op when already
+  /// connected as the right user. This is the single entry point chat screens
+  /// should use so messaging never silently operates while logged out.
+  Future<void> ensureLoggedIn(String userId) async {
+    if (!_isInitialized) {
+      await init();
+    }
+    _loggedInUserId = userId;
+    try {
+      final loggedBefore = await ChatClient.getInstance.isLoginBefore();
+      if (loggedBefore) {
+        final currentId = await ChatClient.getInstance.getCurrentUserId();
+        if (currentId == userId) {
+          // Already the right user — make sure we're actually connected.
+          final connected = await ChatClient.getInstance.isConnected();
+          if (!connected) await _refreshToken();
+          return;
+        }
+        // Logged in as someone else — switch accounts.
+        await ChatClient.getInstance.logout();
+      }
+      await login(userId);
+    } catch (e) {
+      debugPrint('⚠️ [AGORA] ensureLoggedIn failed: $e');
     }
   }
 
@@ -87,6 +158,8 @@ class AgoraChatService {
   bool get isConnected => _isInitialized;
 
   Future<void> login(String userId, {String? token}) async {
+    // Remember who we should be logged in as so recovery can restore it.
+    _loggedInUserId = userId;
     try {
       if (await ChatClient.getInstance.isLoginBefore()) {
         final currentId = await ChatClient.getInstance.getCurrentUserId();
@@ -99,12 +172,23 @@ class AgoraChatService {
         await ChatClient.getInstance.logout();
       }
 
+      // Fetch a token, retrying a few times — a transient token-fetch failure
+      // must NOT drop us to the insecure password path, which is the main
+      // reason sessions ended up in a bad state.
       String? loginToken = token;
-      if (loginToken == null) {
-        debugPrint('🔍 Fetching Agora Chat token for login...');
-        final response = await ApiService.getAgoraChatToken();
-        if (response['success'] == true) {
-          loginToken = response['data']?['token'];
+      if (loginToken == null || loginToken.isEmpty) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+          debugPrint('🔍 Fetching Agora Chat token (attempt ${attempt + 1})...');
+          try {
+            final response = await ApiService.getAgoraChatToken();
+            if (response['success'] == true) {
+              loginToken = response['data']?['token'];
+              if (loginToken != null && loginToken.isNotEmpty) break;
+            }
+          } catch (e) {
+            debugPrint('⚠️ Token fetch attempt ${attempt + 1} failed: $e');
+          }
+          await Future.delayed(const Duration(milliseconds: 600));
         }
       }
 
@@ -112,8 +196,9 @@ class AgoraChatService {
         debugPrint('✅ Logging into Agora with token');
         await ChatClient.getInstance.loginWithToken(userId, loginToken);
       } else {
-        // Fallback or error - using userId as password (original insecure way)
-        debugPrint('⚠️ No token found, falling back to insecure login');
+        // Last-resort fallback (token service unreachable). Kept only so a
+        // user is not fully locked out of chat during a backend outage.
+        debugPrint('⚠️ No token after retries, falling back to password login');
         await ChatClient.getInstance.loginWithPassword(userId, userId);
       }
       debugPrint('✅ Agora Chat Login Success: $userId');
@@ -235,6 +320,9 @@ class AgoraChatService {
   }
 
   Future<void> logout() async {
+    _loggedInUserId = null;
+    _reconnectTimer?.cancel();
+    _isRecovering = false;
     try {
       await ChatClient.getInstance.logout();
       debugPrint('✅ Agora Chat Logout Success');
@@ -520,26 +608,36 @@ class AgoraChatService {
     try {
       ChatConversation? conv = await ChatClient.getInstance.chatManager
           .getConversation(conversationId);
-      if (conv == null) return;
 
-      await conv.deleteMessageByIds(messageIds);
+      // Local deletion (only if the conversation exists locally).
+      if (conv != null) {
+        await conv.deleteMessageByIds(messageIds);
+      }
 
-      // ✅ Server-side deletion
-      await ChatClient.getInstance.chatManager.deleteRemoteMessagesWithIds(
-        conversationId: conversationId,
-        type: ChatConversationType.Chat,
-        msgIds: messageIds,
-      );
+      // Server-side deletion is best-effort: if it fails (e.g. network), the
+      // local delete already succeeded, so we must NOT rethrow and make the UI
+      // think nothing happened.
+      try {
+        await ChatClient.getInstance.chatManager.deleteRemoteMessagesWithIds(
+          conversationId: conversationId,
+          type: ChatConversationType.Chat,
+          msgIds: messageIds,
+        );
+      } catch (e) {
+        debugPrint('⚠️ Remote message delete failed (kept local): $e');
+      }
 
-      debugPrint(
-        '✅ Deleted ${messageIds.length} messages from $conversationId (Local & Server)',
-      );
+      debugPrint('✅ Deleted ${messageIds.length} messages from $conversationId');
     } catch (e) {
       debugPrint('❌ Delete Messages Failed: $e');
       rethrow;
     }
   }
 
+  /// Removes a conversation from THIS device's list. By design this is
+  /// non-destructive: it does NOT wipe message history from the Agora server,
+  /// so the other participant keeps their copy and history can reappear if new
+  /// messages arrive. This prevents the "chat got deleted for everyone" bug.
   Future<void> deleteConversation({
     required String conversationId,
     bool deleteMessages = true,
@@ -549,15 +647,7 @@ class AgoraChatService {
         conversationId,
         deleteMessages: deleteMessages,
       );
-
-      // ✅ Server-side deletion
-      await ChatClient.getInstance.chatManager.deleteRemoteConversation(
-        conversationId,
-        conversationType: ChatConversationType.Chat,
-        isDeleteMessage: deleteMessages,
-      );
-
-      debugPrint('✅ Deleted conversation: $conversationId (Local & Server)');
+      debugPrint('✅ Deleted local conversation: $conversationId');
     } catch (e) {
       debugPrint('❌ Delete Conversation Failed: $e');
       rethrow;
@@ -630,16 +720,33 @@ class AgoraChatService {
           msg.conversationId; // Fallback to conversation ID (Agora ID)
 
       if (backendChatId != null) {
+        // Don't double-notify: if the user is already viewing this chat, skip.
+        if (PushNotificationService.currentChatId == backendChatId) {
+          debugPrint('🔕 In this chat already — skipping local notification');
+          return;
+        }
+
+        // Only show an in-app local notification when the app is foregrounded.
+        // When backgrounded/terminated, the backend FCM/APNs push handles it,
+        // so showing one here too would duplicate.
+        final isForeground =
+            WidgetsBinding.instance.lifecycleState ==
+            AppLifecycleState.resumed;
+        if (!isForeground) {
+          debugPrint('📵 App not foreground — leaving notification to FCM');
+          return;
+        }
+
         debugPrint(
           '🔔 Triggering Local Notification for $senderName in chat $backendChatId',
         );
-        // PushNotificationService.showLocalNotificationForChat(
-        //   senderName: senderName,
-        //   content: content,
-        //   chatId: backendChatId,
-        //   otherUserId: msg.from ?? '',
-        //   avatar: avatar,
-        // );
+        PushNotificationService.showLocalNotificationForChat(
+          senderName: senderName,
+          content: content,
+          chatId: backendChatId,
+          otherUserId: msg.from ?? '',
+          avatar: avatar,
+        );
       } else {
         debugPrint('⚠️ Skipping local notification: backendChatId is NULL');
       }

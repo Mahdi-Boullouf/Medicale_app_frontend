@@ -154,8 +154,22 @@ class PushNotificationService {
   static String? _cachedVoipToken;
   static const String _deviceIdKey = 'docmobi_unique_device_id';
 
+  /// Guards against attaching FCM/CallKit/socket listeners more than once.
+  /// init() is called both at app startup and again after login, which was
+  /// double-registering every listener → duplicate notifications and
+  /// double call-accept handling.
+  static bool _listenersInitialized = false;
+
   static Future<void> init() async {
     debugPrint('[PUSH NOTIFICATION SERVICE] Starting initialization...');
+
+    // If listeners are already attached (e.g. init() called again after login),
+    // just (re)register the device token and bail — never attach listeners twice.
+    if (_listenersInitialized) {
+      debugPrint('[PUSH] Already initialized — re-registering device token only');
+      await registerUserDevice();
+      return;
+    }
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
@@ -167,7 +181,7 @@ class PushNotificationService {
         provisional: false,
       );
       debugPrint(
-        ' Notification permission status: \${settings.authorizationStatus}',
+        ' Notification permission status: ${settings.authorizationStatus}',
       );
     } catch (e) {
       debugPrint(' Error requesting notification permissions: $e');
@@ -188,7 +202,7 @@ class PushNotificationService {
 
     FlutterCallkitIncoming.onEvent.listen((CallEvent? event) {
       if (event == null) return;
-      debugPrint(' [CallKit Event] \${event.event}');
+      debugPrint(' [CallKit Event] ${event.event}');
       switch (event.event) {
         case Event.actionCallAccept:
           CallKitService.handleCallKitAction(event.body, accept: true);
@@ -366,6 +380,7 @@ class PushNotificationService {
       await FlutterCallkitIncoming.endAllCalls();
     });
 
+    _listenersInitialized = true;
     debugPrint('[PUSH NOTIFICATION SERVICE] Initialization complete');
   }
 

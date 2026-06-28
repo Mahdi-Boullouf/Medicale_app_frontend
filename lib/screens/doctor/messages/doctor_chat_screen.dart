@@ -95,31 +95,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   }
 
   Future<void> _ensureAgoraConnection() async {
-    // 1. Initialize if needed
-    if (!AgoraChatService.instance.isConnected) {
-      await AgoraChatService.instance.init();
-    }
-
-    // 2. Check if logged in
-    final isLoggedIn = await ChatClient.getInstance.isLoginBefore();
-    debugPrint(
-      ' [Doctor] Agora Login Status: $isLoggedIn | CurrentUser: $_currentUserId',
-    );
-
-    if (!isLoggedIn && _currentUserId != null) {
-      debugPrint(
-        ' [Doctor] Not logged in. Attempting login for $_currentUserId...',
-      );
-      await AgoraChatService.instance.login(_currentUserId!);
-    } else if (isLoggedIn) {
-      final currentAgoraUser = await ChatClient.getInstance.getCurrentUserId();
-      if (currentAgoraUser != _currentUserId && _currentUserId != null) {
-        debugPrint(
-          '[Doctor] Agora ID mismatch ($currentAgoraUser vs $_currentUserId). Relogging...',
-        );
-        await AgoraChatService.instance.logout();
-        await AgoraChatService.instance.login(_currentUserId!);
-      }
+    // Single robust entry point: initializes, logs in as the right user, and
+    // verifies/refreshes the connection. Handles account-mismatch internally.
+    if (_currentUserId != null) {
+      await AgoraChatService.instance.ensureLoggedIn(_currentUserId!);
     }
   }
 
@@ -317,8 +296,11 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     if (confirmed == true && mounted) {
       try {
         final idsToDelete = _selectedMessageIds.toList();
+        // Messages live in the Agora conversation keyed by the PEER user id,
+        // not the backend Mongo chat id. Using chatId here made deletes silently
+        // no-op so messages reappeared on reload.
         await AgoraChatService.instance.deleteMessages(
-          conversationId: widget.chatId,
+          conversationId: _resolvedOtherUserId ?? widget.otherUserId ?? widget.chatId,
           messageIds: idsToDelete,
         );
 

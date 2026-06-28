@@ -195,17 +195,19 @@ class CallProvider extends ChangeNotifier {
             endCall();
           }
         });
-        // Bug #10 fix: If call:accepted was received before listeners registered,
-        // join the channel now since the event was missed.
-        Future.delayed(const Duration(milliseconds: 600), () async {
-          if (!_isDisposed && !_channelJoined &&
-              _agoraService.currentChannel == chatId) {
-            debugPrint('[CallProvider] Missed call:accepted — joining late');
-            await _joinAgoraChannel();
-          }
-        });
-      } else {
-        await _joinAgoraChannel();
+      }
+
+      // Join the Agora channel IMMEDIATELY for BOTH parties. The media path
+      // connects the moment both sides are in-channel (onUserJoined fires),
+      // independently of whether the `call:accepted` socket signal is delivered.
+      // The old design gated the caller's join on that socket event, which is
+      // why calls got stuck on "Calling..." or dropped when signaling was flaky.
+      await _joinAgoraChannel();
+
+      // Preserve the "Calling..." label for the caller until the callee joins.
+      if (isInitiator && !_isCallConnected && !_isDisposed) {
+        _callStatus = 'Calling...';
+        notifyListeners();
       }
     } catch (e) {
       debugPrint('Error initializing call: $e');
@@ -311,11 +313,17 @@ class CallProvider extends ChangeNotifier {
     socket.off('call:rejected');
 
     void handleCallAccepted(dynamic data) async {
-      if (data['chatId'] == chatId && !_channelJoined) {
-        _unansweredTimer?.cancel();
-        _unansweredTimer = null;
+      if (data['chatId'] != chatId) return;
+      // The caller has now joined the channel proactively; this signal is a
+      // UX confirmation + safety net. Stop the "no answer" timer and, only if
+      // we somehow aren't in the channel yet, join now.
+      _unansweredTimer?.cancel();
+      _unansweredTimer = null;
+      if (!_isCallConnected) {
         _callStatus = 'Connecting...';
         notifyListeners();
+      }
+      if (!_channelJoined) {
         await _joinAgoraChannel();
       }
     }

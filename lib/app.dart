@@ -9,6 +9,7 @@ import 'package:docmobi/services/active_call_state.dart';
 import 'package:docmobi/screens/common/calls/video_call_screen.dart';
 import 'package:docmobi/screens/common/calls/audio_call_screen.dart';
 import 'package:docmobi/services/socket_service.dart';
+import 'package:docmobi/services/agora_chat_service.dart';
 import 'package:docmobi/screens/patient/notification/patient_notification_screen.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -87,8 +88,14 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
 
         SharedPreferences.getInstance().then((prefs) {
           final uid = prefs.getString('user_id');
-          if (uid != null && !SocketService.instance.isConnected) {
-            SocketService.instance.connect(uid);
+          if (uid != null) {
+            if (!SocketService.instance.isConnected) {
+              SocketService.instance.connect(uid);
+            }
+            // Re-verify the Agora Chat session on resume. If the SDK dropped
+            // its connection while backgrounded, this restores it so messages
+            // sent while away are received instead of silently missed.
+            AgoraChatService.instance.ensureLoggedIn(uid);
           }
         });
 
