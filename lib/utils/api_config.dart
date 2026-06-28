@@ -19,7 +19,7 @@ class ApiConfig {
 
   /// Get base URL based on environment and platform
   static String get baseUrl {
-    return localhostUrl; // For testin  g, you can change this to localhostUrl or localNetworkUrl
+    // return localhostUrl; // For testin  g, you can change this to localhostUrl or localNetworkUrl
     if (kReleaseMode || _currentMode == DevMode.production) {
       return prodUrl;
     }
