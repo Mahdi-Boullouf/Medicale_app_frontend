@@ -1639,6 +1639,37 @@ class AppLocalizationsFr extends AppLocalizations {
   String get weeklySchedule => 'Programme hebdomadaire';
 
   @override
+  String get sessionDuration => 'Durée de la séance';
+
+  @override
+  String get sessionDurationHint =>
+      'Utilisé pour générer les créneaux automatiquement';
+
+  @override
+  String get minuteShort => 'min';
+
+  @override
+  String get monday => 'Lundi';
+
+  @override
+  String get tuesday => 'Mardi';
+
+  @override
+  String get wednesday => 'Mercredi';
+
+  @override
+  String get thursday => 'Jeudi';
+
+  @override
+  String get friday => 'Vendredi';
+
+  @override
+  String get saturday => 'Samedi';
+
+  @override
+  String get sunday => 'Dimanche';
+
+  @override
   String get addNewSlot => 'Ajouter un nouveau créneau';
 
   @override

@@ -498,6 +498,30 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
     }
   }
 
+  /// Maps the canonical English day name (stored in backend) to a localized
+  /// label for display, without changing the underlying stored value.
+  String _localizedDay(BuildContext context, String englishDay) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (englishDay.toLowerCase()) {
+      case 'monday':
+        return l10n.monday;
+      case 'tuesday':
+        return l10n.tuesday;
+      case 'wednesday':
+        return l10n.wednesday;
+      case 'thursday':
+        return l10n.thursday;
+      case 'friday':
+        return l10n.friday;
+      case 'saturday':
+        return l10n.saturday;
+      case 'sunday':
+        return l10n.sunday;
+      default:
+        return englishDay;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -633,7 +657,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
 
             // Session Duration
             Text(
-              'Session Duration',
+              AppLocalizations.of(context)!.sessionDuration,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -679,7 +703,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       hintText: '1–60',
-                      suffixText: 'min',
+                      suffixText: AppLocalizations.of(context)!.minuteShort,
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(
@@ -707,9 +731,11 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  'Used when auto-generating slots',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                Expanded(
+                  child: Text(
+                    AppLocalizations.of(context)!.sessionDurationHint,
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
                 ),
               ],
             ),
@@ -835,7 +861,7 @@ class _DoctorMyScheduleScreenState extends State<DoctorMyScheduleScreen> {
                 },
               ),
               title: Text(
-                data['day'],
+                _localizedDay(context, data['day'] as String),
                 style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF1B2C49),

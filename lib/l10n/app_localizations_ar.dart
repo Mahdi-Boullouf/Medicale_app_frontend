@@ -1590,6 +1590,36 @@ class AppLocalizationsAr extends AppLocalizations {
   String get weeklySchedule => 'الجدول الأسبوعي';
 
   @override
+  String get sessionDuration => 'مدة الجلسة';
+
+  @override
+  String get sessionDurationHint => 'يُستخدم عند إنشاء الفترات تلقائيًا';
+
+  @override
+  String get minuteShort => 'دقيقة';
+
+  @override
+  String get monday => 'الإثنين';
+
+  @override
+  String get tuesday => 'الثلاثاء';
+
+  @override
+  String get wednesday => 'الأربعاء';
+
+  @override
+  String get thursday => 'الخميس';
+
+  @override
+  String get friday => 'الجمعة';
+
+  @override
+  String get saturday => 'السبت';
+
+  @override
+  String get sunday => 'الأحد';
+
+  @override
   String get addNewSlot => 'إضافة موعد جديد';
 
   @override

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../services/api_service.dart';
@@ -108,6 +109,19 @@ class CallProvider extends ChangeNotifier {
     if (_isDisposed) return;
 
     try {
+      // Request mic (+ camera for video) up front. Every call — audio or video,
+      // caller or receiver — flows through here, so this guarantees permissions
+      // are granted before Agora joins. Previously audio calls passed
+      // skipPermissions:true and never requested the mic, so they had no audio.
+      // Only prompt while foregrounded (can't show a dialog on the lock screen).
+      final isForeground =
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+      if (isForeground) {
+        final perms = <Permission>[Permission.microphone];
+        if (isVideoCall) perms.add(Permission.camera);
+        await perms.request();
+      }
+
       _callStatus = 'Setting up ${isVideoCall ? "video" : "audio"}...';
       notifyListeners();
 
