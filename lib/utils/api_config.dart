@@ -8,7 +8,7 @@ class ApiConfig {
 
   /// Development URLs
   static const String localhostUrl = 'http://localhost:4000';
-  static const String androidEmulatorUrl = 'http://10.0.2.2:5005';
+  static const String androidEmulatorUrl = 'ht"tp://10.0.2.2:5005';
 
   /// Your computer's local IP (for physical device testing on same WiFi)
   /// Find using: ipconfig (Windows) or ifconfig (Mac/Linux)
