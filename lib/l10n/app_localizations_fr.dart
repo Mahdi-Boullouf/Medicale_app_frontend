@@ -1869,4 +1869,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get watchVideo => 'Regarder la vidéo';
+
+  @override
+  String get videoComingSoon => 'Bientôt disponible';
 }

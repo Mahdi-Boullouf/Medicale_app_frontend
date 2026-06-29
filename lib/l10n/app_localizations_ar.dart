@@ -1810,4 +1810,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get watchVideo => 'مشاهدة الفيديو';
+
+  @override
+  String get videoComingSoon => 'قريبًا';
 }

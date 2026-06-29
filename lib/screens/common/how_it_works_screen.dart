@@ -1,21 +1,73 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:docmobi/l10n/app_localizations.dart';
+import 'package:docmobi/services/api_service.dart';
 
-// Replace these IDs with real YouTube video IDs when available
-const _doctorVideoId = 'DOCTOR_VIDEO_ID';
-const _patientVideoId = 'PATIENT_VIDEO_ID';
-
-class HowItWorksScreen extends StatelessWidget {
+class HowItWorksScreen extends StatefulWidget {
   const HowItWorksScreen({super.key});
 
-  Future<void> _openYouTube(BuildContext context, String videoId) async {
-    final appUrl = Uri.parse('youtube://www.youtube.com/watch?v=$videoId');
-    final webUrl = Uri.parse('https://www.youtube.com/watch?v=$videoId');
-    if (await canLaunchUrl(appUrl)) {
-      await launchUrl(appUrl);
-    } else {
-      await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+  @override
+  State<HowItWorksScreen> createState() => _HowItWorksScreenState();
+}
+
+class _HowItWorksScreenState extends State<HowItWorksScreen> {
+  bool _loading = true;
+  String _patientUrl = '';
+  String _doctorUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLinks();
+  }
+
+  Future<void> _loadLinks() async {
+    try {
+      final res = await ApiService.getYoutubeLinks();
+      if (res['success'] == true && res['data'] != null) {
+        final data = res['data'];
+        if (mounted) {
+          setState(() {
+            _patientUrl = (data['patientVideo'] ?? '').toString();
+            _doctorUrl = (data['doctorVideo'] ?? '').toString();
+            _loading = false;
+          });
+        }
+      } else if (mounted) {
+        setState(() => _loading = false);
+      }
+    } catch (e) {
+      debugPrint('Failed to load youtube links: $e');
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Extract the YouTube video id from common URL shapes so we can build a
+  /// thumbnail. Returns null if it can't be parsed.
+  String? _extractYouTubeId(String url) {
+    if (url.isEmpty) return null;
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null) return null;
+    if (uri.host.contains('youtu.be')) {
+      return uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
+    }
+    if (uri.queryParameters['v'] != null &&
+        uri.queryParameters['v']!.isNotEmpty) {
+      return uri.queryParameters['v'];
+    }
+    final segs = uri.pathSegments;
+    final idx = segs.indexWhere((s) => s == 'shorts' || s == 'embed');
+    if (idx != -1 && idx + 1 < segs.length) return segs[idx + 1];
+    return null;
+  }
+
+  Future<void> _openVideo(String url) async {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null) return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Failed to open video: $e');
     }
   }
 
@@ -40,48 +92,52 @@ class HowItWorksScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.howItWorksSubtitle,
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
+      body: _loading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF1664CD)),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.howItWorksSubtitle,
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 24),
+                  _VideoCard(
+                    videoId: _extractYouTubeId(_doctorUrl),
+                    title: l10n.doctorTutorialTitle,
+                    description: l10n.doctorTutorialDesc,
+                    accentColor: const Color(0xFF1664CD),
+                    icon: Icons.medical_services_outlined,
+                    onTap: _doctorUrl.isEmpty ? null : () => _openVideo(_doctorUrl),
+                  ),
+                  const SizedBox(height: 20),
+                  _VideoCard(
+                    videoId: _extractYouTubeId(_patientUrl),
+                    title: l10n.patientTutorialTitle,
+                    description: l10n.patientTutorialDesc,
+                    accentColor: const Color(0xFF0B9B5E),
+                    icon: Icons.person_outline,
+                    onTap: _patientUrl.isEmpty ? null : () => _openVideo(_patientUrl),
+                  ),
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
-            _VideoCard(
-              videoId: _doctorVideoId,
-              title: l10n.doctorTutorialTitle,
-              description: l10n.doctorTutorialDesc,
-              accentColor: const Color(0xFF1664CD),
-              icon: Icons.medical_services_outlined,
-              onTap: () => _openYouTube(context, _doctorVideoId),
-            ),
-            const SizedBox(height: 20),
-            _VideoCard(
-              videoId: _patientVideoId,
-              title: l10n.patientTutorialTitle,
-              description: l10n.patientTutorialDesc,
-              accentColor: const Color(0xFF0B9B5E),
-              icon: Icons.person_outline,
-              onTap: () => _openYouTube(context, _patientVideoId),
-            ),
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
     );
   }
 }
 
 class _VideoCard extends StatelessWidget {
-  final String videoId;
+  final String? videoId;
   final String title;
   final String description;
   final Color accentColor;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _VideoCard({
     required this.videoId,
@@ -95,8 +151,10 @@ class _VideoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final thumbnailUrl =
-        'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
+    final bool available = onTap != null;
+    final thumbnailUrl = videoId != null
+        ? 'https://img.youtube.com/vi/$videoId/hqdefault.jpg'
+        : null;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -123,13 +181,26 @@ class _VideoCard extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Image.network(
-                    thumbnailUrl,
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context2, error, stack) => Container(
+                  if (thumbnailUrl != null)
+                    Image.network(
+                      thumbnailUrl,
                       height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context2, error, stack) => Container(
+                        height: 200,
+                        color: accentColor.withValues(alpha: 0.1),
+                        child: Icon(
+                          icon,
+                          size: 60,
+                          color: accentColor.withValues(alpha: 0.4),
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      height: 200,
+                      width: double.infinity,
                       color: accentColor.withValues(alpha: 0.1),
                       child: Icon(
                         icon,
@@ -137,26 +208,26 @@ class _VideoCard extends StatelessWidget {
                         color: accentColor.withValues(alpha: 0.4),
                       ),
                     ),
-                  ),
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                        ),
-                      ],
+                  if (available)
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 36,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.play_arrow_rounded,
-                      color: Colors.white,
-                      size: 36,
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -207,19 +278,23 @@ class _VideoCard extends StatelessWidget {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: accentColor,
+                          color: available
+                              ? accentColor
+                              : Colors.grey.shade300,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           children: [
-                            const Icon(
-                              Icons.play_circle_outline,
+                            Icon(
+                              available
+                                  ? Icons.play_circle_outline
+                                  : Icons.hourglass_empty,
                               color: Colors.white,
                               size: 16,
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              l10n.watchVideo,
+                              available ? l10n.watchVideo : l10n.videoComingSoon,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,

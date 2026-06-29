@@ -3477,6 +3477,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Watch Video'**
   String get watchVideo;
+
+  /// No description provided for @videoComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming Soon'**
+  String get videoComingSoon;
 }
 
 class _AppLocalizationsDelegate

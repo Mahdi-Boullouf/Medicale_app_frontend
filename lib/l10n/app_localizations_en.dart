@@ -1834,4 +1834,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get watchVideo => 'Watch Video';
+
+  @override
+  String get videoComingSoon => 'Coming Soon';
 }

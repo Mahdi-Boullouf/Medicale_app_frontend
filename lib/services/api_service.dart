@@ -535,6 +535,12 @@ class ApiService {
     return await get('/api/v1/chat/token', requiresAuth: true);
   }
 
+  /// Get the "How it works" tutorial YouTube links (patient + doctor)
+  static Future<Map<String, dynamic>> getYoutubeLinks() async {
+    debugPrint(' Fetching How-It-Works YouTube links');
+    return await get('/api/v1/youtube-links', requiresAuth: false);
+  }
+
   /// Get My Chats
   static Future<Map<String, dynamic>> getMyChats() async {
     debugPrint(' Getting my chats');
